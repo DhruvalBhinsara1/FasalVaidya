@@ -1,0 +1,7 @@
+# Use with Python 3.11 (recommended) or 3.10; TensorFlow does not provide wheels for 3.13 yet.
+flask==3.0.0
+flask-cors==4.0.0
+python-dotenv==1.0.1
+pillow==10.1.0
+numpy==1.26.4
+tensorflow==2.15.0

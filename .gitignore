@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv*/
+backend/.venv*/
+*.egg-info/
+
+# Uploads and temp files
+backend/uploads/
+uploads/
+
+# Database
+*.db
+
+# ML model files (large)
+*.h5
+*.keras
+*.pkl
+
+# Expo
+.expo/
+frontend/.expo/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/

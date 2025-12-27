@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "FasalVaidya",
+    "slug": "fasalvaidya",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#208F78"
+    },
+    "platforms": ["ios", "android", "web"],
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#208F78"
+      },
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "FasalVaidya needs camera access to scan plant leaves for nutrient deficiency diagnosis."
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow FasalVaidya to access your camera for leaf scanning."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow FasalVaidya to access your photos to select leaf images for diagnosis."
+        }
+      ]
+    ],
+    "assetBundlePatterns": ["**/*"],
+    "extra": {
+      "eas": {
+        "projectId": "demo-placeholder"
+      }
+    }
+  }
+}
