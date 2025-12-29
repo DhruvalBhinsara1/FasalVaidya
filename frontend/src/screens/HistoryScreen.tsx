@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable, Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
-import { getScans, Scan } from '../api/client';
+import { getScans, clearHistory, Scan } from '../api/client';
 import { theme } from '../theme/theme';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -30,6 +30,29 @@ export default function HistoryScreen(_: Props) {
     fetchScans();
   }, []);
 
+  const handleClearHistory = () => {
+    Alert.alert(
+      'Clear History',
+      'Are you sure you want to delete all scan history? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await clearHistory();
+              Alert.alert('Success', `Cleared ${result.deleted_scans} scans`);
+              setScans([]);
+            } catch (err) {
+              Alert.alert('Error', 'Failed to clear history');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderItem = ({ item }: { item: Scan }) => {
     const statusColor = STATUS_COLORS[item.status] || theme.colors.textSecondary;
     return (
@@ -54,6 +77,11 @@ export default function HistoryScreen(_: Props) {
 
   return (
     <View style={styles.container}>
+      {scans.length > 0 && (
+        <Pressable style={styles.clearButton} onPress={handleClearHistory}>
+          <Text style={styles.clearButtonText}>🗑️ Clear History</Text>
+        </Pressable>
+      )}
       <FlatList
         data={scans}
         keyExtractor={(item) => item.scan_id.toString()}
@@ -71,6 +99,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     padding: 16,
+  },
+  clearButton: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  clearButtonText: {
+    color: '#DC2626',
+    fontSize: 14,
+    fontWeight: '600',
   },
   card: {
     backgroundColor: '#fff',

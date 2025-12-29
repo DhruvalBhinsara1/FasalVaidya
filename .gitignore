@@ -10,6 +10,19 @@ __pycache__/
 backend/.venv*/
 *.egg-info/
 
+# Dataset
+
+Bigger CoLeaf DATASET/
+CoLeaf DATASET /
+Nitrogen deficiency/
+POTASSIUM DEFICIENCY/
+ThorCam_semiFiltered/
+Proposed_Dataset/
+combined_balanced_dataset/
+CoLeaf Dataset/
+ml/models/logs/
+Propossed_Data/
+
 # Uploads and temp files
 backend/uploads/
 uploads/
@@ -46,3 +59,5 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+
+backend/ml/models/logs/train/

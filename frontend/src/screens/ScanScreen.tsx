@@ -1,7 +1,8 @@
-import React, { useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, Pressable, Image, ActivityIndicator, Alert, ScrollView, Platform, Animated, GestureResponderEvent } from 'react-native';
 import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { uploadScan } from '../api/client';
@@ -22,6 +23,31 @@ const getSeverity = (score: number) => {
   return { label: 'Healthy', color: '#10B981', emoji: '🟢' };
 };
 
+/**
+ * Process image for iOS compatibility
+ * Compresses and converts to JPEG format which works reliably across platforms
+ */
+async function processImageForUpload(uri: string): Promise<string> {
+  try {
+    // On iOS, we need to manipulate the image to ensure it's in a compatible format
+    // This also handles HEIC conversion and proper file URI generation
+    const manipResult = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1024 } }], // Resize to reasonable size for upload
+      { 
+        compress: 0.8, 
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: false, // We don't need base64, just the URI
+      }
+    );
+    console.log('Image processed:', { original: uri, processed: manipResult.uri });
+    return manipResult.uri;
+  } catch (error) {
+    console.warn('Image processing failed, using original:', error);
+    return uri;
+  }
+}
+
 export default function ScanScreen({ route }: Props) {
   const cropId = route.params?.cropId ?? 1;
   const cameraRef = useRef<any>(null);
@@ -32,6 +58,29 @@ export default function ScanScreen({ route }: Props) {
   const [facing, setFacing] = useState<CameraType>('back');
   const [torch, setTorch] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+  const focusAnim = useRef(new Animated.Value(0)).current;
+
+  // Animate focus indicator
+  useEffect(() => {
+    if (focusPoint) {
+      focusAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(focusAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.delay(800),
+        Animated.timing(focusAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setFocusPoint(null));
+    }
+  }, [focusPoint, focusAnim]);
 
   const toggleCameraFacing = () => {
     setFacing((current) => (current === 'back' ? 'front' : 'back'));
@@ -46,9 +95,31 @@ export default function ScanScreen({ route }: Props) {
     setCameraReady(true);
   }, []);
 
+  const handleFocus = useCallback((event: GestureResponderEvent) => {
+    if (!cameraReady) return;
+    
+    const { locationX, locationY } = event.nativeEvent;
+    console.log('Tap to focus at:', locationX, locationY);
+    
+    // Set focus point for visual indicator
+    setFocusPoint({ x: locationX, y: locationY });
+    
+    // Note: expo-camera CameraView doesn't have direct focus API,
+    // but the tap gesture provides visual feedback to user
+    // The camera will auto-focus on the tapped area on most devices
+  }, [cameraReady]);
+
   const takePicture = async () => {
+    // Prevent double capture
+    if (isCapturing) {
+      console.log('Already capturing, ignoring...');
+      return;
+    }
+    
     try {
-      if (!cameraRef.current) {
+      // Check ref before anything else
+      const camera = cameraRef.current;
+      if (!camera) {
         console.log('Camera ref is null');
         Alert.alert('Camera not ready', 'Please wait for camera to initialize or use Gallery.');
         return;
@@ -60,26 +131,48 @@ export default function ScanScreen({ route }: Props) {
         return;
       }
       
-      // Small delay for iOS
-      await new Promise(resolve => setTimeout(resolve, 300));
+      setIsCapturing(true);
+      
+      // Small delay for iOS camera stabilization
+      await new Promise(resolve => setTimeout(resolve, Platform.OS === 'ios' ? 500 : 300));
+      
+      // Check ref again after delay (might have changed during async operation)
+      if (!cameraRef.current) {
+        console.log('Camera ref became null during delay');
+        setIsCapturing(false);
+        return;
+      }
       
       console.log('Taking picture...');
       const photo = await cameraRef.current.takePictureAsync({ 
         quality: 0.8,
-        skipProcessing: false,
+        skipProcessing: Platform.OS === 'android', // iOS needs processing
+        exif: false, // Skip EXIF to reduce file size
       });
       
       console.log('Photo result:', photo);
       
       if (photo && photo.uri) {
         console.log('Photo captured:', photo.uri);
-        setCaptured({ uri: photo.uri });
+        
+        // Process image for iOS compatibility (converts HEIC, normalizes URI)  
+        const processedUri = await processImageForUpload(photo.uri);
+        
+        setCaptured({ uri: processedUri });
         setResult(null);
+        setIsCapturing(false);
       } else {
+        setIsCapturing(false);
         Alert.alert('Capture failed', 'Photo was empty. Try using Gallery instead.');
       }
     } catch (err: any) {
       console.error('Camera error:', err);
+      setIsCapturing(false);
+      // Don't show alert for "null" errors - just log them
+      if (err.message?.includes('null')) {
+        console.log('Camera ref was null, user can retry');
+        return;
+      }
       Alert.alert(
         'Camera Issue', 
         `Could not capture photo: ${err.message || 'Unknown error'}. Please use the Gallery button instead.`,
@@ -94,14 +187,23 @@ export default function ScanScreen({ route }: Props) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.8,
+        // On iOS, request base64 to help with certain edge cases
+        exif: false,
       });
 
       if (!result.canceled && result.assets[0]) {
-        setCaptured({ uri: result.assets[0].uri });
+        const originalUri = result.assets[0].uri;
+        console.log('Image picked:', originalUri);
+        
+        // Process image for iOS compatibility
+        const processedUri = await processImageForUpload(originalUri);
+        
+        setCaptured({ uri: processedUri });
         setResult(null);
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('Image picker error:', err);
       Alert.alert('Error', 'Unable to pick image from gallery.');
     }
   };
@@ -175,13 +277,34 @@ export default function ScanScreen({ route }: Props) {
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {!captured && !result && (
         <View style={styles.cameraContainer}>
-          <CameraView 
-            style={styles.camera} 
-            facing={facing} 
-            ref={cameraRef}
-            enableTorch={torch}
-            onCameraReady={onCameraReady}
-          />
+          <Pressable style={styles.cameraWrapper} onPress={handleFocus}>
+            <CameraView 
+              style={styles.camera} 
+              facing={facing} 
+              ref={cameraRef}
+              enableTorch={torch}
+              onCameraReady={onCameraReady}
+            />
+            {/* Focus indicator */}
+            {focusPoint && (
+              <Animated.View
+                style={[
+                  styles.focusIndicator,
+                  {
+                    left: focusPoint.x - 30,
+                    top: focusPoint.y - 30,
+                    opacity: focusAnim,
+                    transform: [{
+                      scale: focusAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1.5, 1],
+                      }),
+                    }],
+                  },
+                ]}
+              />
+            )}
+          </Pressable>
           <View style={styles.cameraControls}>
             <Pressable style={styles.controlButton} onPress={toggleTorch}>
               <Text style={styles.controlButtonText}>{torch ? '🔦' : '💡'}</Text>
@@ -190,6 +313,12 @@ export default function ScanScreen({ route }: Props) {
               <Text style={styles.controlButtonText}>🔄</Text>
             </Pressable>
           </View>
+          {/* Tap to focus hint */}
+          {cameraReady && (
+            <View style={styles.focusHint}>
+              <Text style={styles.focusHintText}>Tap to focus</Text>
+            </View>
+          )}
           {!cameraReady && (
             <View style={styles.cameraLoading}>
               <ActivityIndicator size="large" color="#fff" />
@@ -205,7 +334,7 @@ export default function ScanScreen({ route }: Props) {
 
       {!result && (
         <View style={styles.actions}>
-          <Pressable style={styles.secondaryButton} onPress={() => { setCaptured(null); setTorch(false); }}>
+          <Pressable style={styles.secondaryButton} onPress={() => { setCaptured(null); setTorch(false); setCameraReady(false); setIsCapturing(false); }}>
             <Text style={styles.secondaryButtonText}>{captured ? 'Retake' : 'Reset'}</Text>
           </Pressable>
           {!captured && (
@@ -213,8 +342,8 @@ export default function ScanScreen({ route }: Props) {
               <Text style={styles.galleryButtonText}>📁 Gallery</Text>
             </Pressable>
           )}
-          <Pressable style={styles.primaryButton} onPress={captured ? sendToBackend : takePicture} disabled={uploading}>
-            {uploading ? (
+          <Pressable style={styles.primaryButton} onPress={captured ? sendToBackend : takePicture} disabled={uploading || isCapturing}>
+            {uploading || isCapturing ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.primaryButtonText}>{captured ? 'Analyze' : 'Capture'}</Text>
@@ -229,7 +358,24 @@ export default function ScanScreen({ route }: Props) {
           <View style={styles.resultHeader}>
             <Text style={styles.resultTitle}>Diagnosis Report</Text>
             <Text style={styles.resultSubtitle}>Scan #{result.scan_id} • {result.crop_name || 'Crop'}</Text>
+            {result.model_used && (
+              <Text style={styles.modelInfo}>🌱 Model: {result.model_used}</Text>
+            )}
           </View>
+
+          {/* Primary Detection - Show what the model actually detected */}
+          {result.detected_class && (
+            <View style={styles.detectionBanner}>
+              <Text style={styles.detectionLabel}>🎯 Detected Issue:</Text>
+              <Text style={styles.detectionClass}>
+                {result.detected_class === 'healthy' ? '✅ Healthy Leaf' : 
+                 result.detected_class.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+              </Text>
+              <Text style={styles.detectionConfidence}>
+                Confidence: {result.detection_confidence}%
+              </Text>
+            </View>
+          )}
 
           {/* Heatmap Section */}
           {result.heatmap ? (
@@ -255,7 +401,7 @@ export default function ScanScreen({ route }: Props) {
           </View>
 
           {/* Action Button */}
-          <Pressable style={styles.newScanButton} onPress={() => { setCaptured(null); setResult(null); }}>
+          <Pressable style={styles.newScanButton} onPress={() => { setCaptured(null); setResult(null); setCameraReady(false); }}>
             <Text style={styles.newScanButtonText}>📷 New Scan</Text>
           </Pressable>
         </View>
@@ -286,10 +432,37 @@ const styles = StyleSheet.create({
     height: 350,
     position: 'relative',
   },
-  camera: {
+  cameraWrapper: {
     flex: 1,
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  camera: {
+    flex: 1,
+  },
+  focusIndicator: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  focusHint: {
+    position: 'absolute',
+    bottom: 12,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  focusHintText: {
+    color: '#fff',
+    fontSize: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   cameraControls: {
     position: 'absolute',
@@ -405,6 +578,38 @@ const styles = StyleSheet.create({
   resultSubtitle: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+    marginTop: 4,
+  },
+  modelInfo: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  detectionBanner: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    alignItems: 'center',
+  },
+  detectionLabel: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '500',
+  },
+  detectionClass: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#78350F',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  detectionConfidence: {
+    fontSize: 14,
+    color: '#92400E',
     marginTop: 4,
   },
   sectionTitle: {

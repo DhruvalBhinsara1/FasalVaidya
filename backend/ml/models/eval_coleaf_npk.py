@@ -6,8 +6,8 @@ import numpy as np
 DATA_DIR = r"E:\FasalVaidya\backend\ml\models\CoLeaf DATASET"
 IMG_SIZE = (224, 224)
 BATCH = 32
-CLASSES = ["healthy", "nitrogen-N", "phosphorus-P", "potasium-K"]
-MODEL_PATH = os.getenv("MODEL_PATH", r"E:\FasalVaidya\backend\ml\models\plantvillage-npk.h5")
+CLASSES = ["healthy", "nitrogen-N", "phosphorus-P", "potasium-K", "boron-B", "calcium-Ca", "iron-Fe", "magnesium-Mg", "manganese-Mn"]
+MODEL_PATH = os.getenv("MODEL_PATH", r"E:\FasalVaidya\backend\ml\models\plantvillage-npk-v2.h5")
 
 
 def make_ds(split):

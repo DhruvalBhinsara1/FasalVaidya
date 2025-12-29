@@ -6,7 +6,7 @@ DATA_DIR = r"E:\FasalVaidya\backend\ml\models\CoLeaf DATASET"
 IMG_SIZE = (224, 224)
 BATCH = 32
 EPOCHS = 20
-CLASSES = ["healthy", "nitrogen-N", "phosphorus-P", "potasium-K"]
+CLASSES = ["healthy", "nitrogen-N", "phosphorus-P", "potasium-K", "boron-B", "calcium-Ca", "iron-Fe", "magnesium-Mg", "manganese-Mn"]
 
 
 def compute_class_weights():

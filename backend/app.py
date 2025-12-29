@@ -210,8 +210,8 @@ def create_scan():
     scan_id = cur.lastrowid
     conn.commit()
 
-    # Run inference (mock or real)
-    scores = run_model(str(image_path))
+    # Run inference with crop-specific model
+    scores = run_model(str(image_path), crop_id=crop_id_int)
 
     n_score = scores["n_score"]
     p_score = scores["p_score"]
@@ -261,6 +261,7 @@ def create_scan():
         "scan_id": scan_id,
         "crop_id": crop_id_int,
         "crop_name": CROPS[crop_id_int]["name"],
+        "model_used": scores.get("model_used", "General"),
         "n_score": n_score,
         "p_score": p_score,
         "k_score": k_score,
@@ -315,6 +316,44 @@ def get_scans():
         })
 
     return jsonify({"scans": scans}), 200
+
+
+@app.route("/api/scans", methods=["DELETE"])
+def clear_scans():
+    """Clear all scan history and associated data."""
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    
+    # Get image paths before deleting
+    cur.execute("SELECT image_path FROM leaf_scans")
+    image_paths = [row[0] for row in cur.fetchall()]
+    
+    # Delete in correct order due to foreign keys
+    cur.execute("DELETE FROM recommendations")
+    cur.execute("DELETE FROM diagnoses")
+    cur.execute("DELETE FROM leaf_scans")
+    
+    # Reset auto-increment counters so scan IDs start from 1 again
+    cur.execute("DELETE FROM sqlite_sequence WHERE name IN ('leaf_scans', 'diagnoses', 'recommendations')")
+    
+    conn.commit()
+    conn.close()
+    
+    # Clean up image files
+    deleted_files = 0
+    for path in image_paths:
+        try:
+            if path and Path(path).exists():
+                Path(path).unlink()
+                deleted_files += 1
+        except Exception as e:
+            print(f"Failed to delete {path}: {e}")
+    
+    return jsonify({
+        "message": "History cleared",
+        "deleted_scans": len(image_paths),
+        "deleted_files": deleted_files
+    }), 200
 
 
 if __name__ == "__main__":
