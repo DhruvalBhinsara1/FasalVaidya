@@ -62,40 +62,38 @@ FasalVaidya is an AI-powered mobile application that helps Indian farmers diagno
 ## 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐│                    FASALVAIDYA ARCHITECTURE                  │├─────────────────────────────────────────────────────────────┤│                                                              ││  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   ││  │   Mobile    │────▶│   Backend   │────▶│  ML Model   │   ││  │   App       │◀────│   API       │◀────│  (TFLite)   │   ││  │ (Expo/RN)   │     │  (Flask)    │     │ MobileNetV3 │   ││  └─────────────┘     └─────────────┘     └─────────────┘   ││        │                   │                               ││        │                   │                               ││        ▼                   ▼                               ││  ┌─────────────┐     ┌─────────────┐                       ││  │ expo-camera │     │   SQLite    │                       ││  │ expo-speech │     │  Database   │                       ││  └─────────────┘     └─────────────┘                       ││                                                              │└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    FASALVAIDYA ARCHITECTURE                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   │
+│  │   Mobile    │────▶│   Backend   │────▶│  ML Model   │   │
+│  │   App       │◀────│   API       │◀────│  (TFLite)   │   │
+│  │ (Expo/RN)   │     │  (Flask)    │     │ MobileNetV3 │   │
+│  └─────────────┘     └─────────────┘     └─────────────┘   │
+│        │                   │                               │
+│        │                   │                               │
+│        ▼                   ▼                               │
+│  ┌─────────────┐     ┌─────────────┐                       │
+│  │ expo-camera │     │   SQLite    │                       │
+│  │ expo-speech │     │  Database   │                       │
+│  └─────────────┘     └─────────────┘                       │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 🛠 Tech Stack
 
-Layer
-
-Technology
-
-**ML Model**
-
-TensorFlow 2.15, EfficientNetB0/B2, Focal Loss, TTA
-
-**Backend**
-
-Python 3.11, Flask 3.0, SQLite
-
-**Frontend**
-
-React Native (Expo SDK 54), TypeScript
-
-**Image Processing**
-
-PIL, expo-image-manipulator
-
-**Localization**
-
-i18n-js (10+ Indian languages)
-
-**Design**
-
-Teal (#208F78) primary, 8px grid system
+| Layer | Technology |
+|-------|------------|
+| **ML Model** | TensorFlow 2.15, EfficientNetB0/B2, Focal Loss, TTA |
+| **Backend** | Python 3.11, Flask 3.0, SQLite |
+| **Frontend** | React Native (Expo SDK 54), TypeScript |
+| **Image Processing** | PIL, expo-image-manipulator |
+| **Localization** | i18n-js (10+ Indian languages) |
+| **Design** | Teal (#208F78) primary, 8px grid system |
 
 ---
 
@@ -112,19 +110,35 @@ Teal (#208F78) primary, 8px grid system
 ### 1. Clone & Setup
 
 ```bash
-# Navigate to projectcd FasalVaidya# Create Python virtual environmentcd backendpython -m venv .venv311..venv311Scriptsactivate  # Windows# source .venv311/bin/activate  # macOS/Linux# Install Python dependenciespip install -r requirements.txt
+# Navigate to project
+cd FasalVaidya
+
+# Create Python virtual environment
+cd backend
+python -m venv .venv311
+.venv311\Scripts\activate  # Windows
+# source .venv311/bin/activate  # macOS/Linux
+
+# Install Python dependencies
+pip install -r requirements.txt
 ```
 
 ### 2. Start Backend
 
 ```bash
-cd backendpython app.py# Server runs at http://localhost:5000# API endpoint: http://localhost:5000/api
+cd backend
+python app.py
+# Server runs at http://localhost:5000
+# API endpoint: http://localhost:5000/api
 ```
 
 ### 3. Start Frontend
 
 ```bash
-cd frontendnpm installnpx expo start# Scan QR code with Expo Go app
+cd frontend
+npm install
+npx expo start
+# Scan QR code with Expo Go app
 ```
 
 ### 4. Test the App
@@ -150,8 +164,37 @@ CoLeaf DATASET/├── healthy/          # Healthy leaves (control)├── n
 ### Train the Model
 
 ```bash
-cd backend# Activate virtual environment..venv311Scriptsactivate# Install TensorFlow (if not already)pip install tensorflow==2.15.0# Train the modelpython ml/train_npk_model.py# Train crop-specific models (one per crop) for multi-crop inferencepython ml/train_crop_model.py --list                           # List available cropspython ml/train_crop_model.py --crop rice                      # Train single croppython ml/train_crop_model.py --crop all --quality balanced    # Train ALL crops (default)python ml/train_crop_model.py --crop all --quality high        # Train ALL crops (max accuracy, 3-4 hrs)# Quality presets:#   fast     - 30 epochs, quick testing (~30 min)#   balanced - 60 epochs, good accuracy (~1-2 hrs)#   high     - 120 epochs, max accuracy (~3-4 hrs)# Output:#   - ml/models/npk_model.h5 (Keras model)#   - ml/models/npk_model.tflite (TFLite for mobile)#   - ml/models/<crop>/best.keras (per-crop models)
+cd backend
+
+# Activate virtual environment
+.venv311\Scripts\activate
+
+# Install TensorFlow (if not already)
+pip install tensorflow==2.15.0
+
+# Train the model
+python ml/train_npk_model.py
+
+# Train crop-specific models (one per crop) for multi-crop inference
+python ml/train_crop_model.py --list                           # List available crops
+python ml/train_crop_model.py --crop rice                      # Train single crop
+python ml/train_crop_model.py --crop all --quality balanced    # Train ALL crops (default)
+python ml/train_crop_model.py --crop all --quality high        # Train ALL crops (max accuracy, 3-4 hrs)
+
+# Quality presets:
+#   fast     - 30 epochs, quick testing (~30 min)
+#   balanced - 60 epochs, good accuracy (~1-2 hrs)
+#   high     - 120 epochs, max accuracy (~3-4 hrs)
+
+# Output:
+#   - ml/models/npk_model.h5 (Keras model)
+#   - ml/models/npk_model.tflite (TFLite for mobile)
+#   - ml/models/<crop>/best.keras (per-crop models)
 ```
+
+**🆕 Train Models in Jupyter Notebook:**
+- **Google Colab**: Use [FasalVaidya_Training_Colab.ipynb](FasalVaidya_Training_Colab.ipynb) for cloud GPU training
+- **Local Training**: Use [FasalVaidya_Training_Local.ipynb](FasalVaidya_Training_Local.ipynb) for local machine training
 
 ### Model Architecture
 
@@ -180,13 +223,23 @@ Input: 256x256x3 RGB image (or 224x224 for fast mode)  ↓EfficientNetB0 (ImageN
 Create `backend/.env`:
 
 ```env
-FLASK_ENV=developmentFLASK_DEBUG=1DATABASE_PATH=fasalvaidya.dbMODEL_PATH=ml/models/npk_model.h5UPLOAD_FOLDER=uploadsMAX_CONTENT_LENGTH=16777216SECRET_KEY=your-secret-key-here
+FLASK_ENV=development
+FLASK_DEBUG=1
+DATABASE_PATH=fasalvaidya.db
+MODEL_PATH=ml/models/npk_model.h5
+UPLOAD_FOLDER=uploads
+MAX_CONTENT_LENGTH=16777216
+SECRET_KEY=your-secret-key-here
 ```
 
 ### Run Backend
 
 ```bash
-cd backendpython app.py# Output:# * Running on http://0.0.0.0:5000# * Debug mode: on
+cd backend
+python app.py
+# Output:
+# * Running on http://0.0.0.0:5000
+# * Debug mode: on
 ```
 
 ### Database Schema
@@ -219,29 +272,13 @@ cd frontendnpm install
 
 ### App Screens
 
-Screen
-
-Description
-
-**Home**
-
-Crop selection, start scan, history button
-
-**Camera**
-
-Take/pick leaf photo, compress, upload
-
-**Results**
-
-NPK scores, severity chips, recommendations
-
-**History**
-
-List of past scans with date and status
-
-**Settings**
-
-Language toggle (EN/HI), app info
+| Screen | Description |
+|--------|-------------|
+| **Home** | Crop selection, start scan, history button |
+| **Camera** | Take/pick leaf photo, compress, upload |
+| **Results** | NPK scores, severity chips, recommendations |
+| **History** | List of past scans with date and status |
+| **Settings** | Language toggle (EN/HI), app info |
 
 ---
 
@@ -250,37 +287,83 @@ Language toggle (EN/HI), app info
 ### Health Check
 
 ```http
-GET /api/healthResponse: { "status": "ok", "message": "FasalVaidya API is running" }
+GET /api/health
+
+Response: { "status": "ok", "message": "FasalVaidya API is running" }
 ```
 
 ### List Crops
 
 ```http
-GET /api/cropsResponse: {  "crops": [    { "id": 1, "name": "Wheat", "name_hi": "गेहूं", "icon": "🌾" },    ...  ]}
+GET /api/crops
+
+Response: {
+  "crops": [
+    { "id": 1, "name": "Wheat", "name_hi": "गेहूं", "icon": "🌾" },
+    ...
+  ]
+}
 ```
 
 ### Upload Scan
 
 ```http
-POST /api/scansContent-Type: multipart/form-dataFields:  - image: file (JPEG/PNG)  - crop_id: integer (1-4)Response: {  "scan_id": 1,  "crop_id": 1,  "crop_name": "Wheat",  "n_score": 75.5,  "p_score": 25.0,  "k_score": 45.0,  "n_severity": "critical",  "p_severity": "healthy",  "k_severity": "attention",  "overall_status": "critical",  "recommendations": {    "n": { "en": "Apply urea...", "hi": "यूरिया का उपयोग..." },    ...  }}
+POST /api/scans
+Content-Type: multipart/form-data
+
+Fields:
+  - image: file (JPEG/PNG)
+  - crop_id: integer (1-4)
+
+Response: {
+  "scan_id": 1,
+  "crop_id": 1,
+  "crop_name": "Wheat",
+  "n_score": 75.5,
+  "p_score": 25.0,
+  "k_score": 45.0,
+  "n_severity": "critical",
+  "p_severity": "healthy",
+  "k_severity": "attention",
+  "overall_status": "critical",
+  "recommendations": {
+    "n": { "en": "Apply urea...", "hi": "यूरिया का उपयोग..." },
+    ...
+  }
+}
 ```
 
 ### Get Scan History
 
 ```http
-GET /api/scansResponse: {  "scans": [    {      "scan_id": 1,      "crop_name": "Wheat",      "overall_status": "attention",      "created_at": "2024-12-28T10:30:00"    }  ]}
+GET /api/scans
+
+Response: {
+  "scans": [
+    {
+      "scan_id": 1,
+      "crop_name": "Wheat",
+      "overall_status": "attention",
+      "created_at": "2024-12-28T10:30:00"
+    }
+  ]
+}
 ```
 
 ### Get Single Scan
 
 ```http
-GET /api/scans/{scan_id}Response: { full scan object with recommendations }
+GET /api/scans/{scan_id}
+
+Response: { full scan object with recommendations }
 ```
 
 ### Clear History
 
 ```http
-DELETE /api/scansResponse: { "message": "All scans cleared" }
+DELETE /api/scans
+
+Response: { "message": "All scans cleared" }
 ```
 
 ---
@@ -290,22 +373,45 @@ DELETE /api/scansResponse: { "message": "All scans cleared" }
 ### Run Unit Tests
 
 ```bash
-cd backend# Install pytestpip install pytest pillow# Run all testspytest tests/test_api.py -v# Run specific test classpytest tests/test_api.py::TestScansEndpoint -v
+cd backend
+
+# Install pytest
+pip install pytest pillow
+
+# Run all tests
+pytest tests/test_api.py -v
+
+# Run specific test class
+pytest tests/test_api.py::TestScansEndpoint -v
 ```
 
 ### Run Batch Tests with Dataset
 
 ```bash
-cd backend# Start the server first (in another terminal)python app.py# Run batch testspython tests/batch_test_scans.py# Test specific categorypython tests/batch_test_scans.py --category nitrogen-N# More samplespython tests/batch_test_scans.py --samples 10
+cd backend
+
+# Start the server first (in another terminal)
+python app.py
+
+# Run batch tests
+python tests/batch_test_scans.py
+
+# Test specific category
+python tests/batch_test_scans.py --category nitrogen-N
+
+# More samples
+python tests/batch_test_scans.py --samples 10
 ```
 
 ### Manual Testing
 
-1.  **API Health**: `curl http://localhost:5000/api/health`
-2.  **Upload Image**:
+1. **API Health**: `curl http://localhost:5000/api/health`
+2. **Upload Image**:
 
 ```bash
-curl -X POST http://localhost:5000/api/scans   -F "image=@test_leaf.jpg"   -F "crop_id=1"
+curl -X POST http://localhost:5000/api/scans \
+  -F "image=@test_leaf.jpg" \
+  -F "crop_id=1"
 ```
 
 ---
@@ -318,153 +424,54 @@ FasalVaidya/├── 📄 README.md                    # This file├── �
 
 ---
 
-## � Supported Languages
+## 🌐 Supported Languages
 
 FasalVaidya supports 10+ Indian languages to reach farmers across India:
 
-Language
-
-Native Name
-
-Status
-
-English
-
-English
-
-✅ Full
-
-Hindi
-
-हिंदी
-
-✅ Full
-
-Tamil
-
-தமிழ்
-
-🔄 Fallback to English
-
-Telugu
-
-తెలుగు
-
-🔄 Fallback to English
-
-Bengali
-
-বাংলা
-
-🔄 Fallback to English
-
-Marathi
-
-मराठी
-
-🔄 Fallback to English
-
-Gujarati
-
-ગુજરાતી
-
-🔄 Fallback to English
-
-Kannada
-
-ಕನ್ನಡ
-
-🔄 Fallback to English
-
-Malayalam
-
-മലയാളം
-
-🔄 Fallback to English
-
-Punjabi
-
-ਪੰਜਾਬੀ
-
-🔄 Fallback to English
+| Language | Native Name | Status |
+|----------|-------------|--------|
+| English | English | ✅ Full |
+| Hindi | हिंदी | ✅ Full |
+| Tamil | தமிழ் | 🔄 Fallback to English |
+| Telugu | తెలుగు | 🔄 Fallback to English |
+| Bengali | বাংলা | 🔄 Fallback to English |
+| Marathi | मराठी | 🔄 Fallback to English |
+| Gujarati | ગુજરાતી | 🔄 Fallback to English |
+| Kannada | ಕನ್ನಡ | 🔄 Fallback to English |
+| Malayalam | മലയാളം | 🔄 Fallback to English |
+| Punjabi | ਪੰਜਾਬੀ | 🔄 Fallback to English |
 
 Users can switch languages in **Settings** screen. The app saves language preference locally.
 
 ---
 
-## �🎨 Design System
+## 🎨 Design System
 
 ### Colors
 
-Name
-
-Hex
-
-Usage
-
-Primary
-
-`#208F78`
-
-Buttons, headers, highlights
-
-Secondary
-
-`#F5F5F5`
-
-Backgrounds
-
-Success
-
-`#4CAF50`
-
-Healthy status
-
-Warning
-
-`#FF9800`
-
-Attention status
-
-Error
-
-`#F44336`
-
-Critical status
+| Name | Hex | Usage |
+|------|-----|-------|
+| Primary | `#208F78` | Buttons, headers, highlights |
+| Secondary | `#F5F5F5` | Backgrounds |
+| Success | `#4CAF50` | Healthy status |
+| Warning | `#FF9800` | Attention status |
+| Error | `#F44336` | Critical status |
 
 ### Severity Thresholds
 
-Score Range
-
-Severity
-
-Color
-
-≥70%
-
-Critical
-
-Red
-
-40-70%
-
-Attention
-
-Orange
-
-<40%
-
-Healthy
-
-Green
+| Score Range | Severity | Color |
+|-------------|----------|-------|
+| ≥70% | Critical | Red |
+| 40-70% | Attention | Orange |
+| <40% | Healthy | Green |
 
 ---
 
 ## 📞 Support
 
--   **Documentation**: See `/docs` folder
--   **Issues**: Report bugs in the project repository
--   **Contact**: [dhruvalbhinsara460@gmail.com](https://dhruvalbhinsara460@gmail.com "https://dhruvalbhinsara460@gmail.com")
+- **Documentation**: See `/docs` folder
+- **Issues**: Report bugs in the project repository
+- **Contact**: [dhruvalbhinsara460@gmail.com](mailto:dhruvalbhinsara460@gmail.com)
 
 ---
 
