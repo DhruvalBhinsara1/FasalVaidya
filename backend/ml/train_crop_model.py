@@ -361,18 +361,23 @@ DATASET_ROOT = BASE_DIR / 'Leaf Nutrient Data Sets'
 MODEL_ROOT = Path(__file__).parent / 'models'
 
 # Each crop config defines: dataset path, folder→label mappings, and output classes
+# Nutrient key:
+#   N = Nitrogen, P = Phosphorus, K = Potassium, Mg = Magnesium
+#   Combined like N_K means both N and K deficiency
+#   Disease/pest folders (DM, LS, JAS, MIT, etc.) are treated as healthy for nutrient purposes
+
 CROP_CONFIGS = {
     'rice': {
         'name': 'Rice',
         'name_hi': 'चावल',
         'dataset_path': DATASET_ROOT / 'Rice Nutrients',
         'class_mapping': {
-            'Nitrogen(N)': {'N': 1, 'P': 0, 'K': 0},
-            'Phosphorus(P)': {'N': 0, 'P': 1, 'K': 0},
-            'Potassium(K)': {'N': 0, 'P': 0, 'K': 1},
+            'Nitrogen(N)': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'Phosphorus(P)': {'N': 0, 'P': 1, 'K': 0, 'Mg': 0},
+            'Potassium(K)': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
         },
         'has_healthy': False,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'tomato': {
         'name': 'Tomato',
@@ -380,17 +385,17 @@ CROP_CONFIGS = {
         'dataset_path': DATASET_ROOT / 'Tomato Nutrients',
         'use_train_folder': True,
         'class_mapping': {
-            'Tomato - Healthy': {'N': 0, 'P': 0, 'K': 0},
-            'Tomato - Nitrogen Deficiency': {'N': 1, 'P': 0, 'K': 0},
-            'Tomato - Potassium Deficiency': {'N': 0, 'P': 0, 'K': 1},
-            'Tomato - Nitrogen and Potassium Deficiency': {'N': 1, 'P': 0, 'K': 1},
-            # Disease folders - treat as healthy for NPK purposes
-            'Tomato - Jassid and Mite': {'N': 0, 'P': 0, 'K': 0},
-            'Tomato - Leaf Miner': {'N': 0, 'P': 0, 'K': 0},
-            'Tomato - Mite': {'N': 0, 'P': 0, 'K': 0},
+            'Tomato - Healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'Tomato - Nitrogen Deficiency': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'Tomato - Potassium Deficiency': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            'Tomato - Nitrogen and Potassium Deficiency': {'N': 1, 'P': 0, 'K': 1, 'Mg': 0},
+            # Disease folders - treat as healthy for nutrient purposes
+            'Tomato - Jassid and Mite': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'Tomato - Leaf Miner': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'Tomato - Mite': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'wheat': {
         'name': 'Wheat',
@@ -398,11 +403,11 @@ CROP_CONFIGS = {
         'dataset_path': DATASET_ROOT / 'Wheat Nitrogen',
         'use_train_folder': True,
         'class_mapping': {
-            'control': {'N': 0, 'P': 0, 'K': 0},
-            'deficiency': {'N': 1, 'P': 0, 'K': 0},
+            'control': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'deficiency': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'maize': {
         'name': 'Maize',
@@ -410,149 +415,159 @@ CROP_CONFIGS = {
         'dataset_path': DATASET_ROOT / 'Maize Nutrients',
         'use_train_folder': True,
         'class_mapping': {
-            'ALL Present': {'N': 0, 'P': 0, 'K': 0},
-            'NAB': {'N': 1, 'P': 0, 'K': 0},
-            'PAB': {'N': 0, 'P': 1, 'K': 0},
-            'KAB': {'N': 0, 'P': 0, 'K': 1},
-            'ALLAB': {'N': 1, 'P': 1, 'K': 1},
-            'ZNAB': {'N': 0, 'P': 0, 'K': 0},  # Zinc - future
+            # ALL Present = all nutrients present = healthy
+            'ALL Present': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            # NAB = Nitrogen Absent = N deficiency
+            'NAB': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            # PAB = Phosphorus Absent = P deficiency
+            'PAB': {'N': 0, 'P': 1, 'K': 0, 'Mg': 0},
+            # KAB = Potassium Absent = K deficiency
+            'KAB': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            # ALLAB = All Absent = all nutrients deficient
+            'ALLAB': {'N': 1, 'P': 1, 'K': 1, 'Mg': 0},
+            # ZNAB = Zinc Absent - treat as healthy for NPK model
+            'ZNAB': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'banana': {
         'name': 'Banana',
         'name_hi': 'केला',
         'dataset_path': DATASET_ROOT / 'Banana leaves Nutrient',
         'class_mapping': {
-            'healthy': {'N': 0, 'P': 0, 'K': 0},
-            'potassium': {'N': 0, 'P': 0, 'K': 1},
-            # Micronutrients mapped to healthy for NPK model
-            'boron': {'N': 0, 'P': 0, 'K': 0},
-            'calcium': {'N': 0, 'P': 0, 'K': 0},
-            'iron': {'N': 0, 'P': 0, 'K': 0},
-            'magnesium': {'N': 0, 'P': 0, 'K': 0},
-            'manganese': {'N': 0, 'P': 0, 'K': 0},
-            'sulphur': {'N': 0, 'P': 0, 'K': 0},
-            'zinc': {'N': 0, 'P': 0, 'K': 0},
+            'healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'potassium': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            'magnesium': {'N': 0, 'P': 0, 'K': 0, 'Mg': 1},
+            # Micronutrients not in our output - treat as healthy
+            'boron': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'calcium': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'iron': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'manganese': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'sulphur': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'zinc': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'coffee': {
         'name': 'Coffee',
         'name_hi': 'कॉफी',
         'dataset_path': DATASET_ROOT / 'Coffee Nutrients',
         'class_mapping': {
-            'healthy': {'N': 0, 'P': 0, 'K': 0},
-            'nitrogen-N': {'N': 1, 'P': 0, 'K': 0},
-            'phosphorus-P': {'N': 0, 'P': 1, 'K': 0},
-            'potasium-K': {'N': 0, 'P': 0, 'K': 1},
-            'boron-B': {'N': 0, 'P': 0, 'K': 0},
-            'calcium-Ca': {'N': 0, 'P': 0, 'K': 0},
-            'iron-Fe': {'N': 0, 'P': 0, 'K': 0},
-            'magnesium-Mg': {'N': 0, 'P': 0, 'K': 0},
-            'manganese-Mn': {'N': 0, 'P': 0, 'K': 0},
-            'more-deficiencies': {'N': 0, 'P': 0, 'K': 0},
+            'healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'nitrogen-N': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'phosphorus-P': {'N': 0, 'P': 1, 'K': 0, 'Mg': 0},
+            'potasium-K': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            'magnesium-Mg': {'N': 0, 'P': 0, 'K': 0, 'Mg': 1},
+            # Micronutrients - treat as healthy for our outputs
+            'boron-B': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'calcium-Ca': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'iron-Fe': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'manganese-Mn': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'more-deficiencies': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'cucumber': {
         'name': 'Cucumber',
         'name_hi': 'खीरा',
         'dataset_path': DATASET_ROOT / 'Cucumber Nutrients',
         'class_mapping': {
-            'cucumber__healthy': {'N': 0, 'P': 0, 'K': 0},
-            'cucumber__N': {'N': 1, 'P': 0, 'K': 0},
-            'cucumber__K': {'N': 0, 'P': 0, 'K': 1},
-            'cucumber__N_K': {'N': 1, 'P': 0, 'K': 1},
+            'cucumber__healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'cucumber__N': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'cucumber__K': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            'cucumber__N_K': {'N': 1, 'P': 0, 'K': 1, 'Mg': 0},
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'eggplant': {
         'name': 'Eggplant',
         'name_hi': 'बैंगन',
         'dataset_path': DATASET_ROOT / 'EggPlant Nutrients',
         'class_mapping': {
-            'eggplant__healthy': {'N': 0, 'P': 0, 'K': 0},
-            'eggplant__N': {'N': 1, 'P': 0, 'K': 0},
-            'eggplant__K': {'N': 0, 'P': 0, 'K': 1},
-            'eggplant__N_K': {'N': 1, 'P': 0, 'K': 1},
-            # Disease folders - healthy for NPK
-            'eggplant__EB': {'N': 0, 'P': 0, 'K': 0},
-            'eggplant__FB': {'N': 0, 'P': 0, 'K': 0},
-            'eggplant__JAS': {'N': 0, 'P': 0, 'K': 0},
-            'eggplant__MIT': {'N': 0, 'P': 0, 'K': 0},
-            'eggplant__MIT_EB': {'N': 0, 'P': 0, 'K': 0},
+            'eggplant__healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'eggplant__N': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'eggplant__K': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            'eggplant__N_K': {'N': 1, 'P': 0, 'K': 1, 'Mg': 0},
+            # Disease/pest folders - healthy for nutrient purposes
+            'eggplant__EB': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},  # Epilachna Beetle
+            'eggplant__FB': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},  # Flea Beetle
+            'eggplant__JAS': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0}, # Jassid
+            'eggplant__MIT': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0}, # Mite
+            'eggplant__MIT_EB': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0}, # Mite and Epilachna Beetle
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'ashgourd': {
         'name': 'Ash Gourd',
         'name_hi': 'पेठा',
         'dataset_path': DATASET_ROOT / 'Ashgourd Nutrients',
         'class_mapping': {
-            'ash_gourd__healthy': {'N': 0, 'P': 0, 'K': 0},
-            'ash_gourd__N': {'N': 1, 'P': 0, 'K': 0},
-            'ash_gourd__K': {'N': 0, 'P': 0, 'K': 1},
-            'ash_gourd__N_K': {'N': 1, 'P': 0, 'K': 1},
-            'ash_gourd__K_Mg': {'N': 0, 'P': 0, 'K': 1},
-            'ash_gourd__N_Mg': {'N': 1, 'P': 0, 'K': 0},
-            'ash_gourd__PM': {'N': 0, 'P': 0, 'K': 0},
+            'ash_gourd__healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'ash_gourd__N': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'ash_gourd__K': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            'ash_gourd__N_K': {'N': 1, 'P': 0, 'K': 1, 'Mg': 0},
+            'ash_gourd__K_Mg': {'N': 0, 'P': 0, 'K': 1, 'Mg': 1},  # K + Mg deficiency
+            'ash_gourd__N_Mg': {'N': 1, 'P': 0, 'K': 0, 'Mg': 1},  # N + Mg deficiency
+            'ash_gourd__PM': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},    # Powdery Mildew - disease
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'bittergourd': {
         'name': 'Bitter Gourd',
         'name_hi': 'करेला',
         'dataset_path': DATASET_ROOT / 'Bittergourd Nutrients',
         'class_mapping': {
-            'bitter_gourd__healthy': {'N': 0, 'P': 0, 'K': 0},
-            'bitter_gourd__N': {'N': 1, 'P': 0, 'K': 0},
-            'bitter_gourd__K': {'N': 0, 'P': 0, 'K': 1},
-            'bitter_gourd__N_K': {'N': 1, 'P': 0, 'K': 1},
-            'bitter_gourd__K_Mg': {'N': 0, 'P': 0, 'K': 1},
-            'bitter_gourd__N_Mg': {'N': 1, 'P': 0, 'K': 0},
-            'bitter_gourd__DM': {'N': 0, 'P': 0, 'K': 0},
-            'bitter_gourd__JAS': {'N': 0, 'P': 0, 'K': 0},
-            'bitter_gourd__LS': {'N': 0, 'P': 0, 'K': 0},
+            'bitter_gourd__healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'bitter_gourd__N': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'bitter_gourd__K': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            'bitter_gourd__N_K': {'N': 1, 'P': 0, 'K': 1, 'Mg': 0},
+            'bitter_gourd__K_Mg': {'N': 0, 'P': 0, 'K': 1, 'Mg': 1},  # K + Mg deficiency
+            'bitter_gourd__N_Mg': {'N': 1, 'P': 0, 'K': 0, 'Mg': 1},  # N + Mg deficiency
+            # Disease folders - healthy for nutrient purposes
+            'bitter_gourd__DM': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},  # Downy Mildew
+            'bitter_gourd__JAS': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0}, # Jassid
+            'bitter_gourd__LS': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},  # Leaf Spot
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'ridgegourd': {
         'name': 'Ridge Gourd',
         'name_hi': 'तुरई',
         'dataset_path': DATASET_ROOT / 'Ridgegourd',
         'class_mapping': {
-            'ridge_gourd__healthy': {'N': 0, 'P': 0, 'K': 0},
-            'ridge_gourd__N': {'N': 1, 'P': 0, 'K': 0},
-            'ridge_gourd__N_Mg': {'N': 1, 'P': 0, 'K': 0},
-            'ridge_gourd__PC': {'N': 0, 'P': 0, 'K': 0},
-            'ridge_gourd__PLEI': {'N': 0, 'P': 0, 'K': 0},
-            'ridge_gourd__PLEI_IEM': {'N': 0, 'P': 0, 'K': 0},
-            'ridge_gourd__PLEI_MIT': {'N': 0, 'P': 0, 'K': 0},
+            'ridge_gourd__healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'ridge_gourd__N': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'ridge_gourd__N_Mg': {'N': 1, 'P': 0, 'K': 0, 'Mg': 1},  # N + Mg deficiency
+            # Disease/pest folders - healthy for nutrient purposes
+            'ridge_gourd__PC': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},       # Pumpkin Caterpillar
+            'ridge_gourd__PLEI': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},     # Pumpkin Leaf Eating Insect
+            'ridge_gourd__PLEI_IEM': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0}, # PLEI + Insect Egg Mass
+            'ridge_gourd__PLEI_MIT': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0}, # PLEI + Mite
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
     'snakegourd': {
         'name': 'Snake Gourd',
         'name_hi': 'चिचिंडा',
         'dataset_path': DATASET_ROOT / 'Snakegourd Nutrients',
         'class_mapping': {
-            'snake_gourd__healthy': {'N': 0, 'P': 0, 'K': 0},
-            'snake_gourd__N': {'N': 1, 'P': 0, 'K': 0},
-            'snake_gourd__K': {'N': 0, 'P': 0, 'K': 1},
-            'snake_gourd__N_K': {'N': 1, 'P': 0, 'K': 1},
-            'snake_gourd__LS': {'N': 0, 'P': 0, 'K': 0},
+            'snake_gourd__healthy': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},
+            'snake_gourd__N': {'N': 1, 'P': 0, 'K': 0, 'Mg': 0},
+            'snake_gourd__K': {'N': 0, 'P': 0, 'K': 1, 'Mg': 0},
+            'snake_gourd__N_K': {'N': 1, 'P': 0, 'K': 1, 'Mg': 0},
+            # Disease folder - healthy for nutrient purposes
+            'snake_gourd__LS': {'N': 0, 'P': 0, 'K': 0, 'Mg': 0},  # Leaf Spot
         },
         'has_healthy': True,
-        'outputs': ['N', 'P', 'K'],
+        'outputs': ['N', 'P', 'K', 'Mg'],
     },
 }
 
@@ -624,38 +639,38 @@ def load_and_preprocess_image(image_path, target_size=(224, 224), augment=False)
             img_array = advanced_augment_image(img_array)
         
         return img_array
-
-
-    def apply_crop_overrides(crop_id: str, base_config: dict) -> dict:
-        """Apply crop-specific tuning (non-destructive)."""
-        cfg = dict(base_config)
-        override = CROP_TRAINING_OVERRIDES.get(crop_id)
-        if not override:
-            return cfg
-
-        if 'backbone' in override:
-            cfg['backbone'] = override['backbone']
-        if 'mixup_alpha' in override:
-            cfg['mixup_alpha'] = override['mixup_alpha']
-        if 'image_size' in override:
-            cfg['image_size'] = override['image_size']
-
-        if 'epochs_min' in override:
-            cfg['epochs'] = max(cfg.get('epochs', DEFAULT_CONFIG['epochs']), override['epochs_min'])
-        if 'warmup_epochs_min' in override:
-            cfg['warmup_epochs'] = max(cfg.get('warmup_epochs', DEFAULT_CONFIG['warmup_epochs']), override['warmup_epochs_min'])
-        if 'patience_min' in override:
-            cfg['patience'] = max(cfg.get('patience', DEFAULT_CONFIG['patience']), override['patience_min'])
-
-        if 'batch_size_max' in override:
-            cfg['batch_size'] = min(cfg.get('batch_size', DEFAULT_CONFIG['batch_size']), override['batch_size_max'])
-        if 'learning_rate_max' in override:
-            cfg['learning_rate'] = min(cfg.get('learning_rate', DEFAULT_CONFIG['learning_rate']), override['learning_rate_max'])
-
-        return cfg
     except Exception as e:
         print(f"⚠️ Error loading {image_path}: {e}")
         return None
+
+
+def apply_crop_overrides(crop_id: str, base_config: dict) -> dict:
+    """Apply crop-specific tuning (non-destructive)."""
+    cfg = dict(base_config)
+    override = CROP_TRAINING_OVERRIDES.get(crop_id)
+    if not override:
+        return cfg
+
+    if 'backbone' in override:
+        cfg['backbone'] = override['backbone']
+    if 'mixup_alpha' in override:
+        cfg['mixup_alpha'] = override['mixup_alpha']
+    if 'image_size' in override:
+        cfg['image_size'] = override['image_size']
+
+    if 'epochs_min' in override:
+        cfg['epochs'] = max(cfg.get('epochs', DEFAULT_CONFIG['epochs']), override['epochs_min'])
+    if 'warmup_epochs_min' in override:
+        cfg['warmup_epochs'] = max(cfg.get('warmup_epochs', DEFAULT_CONFIG['warmup_epochs']), override['warmup_epochs_min'])
+    if 'patience_min' in override:
+        cfg['patience'] = max(cfg.get('patience', DEFAULT_CONFIG['patience']), override['patience_min'])
+
+    if 'batch_size_max' in override:
+        cfg['batch_size'] = min(cfg.get('batch_size', DEFAULT_CONFIG['batch_size']), override['batch_size_max'])
+    if 'learning_rate_max' in override:
+        cfg['learning_rate'] = min(cfg.get('learning_rate', DEFAULT_CONFIG['learning_rate']), override['learning_rate_max'])
+
+    return cfg
 
 
 def create_augmented_samples(images, labels, augment_factor=2):
@@ -704,7 +719,8 @@ def load_crop_dataset(crop_id, config=None):
             print(f"  ⏭️ Skipping {folder_name} (not found)")
             continue
         
-        label = [labels.get('N', 0), labels.get('P', 0), labels.get('K', 0)]
+        # Include all 4 nutrient outputs: N, P, K, Mg
+        label = [labels.get('N', 0), labels.get('P', 0), labels.get('K', 0), labels.get('Mg', 0)]
         folder_images = []
         
         extensions = ('*.jpg', '*.jpeg', '*.png', '*.JPG', '*.JPEG', '*.PNG')
@@ -1014,17 +1030,20 @@ def train_crop_model(crop_id, config=None, disable_early_stopping=False):
         return None
     
     # Compute class distribution and identify trainable outputs
-    class_balance = {
-        'N': float(y[:, 0].mean()),
-        'P': float(y[:, 1].mean()),
-        'K': float(y[:, 2].mean()),
-    }
-    print(f"📊 Class balance - N:{class_balance['N']:.2%}, P:{class_balance['P']:.2%}, K:{class_balance['K']:.2%}")
+    num_outputs = y.shape[1]  # Should be 4 (N, P, K, Mg)
+    output_names = crop_cfg['outputs']
+    
+    class_balance = {}
+    for i, name in enumerate(output_names):
+        class_balance[name] = float(y[:, i].mean())
+    
+    balance_str = ", ".join([f"{k}:{v:.2%}" for k, v in class_balance.items()])
+    print(f"📊 Class balance - {balance_str}")
     
     # Check for degenerate cases (single class for any output)
     degenerate_outputs = []
     trainable_outputs = []
-    for i, name in enumerate(crop_cfg['outputs']):
+    for i, name in enumerate(output_names):
         unique_values = np.unique(y[:, i])
         if len(unique_values) < 2:
             degenerate_outputs.append(name)
@@ -1045,8 +1064,9 @@ def train_crop_model(crop_id, config=None, disable_early_stopping=False):
     
     # Split data with stratification
     try:
-        # Create stratification key from multi-label
-        strat_key = (y[:, 0] * 4 + y[:, 1] * 2 + y[:, 2]).astype(int)
+        # Create stratification key from multi-label (handle 4 outputs)
+        # Use binary encoding: N*8 + P*4 + K*2 + Mg*1
+        strat_key = sum(y[:, i] * (2 ** (num_outputs - 1 - i)) for i in range(num_outputs)).astype(int)
         X_train, X_temp, y_train, y_temp, sw_train, sw_temp = train_test_split(
             X, y, sample_weights, test_size=0.25, random_state=SEED, stratify=strat_key
         )

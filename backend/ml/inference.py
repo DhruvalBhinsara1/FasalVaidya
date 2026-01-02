@@ -351,7 +351,7 @@ def get_severity_color(severity):
 
 def predict_npk(image_input, use_tflite=False, crop_id=None):
     """
-    Run NPK deficiency prediction on an image.
+    Run NPK+Mg deficiency prediction on an image.
     
     Args:
         image_input: Image to analyze (path, PIL Image, numpy array, or file object)
@@ -363,7 +363,7 @@ def predict_npk(image_input, use_tflite=False, crop_id=None):
     """
     model = None
     model_path_used = None
-    outputs = ['N', 'P', 'K']
+    outputs = ['N', 'P', 'K', 'Mg']  # Default outputs include Mg now
     backbone = 'efficientnetb0'  # Default backbone
     has_builtin_preprocessing = False  # Old models don't have it
     
@@ -408,46 +408,59 @@ def predict_npk(image_input, use_tflite=False, crop_id=None):
     else:
         # Mock predictions for demo (when model not trained yet)
         predictions = generate_mock_predictions(img_array)
-        confidences = np.array([0.85, 0.82, 0.78])
+        confidences = np.array([0.85, 0.82, 0.78, 0.80])  # 4 outputs now
         inference_method = 'mock'
         logger.warning("ml_inference_mock reason=model_unavailable crop=%s", crop_id)
     
-    # Build response
-    n_score, p_score, k_score = predictions[:3]  # Take first 3 outputs
-    n_conf, p_conf, k_conf = confidences[:3]
+    # Build response - handle both 3 and 4 output models
+    num_outputs = len(predictions)
+    n_score = float(predictions[0]) if num_outputs > 0 else 0.0
+    p_score = float(predictions[1]) if num_outputs > 1 else 0.0
+    k_score = float(predictions[2]) if num_outputs > 2 else 0.0
+    mg_score = float(predictions[3]) if num_outputs > 3 else 0.0
+    
+    n_conf = float(confidences[0]) if len(confidences) > 0 else 0.8
+    p_conf = float(confidences[1]) if len(confidences) > 1 else 0.8
+    k_conf = float(confidences[2]) if len(confidences) > 2 else 0.8
+    mg_conf = float(confidences[3]) if len(confidences) > 3 else 0.8
     
     result = {
         # Raw scores (0-1 range)
-        'n_score': float(n_score),
-        'p_score': float(p_score),
-        'k_score': float(k_score),
+        'n_score': n_score,
+        'p_score': p_score,
+        'k_score': k_score,
+        'mg_score': mg_score,
         
         # Percentage scores (0-100)
-        'n_percentage': round(float(n_score) * 100, 1),
-        'p_percentage': round(float(p_score) * 100, 1),
-        'k_percentage': round(float(k_score) * 100, 1),
+        'n_percentage': round(n_score * 100, 1),
+        'p_percentage': round(p_score * 100, 1),
+        'k_percentage': round(k_score * 100, 1),
+        'mg_percentage': round(mg_score * 100, 1),
         
         # Confidence scores
-        'n_confidence': round(float(n_conf), 2),
-        'p_confidence': round(float(p_conf), 2),
-        'k_confidence': round(float(k_conf), 2),
+        'n_confidence': round(n_conf, 2),
+        'p_confidence': round(p_conf, 2),
+        'k_confidence': round(k_conf, 2),
+        'mg_confidence': round(mg_conf, 2),
         
         # Severity levels
         'n_severity': get_severity(n_score),
         'p_severity': get_severity(p_score),
         'k_severity': get_severity(k_score),
+        'mg_severity': get_severity(mg_score),
         
         # Overall status
-        'overall_status': determine_overall_status(n_score, p_score, k_score),
+        'overall_status': determine_overall_status(n_score, p_score, k_score, mg_score),
         
         # Detected class (primary deficiency)
-        'detected_class': determine_detected_class(n_score, p_score, k_score),
+        'detected_class': determine_detected_class(n_score, p_score, k_score, mg_score),
         
         # Model metadata
-        'model_version': '1.0.0',
+        'model_version': '1.1.0',  # Version bump for Mg support
         'inference_method': inference_method,
         'model_path_used': model_path_used,
         'crop_id': crop_id,
+        'outputs': outputs,
     }
     
     return result
@@ -470,6 +483,7 @@ def generate_mock_predictions(img_array):
     # Yellow/light green = N deficiency
     # Purple/dark = P deficiency
     # Brown edges = K deficiency
+    # Yellowing between veins = Mg deficiency
     
     # Nitrogen: Yellow leaves (high R+G, low difference)
     n_score = max(0, min(1, (r_mean + g_mean - b_mean) / 1.5))
@@ -481,16 +495,19 @@ def generate_mock_predictions(img_array):
     # Potassium: Brown edges (simulate with color variance)
     k_score = max(0, min(1, np.std(img) * 2))
     
+    # Magnesium: Interveinal chlorosis (yellow-green pattern)
+    mg_score = max(0, min(1, abs(g_mean - r_mean) * 1.5))
+    
     # Add some randomness for demo variety
-    noise = np.random.uniform(-0.1, 0.1, 3)
-    predictions = np.clip([n_score + noise[0], p_score + noise[1], k_score + noise[2]], 0, 1)
+    noise = np.random.uniform(-0.1, 0.1, 4)
+    predictions = np.clip([n_score + noise[0], p_score + noise[1], k_score + noise[2], mg_score + noise[3]], 0, 1)
     
     return predictions
 
 
-def determine_overall_status(n_score, p_score, k_score):
+def determine_overall_status(n_score, p_score, k_score, mg_score=0.0):
     """Determine overall crop health status."""
-    max_score = max(n_score, p_score, k_score)
+    max_score = max(n_score, p_score, k_score, mg_score)
     
     if max_score >= SEVERITY_THRESHOLDS['critical']:
         return 'critical'
@@ -500,9 +517,14 @@ def determine_overall_status(n_score, p_score, k_score):
         return 'healthy'
 
 
-def determine_detected_class(n_score, p_score, k_score):
+def determine_detected_class(n_score, p_score, k_score, mg_score=0.0):
     """Determine the primary detected deficiency class."""
-    scores = {'nitrogen': n_score, 'phosphorus': p_score, 'potassium': k_score}
+    scores = {
+        'nitrogen': n_score, 
+        'phosphorus': p_score, 
+        'potassium': k_score,
+        'magnesium': mg_score,
+    }
     
     # Find highest scoring deficiency
     max_nutrient = max(scores, key=scores.get)
@@ -520,7 +542,7 @@ def generate_gradcam_heatmap(image_input, target_class=None):
     
     Args:
         image_input: Image to analyze
-        target_class: Class index to explain (0=N, 1=P, 2=K, None=highest)
+        target_class: Class index to explain (0=N, 1=P, 2=K, 3=Mg, None=highest)
     
     Returns:
         Base64 encoded heatmap overlay image
