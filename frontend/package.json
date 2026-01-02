@@ -1,37 +1,40 @@
 {
-  "name": "fasalvaidya-frontend",
-  "version": "0.1.0",
-  "private": true,
+  "name": "fasalvaidya",
+  "version": "1.0.0",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "start": "expo start --tunnel",
+    "android": "expo start --tunnel --android",
+    "ios": "expo start --tunnel --ios",
+    "web": "expo start --tunnel --web",
+    "test": "jest"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-navigation/bottom-tabs": "^6.5.11",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
-    "axios": "^1.6.7",
+    "axios": "^1.6.2",
+    "babel-preset-expo": "~54.0.9",
     "expo": "~54.0.0",
     "expo-camera": "~17.0.10",
+    "expo-font": "~14.0.10",
     "expo-image-manipulator": "~14.0.8",
-    "expo-image-picker": "~17.0.5",
+    "expo-image-picker": "~17.0.10",
     "expo-speech": "~14.0.8",
     "expo-status-bar": "~3.0.9",
     "i18n-js": "^4.3.2",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
     "react-native": "0.81.5",
-    "react-native-gesture-handler": "~2.28.0",
-    "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
-    "react-native-worklets": "^0.5.1"
+    "react-native-svg": "15.12.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
+    "@babel/core": "^7.20.0",
     "@types/react": "~19.1.10",
-    "typescript": "~5.9.2"
-  }
+    "typescript": "^5.1.3"
+  },
+  "private": true
 }

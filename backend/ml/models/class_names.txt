@@ -1,9 +1,0 @@
-healthy
-nitrogen-N
-phosphorus-P
-potasium-K
-boron-B
-calcium-Ca
-iron-Fe
-magnesium-Mg
-manganese-Mn

@@ -1,0 +1,60 @@
+{
+  "crop_id": "tomato",
+  "crop_name": "Tomato",
+  "crop_name_hi": "\u091f\u092e\u093e\u091f\u0930",
+  "outputs": [
+    "N",
+    "P",
+    "K"
+  ],
+  "created_at": "2026-01-02T00:55:45.125617",
+  "training_images": 766,
+  "test_accuracy": 0.9805825242718447,
+  "test_accuracy_tta": 0.9805825242718447,
+  "test_f1": 0.4950980392156863,
+  "test_auc": NaN,
+  "per_class_accuracy": {
+    "N": 0.1262135922330097,
+    "P": null,
+    "K": 0.912621359223301
+  },
+  "per_class_f1": {
+    "N": 0.22413793103448276,
+    "P": null,
+    "K": 0.0
+  },
+  "per_class_auc": {
+    "N": 0.2995726495726496,
+    "P": null,
+    "K": 0.5112293144208038
+  },
+  "class_balance": {
+    "N": 0.1095890410958904,
+    "P": 0.0,
+    "K": 0.0958904109589041
+  },
+  "trainable_outputs": [
+    "N",
+    "K"
+  ],
+  "degenerate_outputs": [
+    "P"
+  ],
+  "config": {
+    "image_size": [
+      224,
+      224
+    ],
+    "batch_size": 24,
+    "epochs": 50,
+    "learning_rate": 0.0001,
+    "validation_split": 0.2,
+    "label_smoothing": 0.1,
+    "mixup_alpha": 0.2,
+    "focal_gamma": 2.0,
+    "warmup_epochs": 5,
+    "patience": 15,
+    "backbone": "efficientnetb0"
+  },
+  "backbone": "efficientnetb0"
+}

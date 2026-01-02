@@ -1,168 +1,288 @@
-import React, { useEffect, useState } from 'react';
-import { SafeAreaView, View, Text, Pressable, StyleSheet, FlatList } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/RootNavigator';
-import { getHealth, getCrops, Crop } from '../api/client';
-import { theme } from '../theme/theme';
-import { t, initI18n } from '../i18n/i18n';
+/**
+ * Home Screen
+ * ============
+ * Main landing screen with crop selection and scan button
+ */
 
-const CROPS_FALLBACK: Crop[] = [
-  { id: 1, name: 'Wheat', name_hi: 'Gehun' },
-  { id: 2, name: 'Rice', name_hi: 'Chawal' },
-  { id: 3, name: 'Tomato', name_hi: 'Tamatar' },
-  { id: 4, name: 'Cotton', name_hi: 'Kapas' },
-];
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  Image,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
-initI18n();
+import { colors, spacing, borderRadius, typography, shadows } from '../theme';
+import { Button, Card, CropSelector } from '../components';
+import { t, getCurrentLanguage, getCropName } from '../i18n';
+import { getCrops, Crop, healthCheck } from '../api';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
-
-export default function HomeScreen({ navigation }: Props) {
-  const [selectedCrop, setSelectedCrop] = useState<number>(1);
-  const [crops, setCrops] = useState<Crop[]>(CROPS_FALLBACK);
-  const [apiStatus, setApiStatus] = useState<string>('');
+const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
+  const [crops, setCrops] = useState<Crop[]>([]);
+  const [selectedCropId, setSelectedCropId] = useState<number>(1);
+  const [isConnected, setIsConnected] = useState<boolean>(true);
+  const isHindi = getCurrentLanguage() === 'hi';
 
   useEffect(() => {
-    getHealth()
-      .then((msg) => setApiStatus(msg))
-      .catch(() => setApiStatus('offline'));
-
-    getCrops()
-      .then((remote) => {
-        if (remote.length) setCrops(remote);
-      })
-      .catch(() => setCrops(CROPS_FALLBACK));
+    loadCrops();
+    checkConnection();
   }, []);
 
+  const loadCrops = async () => {
+    try {
+      const cropsData = await getCrops();
+      setCrops(cropsData);
+    } catch (error) {
+      console.log('Failed to load crops, using defaults');
+      // Fallback crops
+      setCrops([
+        { id: 1, name: 'Wheat', name_hi: 'गेहूँ', season: 'Rabi', icon: '🌾' },
+        { id: 2, name: 'Rice', name_hi: 'चावल', season: 'Kharif', icon: '🌾' },
+        { id: 3, name: 'Tomato', name_hi: 'टमाटर', season: 'Year-round', icon: '🍅' },
+        { id: 4, name: 'Cotton', name_hi: 'कपास', season: 'Kharif', icon: '🌿' },
+      ]);
+    }
+  };
+
+  const checkConnection = async () => {
+    const connected = await healthCheck();
+    setIsConnected(connected);
+  };
+
+  const handleStartScan = () => {
+    if (!isConnected) {
+      Alert.alert(
+        t('error'),
+        t('networkError'),
+        [
+          { text: t('retry'), onPress: checkConnection },
+          { text: t('cancel'), style: 'cancel' },
+        ]
+      );
+      return;
+    }
+    navigation.navigate('Camera', { cropId: selectedCropId });
+  };
+
+  const handleViewHistory = () => {
+    navigation.navigate('History');
+  };
+
+  const handleOpenSettings = () => {
+    navigation.navigate('Settings');
+  };
+
+  const selectedCrop = crops.find((c) => c.id === selectedCropId);
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Text style={styles.title}>FasalVaidya</Text>
-        <Text style={styles.subtitle}>{t('tagline')}</Text>
-        <Text style={styles.status}>{apiStatus ? `${t('backend')}: ${apiStatus}` : t('checking')}</Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoIcon}>🌱</Text>
+            <Text style={styles.appName}>{t('appName')}</Text>
+          </View>
+          <TouchableOpacity onPress={handleOpenSettings} style={styles.settingsButton}>
+            <Ionicons name="settings-outline" size={26} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.tagline}>{t('tagline')}</Text>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>{t('selectCrop')}</Text>
-        <FlatList
-          data={crops}
-          keyExtractor={(item) => item.id.toString()}
-          horizontal
-          contentContainerStyle={styles.cropList}
-          renderItem={({ item }) => {
-            const active = item.id === selectedCrop;
-            return (
-              <Pressable onPress={() => setSelectedCrop(item.id)} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.name}</Text>
-              </Pressable>
-            );
-          }}
-        />
-      </View>
+        {/* Connection Status */}
+        {!isConnected && (
+          <Card style={styles.warningCard}>
+            <View style={styles.warningContent}>
+              <Ionicons name="cloud-offline" size={24} color={colors.warning} />
+              <Text style={styles.warningText}>{t('networkError')}</Text>
+            </View>
+          </Card>
+        )}
 
-      <View style={styles.section}>
-        <Pressable style={styles.primaryButton} onPress={() => navigation.navigate('Scan', { cropId: selectedCrop })}>
-          <Text style={styles.primaryButtonText}>{t('scanLeaf')}</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('History')}>
-          <Text style={styles.secondaryButtonText}>{t('viewHistory')}</Text>
-        </Pressable>
-      </View>
+        {/* Welcome Card */}
+        <Card style={styles.welcomeCard}>
+          <Text style={styles.welcomeTitle}>{t('welcome')}</Text>
+          <Text style={styles.welcomeMessage}>{t('welcomeMessage')}</Text>
+        </Card>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>{t('multiCropNote')}</Text>
-      </View>
+        {/* Crop Selection */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('selectCrop')}</Text>
+          <CropSelector
+            crops={crops}
+            selectedCropId={selectedCropId}
+            onSelectCrop={setSelectedCropId}
+          />
+          {selectedCrop && (
+            <Text style={styles.selectedCropInfo}>
+              {getCropName(selectedCrop.name)} • {selectedCrop.season}
+            </Text>
+          )}
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actions}>
+          <Button
+            title={t('startScan')}
+            onPress={handleStartScan}
+            icon={<Ionicons name="camera" size={24} color={colors.textWhite} />}
+          />
+          
+          <Button
+            title={t('viewHistory')}
+            onPress={handleViewHistory}
+            variant="outline"
+            icon={<Ionicons name="time" size={24} color={colors.primary} />}
+          />
+        </View>
+
+        {/* Info Cards */}
+        <View style={styles.infoSection}>
+          <Card style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoIcon}>🔬</Text>
+                <Text style={styles.infoLabel}>{t('aiAnalysis')}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoIcon}>⚡</Text>
+                <Text style={styles.infoLabel}>{t('lessThan3Sec')}</Text>
+              </View>
+              <View style={styles.infoItem}>
+                <Text style={styles.infoIcon}>🎯</Text>
+                <Text style={styles.infoLabel}>{t('npkDetection')}</Text>
+              </View>
+            </View>
+          </Card>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  safe: {
+  container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: 16,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   header: {
-    paddingVertical: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.lg,
   },
-  title: {
-    fontSize: 28,
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  logoIcon: {
+    fontSize: 40,
+  },
+  appName: {
+    fontSize: 32,
     fontWeight: '700',
-    color: theme.colors.primary,
-    letterSpacing: -0.5,
+    color: colors.primary,
   },
-  subtitle: {
+  settingsButton: {
+    padding: spacing.sm,
+  },
+  tagline: {
     fontSize: 16,
-    marginTop: 4,
-    color: theme.colors.textPrimary,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
-  status: {
-    marginTop: 6,
-    fontSize: 14,
-    color: theme.colors.textSecondary,
+  warningCard: {
+    backgroundColor: `${colors.warning}15`,
+    borderColor: colors.warning,
+    marginBottom: spacing.md,
+  },
+  warningContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  warningText: {
+    color: colors.warning,
+    fontWeight: '500',
+    flex: 1,
+  },
+  welcomeCard: {
+    backgroundColor: `${colors.primary}10`,
+    borderColor: `${colors.primary}30`,
+    marginBottom: spacing.lg,
+  },
+  welcomeTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  welcomeMessage: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    lineHeight: 24,
   },
   section: {
-    marginTop: 24,
+    marginBottom: spacing.lg,
   },
-  label: {
-    fontSize: 16,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    marginBottom: 12,
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
-  cropList: {
-    gap: 12,
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
-  },
-  chipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  chipText: {
-    color: theme.colors.textPrimary,
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: theme.colors.textPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 'auto',
-    paddingVertical: 16,
-  },
-  footerText: {
+  selectedCropInfo: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  actions: {
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  infoSection: {
+    marginTop: spacing.md,
+  },
+  infoCard: {
+    padding: spacing.md,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  infoItem: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  infoIcon: {
+    fontSize: 28,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
 });
+
+export default HomeScreen;

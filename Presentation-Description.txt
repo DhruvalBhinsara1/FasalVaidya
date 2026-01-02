@@ -1,0 +1,35 @@
+FasalVaidya is an AI-powered mobile assistant that helps farmers and field workers quickly diagnose nutrient deficiencies in crop leaves using a simple photo.
+
+The problem it addresses is practical and time-sensitive: nutrient deficiencies often look similar to each other (and to disease or environmental stress), and delays in identifying the root cause can reduce yield and increase input costs. FasalVaidya turns visual symptoms into an easy-to-understand, actionable recommendation—right in the field.
+
+How it works:
+1) The user selects a crop from 13 supported varieties (Rice, Wheat, Tomato, Maize, Banana, Coffee, Cucumber, Eggplant, and various gourds).
+2) They capture or upload a leaf image.
+3) The app sends the photo to the backend for analysis using a crop-specific trained model.
+4) The result returns as NPK (Nitrogen, Phosphorus, Potassium) deficiency scores, severity levels, and fertilizer guidance in both English and Hindi.
+5) Each scan is saved so users can review history and track improvement over time.
+
+Multi-Crop Intelligence:
+- Each supported crop has its own dedicated ML model trained on crop-specific datasets.
+- Folder structures vary across datasets (e.g., Rice uses NPK folders, Maize uses notation like NAB/PAB/KAB, Tomato includes disease categories).
+- The training pipeline normalizes these diverse formats into a unified multi-label NPK classification output.
+- Models are stored per crop and automatically selected based on the user's crop selection, ensuring optimal accuracy.
+
+System overview (end-to-end):
+- Machine Learning: Crop-specific multi-label classification models based on MobileNetV3Large backbone, trained on 12+ real-world leaf nutrient datasets.
+- Backend: A Python/Flask API handles uploads, selects the appropriate crop model, runs inference, and stores scan records and recommendations in SQLite.
+- Frontend: An Expo React Native app provides a simple bilingual user experience, supports camera/gallery input, and presents results in a farmer-friendly format.
+
+Dataset Coverage:
+- Rice Nutrients (2300+ images): N, P, K deficiencies
+- Tomato Nutrients: Healthy + N/K deficiencies + pest damage
+- Wheat Nitrogen: Control vs deficiency
+- Maize Nutrients: Full NPK + Zinc deficiency markers
+- Banana Leaves: K deficiency + micronutrient markers (Fe, Ca, Mg, Mn, Zn, B)
+- Coffee Nutrients: NPK + micronutrients
+- Gourd Vegetables (Ash Gourd, Bitter Gourd, Ridge Gourd, Snake Gourd): N, K deficiencies + diseases
+- Cucumber & Eggplant: N, K deficiencies + diseases
+
+For reliability and debugging, the backend includes structured logging that records which crop-specific model was used for each scan, image fingerprints, and prediction scores. This makes it easy to validate model selection and troubleshoot unexpected results.
+
+The goal is fast, accessible decision support—turning a leaf photo into confident, localized guidance. The architecture is designed to scale to more crops, additional nutrient categories, and improved model accuracy over time.

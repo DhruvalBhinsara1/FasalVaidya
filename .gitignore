@@ -22,6 +22,7 @@ combined_balanced_dataset/
 CoLeaf Dataset/
 ml/models/logs/
 Propossed_Data/
+Leaf Nutrient Data Sets/
 
 # Uploads and temp files
 backend/uploads/
@@ -48,7 +49,6 @@ npm-debug.log*
 Thumbs.db
 
 # IDE
-.vscode/
 .idea/
 
 # Environment files
@@ -60,4 +60,12 @@ Thumbs.db
 dist/
 build/
 
-backend/ml/models/logs/train/
+# ML training logs
+backend/ml/models/logs/
+logs/
+
+# TFLite models (generated from training)
+*.tflite
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/

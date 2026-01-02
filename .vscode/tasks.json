@@ -1,0 +1,226 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🌱 Backend: Start Flask Server",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; python app.py",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "fasalvaidya"
+      }
+    },
+    {
+      "label": "📱 Frontend: Start Expo (Tunnel)",
+      "type": "shell",
+      "command": "npx expo start --tunnel",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "fasalvaidya"
+      }
+    },
+    {
+      "label": "🧪 Tests: Run API Tests",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; python -m pytest tests/test_api.py -v",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🧪 Tests: Batch Test with Dataset",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; python tests/batch_test_scans.py --samples 3",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🚀 FasalVaidya: Start All (Backend + Frontend)",
+      "dependsOn": [
+        "🌱 Backend: Start Flask Server",
+        "📱 Frontend: Start Expo (Tunnel)"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "📦 Setup: Install Backend Dependencies",
+      "type": "shell",
+      "command": "python -m venv .venv311; .venv311\\Scripts\\Activate.ps1; pip install -r requirements.txt pytest pillow",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "📦 Setup: Install Frontend Dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "📦 Setup: Install All Dependencies",
+      "dependsOn": [
+        "📦 Setup: Install Backend Dependencies",
+        "📦 Setup: Install Frontend Dependencies"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "🧠 ML: Train NPK Model",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_npk_model.py",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🧠 ML: Train NPK Model (No Early Stop)",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_npk_model.py --epochs 80 --unfreeze-last 80 --disable-early-stopping",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌾 ML: List Available Crops",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; python ml/train_crop_model.py --list",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌾 ML: Train Crop Model (Wheat)",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop wheat --epochs 50",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌾 ML: Train Crop Model (Rice)",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop rice --epochs 50",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌾 ML: Train Crop Model (Tomato)",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop tomato --epochs 50",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌾 ML: Train Crop Model (Maize)",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop maize --epochs 50",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌾 ML: Train All Crop Models",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop all --epochs 50",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🧠 ML: Test Inference",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; python -c \"from ml.inference import NPKPredictor; p = NPKPredictor(); print('✅ Model loaded!' if p.model else '⚠️ Using mock mode'); print(p.predict_npk('test.jpg'))\"",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

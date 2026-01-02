@@ -1,51 +1,75 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable, Alert } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/RootNavigator';
-import { getScans, clearHistory, Scan } from '../api/client';
-import { theme } from '../theme/theme';
+/**
+ * History Screen
+ * ===============
+ * Display scan history with filtering by crop
+ */
 
-const STATUS_COLORS: Record<string, string> = {
-  Complete: '#208F78',
-  Processing: '#F5A623',
-};
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  Alert,
+  Image,
+} from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
+import { colors, spacing, borderRadius, shadows } from '../theme';
+import { Card, StatusChip, Button } from '../components';
+import { t, getCurrentLanguage, getCropName } from '../i18n';
+import { getScans, clearScans, getScan, ScanHistoryItem, getImageUrl } from '../api';
 
-export default function HistoryScreen(_: Props) {
-  const [scans, setScans] = useState<Scan[]>([]);
+const HistoryScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
+  const [scans, setScans] = useState<ScanHistoryItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const isHindi = getCurrentLanguage() === 'hi';
 
-  const fetchScans = async () => {
-    setRefreshing(true);
+  const loadScans = async () => {
     try {
       const data = await getScans();
       setScans(data);
+    } catch (error) {
+      console.error('Failed to load scans:', error);
     } finally {
-      setRefreshing(false);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchScans();
-  }, []);
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadScans();
+    }, [])
+  );
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadScans();
+    setRefreshing(false);
+  };
 
   const handleClearHistory = () => {
     Alert.alert(
-      'Clear History',
-      'Are you sure you want to delete all scan history? This cannot be undone.',
+      t('clearHistory'),
+      t('clearHistoryConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Clear All',
+          text: t('delete'),
           style: 'destructive',
           onPress: async () => {
             try {
-              const result = await clearHistory();
-              Alert.alert('Success', `Cleared ${result.deleted_scans} scans`);
+              await clearScans();
               setScans([]);
-            } catch (err) {
-              Alert.alert('Error', 'Failed to clear history');
+            } catch (error) {
+              console.error('Failed to clear scans:', error);
             }
           },
         },
@@ -53,118 +77,243 @@ export default function HistoryScreen(_: Props) {
     );
   };
 
-  const renderItem = ({ item }: { item: Scan }) => {
-    const statusColor = STATUS_COLORS[item.status] || theme.colors.textSecondary;
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>#{item.scan_id}</Text>
-          <Text style={[styles.status, { color: statusColor }]}>{item.status}</Text>
-        </View>
-        <Text style={styles.meta}>{item.crop_name || `Crop ${item.crop_id}`}</Text>
-        <Text style={styles.meta}>{new Date(item.created_at).toLocaleString()}</Text>
-        {item.n_score !== null && item.n_score !== undefined && (
-          <View style={styles.scores}>
-            <Text style={styles.scoreText}>N: {Math.round((item.n_score || 0) * 100)}%</Text>
-            <Text style={styles.scoreText}>P: {Math.round((item.p_score || 0) * 100)}%</Text>
-            <Text style={styles.scoreText}>K: {Math.round((item.k_score || 0) * 100)}%</Text>
-          </View>
-        )}
-        {item.recommendation && <Text style={styles.rec}>{item.recommendation}</Text>}
-      </View>
-    );
+  const handleScanPress = async (scanId: number) => {
+    try {
+      const scanResult = await getScan(scanId);
+      navigation.navigate('Results', { scanResult });
+    } catch (error) {
+      console.error('Failed to get scan details:', error);
+    }
   };
 
-  return (
-    <View style={styles.container}>
-      {scans.length > 0 && (
-        <Pressable style={styles.clearButton} onPress={handleClearHistory}>
-          <Text style={styles.clearButtonText}>🗑️ Clear History</Text>
-        </Pressable>
-      )}
-      <FlatList
-        data={scans}
-        keyExtractor={(item) => item.scan_id.toString()}
-        renderItem={renderItem}
-        contentContainerStyle={scans.length === 0 ? styles.emptyContainer : undefined}
-        ListEmptyComponent={<Text style={styles.emptyText}>No scans yet. Capture a leaf to get started.</Text>}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchScans} />}
+  const renderScanItem = ({ item }: { item: ScanHistoryItem }) => (
+    <TouchableOpacity onPress={() => handleScanPress(item.scan_id)}>
+      <Card style={styles.scanCard}>
+        <View style={styles.scanHeader}>
+          <View style={styles.cropBadge}>
+            <Text style={styles.cropIcon}>{item.crop_icon}</Text>
+            <Text style={styles.cropName}>
+              {getCropName(item.crop_name)}
+            </Text>
+          </View>
+          <StatusChip status={item.overall_status} size="small" />
+        </View>
+        
+        <View style={styles.scoresRow}>
+          <View style={styles.scoreItem}>
+            <Text style={styles.scoreLabel}>N</Text>
+            <Text style={[
+              styles.scoreValue,
+              { color: item.n_severity === 'critical' ? colors.critical : 
+                       item.n_severity === 'attention' ? colors.attention : colors.healthy }
+            ]}>
+              {item.n_score?.toFixed(0)}%
+            </Text>
+          </View>
+          <View style={styles.scoreDivider} />
+          <View style={styles.scoreItem}>
+            <Text style={styles.scoreLabel}>P</Text>
+            <Text style={[
+              styles.scoreValue,
+              { color: item.p_severity === 'critical' ? colors.critical : 
+                       item.p_severity === 'attention' ? colors.attention : colors.healthy }
+            ]}>
+              {item.p_score?.toFixed(0)}%
+            </Text>
+          </View>
+          <View style={styles.scoreDivider} />
+          <View style={styles.scoreItem}>
+            <Text style={styles.scoreLabel}>K</Text>
+            <Text style={[
+              styles.scoreValue,
+              { color: item.k_severity === 'critical' ? colors.critical : 
+                       item.k_severity === 'attention' ? colors.attention : colors.healthy }
+            ]}>
+              {item.k_score?.toFixed(0)}%
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.scanFooter}>
+          <Text style={styles.timestamp}>
+            {new Date(item.created_at).toLocaleDateString()} {new Date(item.created_at).toLocaleTimeString()}
+          </Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        </View>
+      </Card>
+    </TouchableOpacity>
+  );
+
+  const renderEmptyList = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="leaf-outline" size={80} color={colors.textTertiary} />
+      <Text style={styles.emptyTitle}>{t('noScansYet')}</Text>
+      <Text style={styles.emptyMessage}>{t('noScansMessage')}</Text>
+      <Button
+        title={t('startScan')}
+        onPress={() => navigation.navigate('Home')}
+        style={{ marginTop: spacing.lg }}
+        icon={<Ionicons name="camera" size={20} color={colors.textWhite} />}
       />
     </View>
   );
-}
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('scanHistory')}</Text>
+        {scans.length > 0 && (
+          <TouchableOpacity onPress={handleClearHistory} style={styles.clearButton}>
+            <Ionicons name="trash-outline" size={24} color={colors.error} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Scan Count */}
+      {scans.length > 0 && (
+        <View style={styles.countContainer}>
+          <Text style={styles.countText}>{scans.length} scans</Text>
+        </View>
+      )}
+
+      {/* Scan List */}
+      <FlatList
+        data={scans}
+        keyExtractor={(item) => item.scan_id.toString()}
+        renderItem={renderScanItem}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={!loading ? renderEmptyList : null}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      />
+    </SafeAreaView>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: 16,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  backButton: {
+    padding: spacing.sm,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
   clearButton: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FECACA',
+    padding: spacing.sm,
   },
-  clearButtonText: {
-    color: '#DC2626',
+  countContainer: {
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  countText: {
     fontSize: 14,
-    fontWeight: '600',
+    color: colors.textSecondary,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: 12,
+  listContent: {
+    padding: spacing.md,
+    paddingTop: 0,
+    flexGrow: 1,
   },
-  cardHeader: {
+  scanCard: {
+    marginBottom: spacing.md,
+  },
+  scanHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.md,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-  },
-  status: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  meta: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
-    marginBottom: 4,
-  },
-  scores: {
+  cropBadge: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 6,
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  scoreText: {
-    fontSize: 14,
+  cropIcon: {
+    fontSize: 24,
+  },
+  cropName: {
+    fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
+    color: colors.textPrimary,
   },
-  rec: {
-    marginTop: 8,
-    fontSize: 14,
-    color: theme.colors.textSecondary,
+  scoresRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
   },
-  emptyContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
+  scoreItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  scoreLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  scoreValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  scoreDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: colors.border,
+  },
+  scanFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  emptyText: {
+  timestamp: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: spacing.lg,
+  },
+  emptyMessage: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    lineHeight: 20,
   },
 });
+
+export default HistoryScreen;

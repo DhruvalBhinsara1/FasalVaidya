@@ -1,0 +1,158 @@
+{
+  "rice": {
+    "name": "Rice",
+    "name_hi": "\u091a\u093e\u0935\u0932",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\rice\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\rice\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": 0.34877260192360793,
+    "trained_at": "2026-01-02T00:39:35.138500"
+  },
+  "tomato": {
+    "name": "Tomato",
+    "name_hi": "\u091f\u092e\u093e\u091f\u0930",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\tomato\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\tomato\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T00:55:45.125617"
+  },
+  "wheat": {
+    "name": "Wheat",
+    "name_hi": "\u0917\u0947\u0939\u0942\u0901",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\wheat\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\wheat\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T01:16:14.883580"
+  },
+  "maize": {
+    "name": "Maize",
+    "name_hi": "\u092e\u0915\u094d\u0915\u093e",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\maize\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\maize\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": 0.44243157018650847,
+    "trained_at": "2026-01-02T03:53:34.472567"
+  },
+  "banana": {
+    "name": "Banana",
+    "name_hi": "\u0915\u0947\u0932\u093e",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\banana\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\banana\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T07:04:35.259865"
+  },
+  "coffee": {
+    "name": "Coffee",
+    "name_hi": "\u0915\u0949\u092b\u0940",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\coffee\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\coffee\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": 0.45146991226585703,
+    "trained_at": "2026-01-02T07:33:24.869452"
+  },
+  "cucumber": {
+    "name": "Cucumber",
+    "name_hi": "\u0916\u0940\u0930\u093e",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\cucumber\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\cucumber\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T07:55:23.771829"
+  },
+  "eggplant": {
+    "name": "Eggplant",
+    "name_hi": "\u092c\u0948\u0902\u0917\u0928",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\eggplant\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\eggplant\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T08:20:23.169194"
+  },
+  "ashgourd": {
+    "name": "Ash Gourd",
+    "name_hi": "\u092a\u0947\u0920\u093e",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\ashgourd\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\ashgourd\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T09:12:12.736083"
+  },
+  "bittergourd": {
+    "name": "Bitter Gourd",
+    "name_hi": "\u0915\u0930\u0947\u0932\u093e",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\bittergourd\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\bittergourd\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T10:06:02.258869"
+  },
+  "ridgegourd": {
+    "name": "Ridge Gourd",
+    "name_hi": "\u0924\u0941\u0930\u0908",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\ridgegourd\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\ridgegourd\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T10:27:17.258659"
+  },
+  "snakegourd": {
+    "name": "Snake Gourd",
+    "name_hi": "\u091a\u093f\u091a\u093f\u0902\u0921\u093e",
+    "model_path": "E:\\FasalVaidya\\backend\\ml\\models\\snakegourd\\best.keras",
+    "tflite_path": "E:\\FasalVaidya\\backend\\ml\\models\\snakegourd\\model.tflite",
+    "outputs": [
+      "N",
+      "P",
+      "K"
+    ],
+    "test_auc": NaN,
+    "trained_at": "2026-01-02T11:02:57.160292"
+  }
+}
