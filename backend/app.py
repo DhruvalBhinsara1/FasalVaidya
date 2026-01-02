@@ -35,7 +35,7 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # Configuration
 BASE_DIR = Path(__file__).parent
 UPLOAD_FOLDER = BASE_DIR / 'uploads'
-DATABASE_PATH = BASE_DIR / 'fasalvaidya.db'
+DEFAULT_DATABASE_PATH = BASE_DIR / 'fasalvaidya.db'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
 
@@ -97,6 +97,12 @@ def file_fingerprint(path: Path, max_bytes: int = 1024 * 1024) -> dict:
 
 app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+
+
+def get_database_path() -> Path:
+    """Resolve database path (supports test overrides via app.config['DATABASE'])."""
+    override = app.config.get('DATABASE') if isinstance(app.config, dict) else None
+    return Path(override) if override else DEFAULT_DATABASE_PATH
 
 # ============================================
 # CROP DEFINITIONS (Multi-Crop Support)
@@ -392,7 +398,7 @@ FERTILIZER_RECOMMENDATIONS = {
 def get_db():
     """Get database connection for current request."""
     if 'db' not in g:
-        g.db = sqlite3.connect(str(DATABASE_PATH))
+        g.db = sqlite3.connect(str(get_database_path()))
         g.db.row_factory = sqlite3.Row
     return g.db
 
@@ -407,7 +413,8 @@ def close_db(exception):
 
 def init_db():
     """Initialize database with schema."""
-    conn = sqlite3.connect(str(DATABASE_PATH))
+    db_path = get_database_path()
+    conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     
     # Create crops table
@@ -484,7 +491,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    print("✅ Database initialized successfully")
+    print(f"✅ Database initialized successfully at {db_path}")
 
 
 # ============================================
@@ -632,11 +639,7 @@ def create_scan():
     # Run ML inference
     try:
         from ml.inference import predict_npk, generate_gradcam_heatmap
-        
-        # Get predictions (pass crop_id for crop-specific model)
         prediction = predict_npk(str(filepath), crop_id=ml_crop_id)
-        
-        # Generate heatmap
         heatmap = generate_gradcam_heatmap(str(filepath))
 
         logger.info(
@@ -650,7 +653,7 @@ def create_scan():
             prediction.get('detected_class'),
             prediction.get('overall_status'),
         )
-        
+    
     except Exception as e:
         logger.exception("scan_inference_error scan_uuid=%s filename=%s", scan_uuid, filename)
         # Fallback to mock predictions

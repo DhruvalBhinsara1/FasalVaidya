@@ -7,26 +7,26 @@
     "P",
     "K"
   ],
-  "created_at": "2026-01-02T00:55:45.125617",
+  "created_at": "2026-01-02T14:28:25.287071",
   "training_images": 766,
-  "test_accuracy": 0.9805825242718447,
-  "test_accuracy_tta": 0.9805825242718447,
-  "test_f1": 0.4950980392156863,
+  "test_accuracy": 0.019417475728155338,
+  "test_accuracy_tta": 0.019417475728155338,
+  "test_f1": 0.01904761904761905,
   "test_auc": NaN,
   "per_class_accuracy": {
-    "N": 0.1262135922330097,
+    "N": 0.8737864077669902,
     "P": null,
-    "K": 0.912621359223301
+    "K": 0.08737864077669903
   },
   "per_class_f1": {
-    "N": 0.22413793103448276,
+    "N": 0.0,
     "P": null,
-    "K": 0.0
+    "K": 0.16071428571428573
   },
   "per_class_auc": {
-    "N": 0.2995726495726496,
+    "N": 0.6222222222222222,
     "P": null,
-    "K": 0.5112293144208038
+    "K": 0.49822695035460995
   },
   "class_balance": {
     "N": 0.1095890410958904,
@@ -45,15 +45,15 @@
       224,
       224
     ],
-    "batch_size": 24,
-    "epochs": 50,
+    "batch_size": 32,
+    "epochs": 30,
     "learning_rate": 0.0001,
     "validation_split": 0.2,
     "label_smoothing": 0.1,
     "mixup_alpha": 0.2,
     "focal_gamma": 2.0,
-    "warmup_epochs": 5,
-    "patience": 15,
+    "warmup_epochs": 3,
+    "patience": 10,
     "backbone": "efficientnetb0"
   },
   "backbone": "efficientnetb0"

@@ -5,16 +5,18 @@
  */
 
 export const colors = {
-  // Primary Colors
-  primary: '#208F78',
-  primaryDark: '#1B7A66',
-  primaryDarker: '#166B58',
+  // Primary Greens (brighter per mockup)
+  primary: '#0FC15F',
+  primaryDark: '#0BA752',
+  primaryDarker: '#0A8E45',
   
-  // Secondary Colors
-  secondary: '#1B4D3E',
+  // Secondary / surface
+  secondary: '#0F1C14',
+  surfaceDark: '#0F1C14',
+  surfaceMuted: '#111B13',
   
   // Semantic Colors
-  success: '#208F78',
+  success: '#0FC15F',
   error: '#D63D3D',
   warning: '#F5A623',
   info: '#3B82F6',
@@ -22,22 +24,23 @@ export const colors = {
   // Severity Colors
   critical: '#D63D3D',
   attention: '#F5A623',
-  healthy: '#208F78',
+  healthy: '#0FC15F',
   
   // Neutral Colors
-  background: '#F9FAFB',
+  background: '#F4F8F4',
   card: '#FFFFFF',
   border: '#E5E7EB',
+  shadow: 'rgba(0,0,0,0.12)',
   
   // Text Colors
-  textPrimary: '#1F2937',
+  textPrimary: '#111827',
   textSecondary: '#6B7280',
   textTertiary: '#9CA3AF',
   textWhite: '#FFFFFF',
   
   // Disabled
   disabled: '#9CA3AF',
-  disabledBackground: '#F3F4F6',
+  disabledBackground: '#EFF1F3',
 };
 
 export const spacing = {
@@ -50,10 +53,10 @@ export const spacing = {
 };
 
 export const borderRadius = {
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
+  sm: 6,
+  md: 10,
+  lg: 16,
+  xl: 24,
   full: 999,
 };
 
@@ -64,9 +67,9 @@ export const typography = {
     lineHeight: 43,
   },
   h1: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700' as const,
-    lineHeight: 34,
+    lineHeight: 36,
   },
   h2: {
     fontSize: 24,

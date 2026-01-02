@@ -7,7 +7,7 @@
     "P",
     "K"
   ],
-  "created_at": "2026-01-02T01:16:14.883580",
+  "created_at": "2026-01-02T14:39:22.228008",
   "training_images": 630,
   "test_accuracy": 1.0,
   "test_accuracy_tta": 1.0,
@@ -24,7 +24,7 @@
     "K": null
   },
   "per_class_auc": {
-    "N": 0.8744212962962964,
+    "N": 0.818576388888889,
     "P": null,
     "K": null
   },
@@ -45,15 +45,15 @@
       224,
       224
     ],
-    "batch_size": 24,
-    "epochs": 50,
+    "batch_size": 32,
+    "epochs": 30,
     "learning_rate": 0.0001,
     "validation_split": 0.2,
     "label_smoothing": 0.1,
     "mixup_alpha": 0.2,
     "focal_gamma": 2.0,
-    "warmup_epochs": 5,
-    "patience": 15,
+    "warmup_epochs": 3,
+    "patience": 10,
     "backbone": "efficientnetb0"
   },
   "backbone": "efficientnetb0"

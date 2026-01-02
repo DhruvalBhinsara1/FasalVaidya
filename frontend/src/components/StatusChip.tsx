@@ -82,19 +82,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: borderRadius.full,
-    gap: 4,
+    gap: 6,
   },
   small: {
-    paddingVertical: 2,
+    paddingVertical: 4,
     paddingHorizontal: spacing.sm,
   },
   medium: {
-    paddingVertical: 4,
-    paddingHorizontal: spacing.sm + 4,
-  },
-  large: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+  },
+  large: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   icon: {
     fontSize: 12,

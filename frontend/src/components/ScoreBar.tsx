@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   barBackground: {
-    height: 12,
+    height: 14,
     backgroundColor: colors.disabledBackground,
     borderRadius: borderRadius.full,
     overflow: 'hidden',

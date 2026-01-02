@@ -7,31 +7,31 @@
     "P",
     "K"
   ],
-  "created_at": "2026-01-02T07:04:35.259865",
+  "created_at": "2026-01-02T17:35:15.039085",
   "training_images": 6000,
-  "test_accuracy": 0.1275,
-  "test_accuracy_tta": 0.1275,
-  "test_f1": 0.1130820399113082,
+  "test_accuracy": 0.12375,
+  "test_accuracy_tta": 0.12375,
+  "test_f1": 0.11012235817575083,
   "test_auc": NaN,
   "per_class_accuracy": {
     "N": null,
     "P": null,
-    "K": 0.1275
+    "K": 0.12375
   },
   "per_class_f1": {
     "N": null,
     "P": null,
-    "K": 0.2261640798226164
+    "K": 0.22024471635150167
   },
   "per_class_auc": {
     "N": null,
     "P": null,
-    "K": 0.3995168267880218
+    "K": 0.5794175708583698
   },
   "class_balance": {
     "N": 0.0,
     "P": 0.0,
-    "K": 0.108625
+    "K": 0.105625
   },
   "trainable_outputs": [
     "K"
@@ -45,15 +45,15 @@
       224,
       224
     ],
-    "batch_size": 24,
-    "epochs": 50,
+    "batch_size": 32,
+    "epochs": 30,
     "learning_rate": 0.0001,
     "validation_split": 0.2,
     "label_smoothing": 0.1,
     "mixup_alpha": 0.2,
     "focal_gamma": 2.0,
-    "warmup_epochs": 5,
-    "patience": 15,
+    "warmup_epochs": 3,
+    "patience": 10,
     "backbone": "efficientnetb0"
   },
   "backbone": "efficientnetb0"

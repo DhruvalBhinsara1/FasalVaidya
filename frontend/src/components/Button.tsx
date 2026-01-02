@@ -84,8 +84,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     gap: spacing.sm,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 20,
+    elevation: 6,
   },
   
   // Variants
@@ -99,23 +104,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: colors.primary,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   
   // Sizes
   small: {
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    minHeight: 36,
-  },
-  medium: {
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     minHeight: 44,
   },
-  large: {
+  medium: {
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
     minHeight: 52,
+  },
+  large: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    minHeight: 56,
   },
   
   fullWidth: {
@@ -128,7 +135,8 @@ const styles = StyleSheet.create({
   
   // Text styles
   text: {
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   primaryText: {
     color: colors.textWhite,
@@ -140,10 +148,10 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   smallText: {
-    fontSize: 14,
+    fontSize: 15,
   },
   mediumText: {
-    fontSize: 16,
+    fontSize: 17,
   },
   largeText: {
     fontSize: 18,

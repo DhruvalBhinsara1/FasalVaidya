@@ -83,6 +83,77 @@ else:
 
 
 # ============================================
+# CUSTOM PREPROCESSING LAYER (SERIALIZABLE)
+# ============================================
+
+# Get the correct serialization decorator for different Keras versions
+try:
+    # Keras 3.x
+    from keras.saving import register_keras_serializable
+except (ImportError, AttributeError):
+    try:
+        # TensorFlow Keras
+        from tensorflow.keras.utils import register_keras_serializable
+    except (ImportError, AttributeError):
+        # Fallback: define a no-op decorator
+        def register_keras_serializable(package='Custom'):
+            def decorator(cls):
+                return cls
+            return decorator
+
+@register_keras_serializable(package='FasalVaidya')
+class ImageNetPreprocessing(keras.layers.Layer):
+    """
+    Preprocessing layer for ImageNet-pretrained backbones.
+    
+    This layer is serializable and will be saved with the model, solving
+    the issue where Lambda preprocessing functions get lost during save/load.
+    
+    Supports:
+    - 'torch': EfficientNet, ResNet, etc. (scale to [0,1], then ImageNet mean/std normalization)
+    - 'tf': MobileNetV3 (scale to [-1, 1])
+    - 'caffe': VGG, older models (BGR, ImageNet mean subtraction)
+    """
+    
+    # ImageNet mean and std for 'torch' mode
+    IMAGENET_MEAN = [0.485, 0.456, 0.406]
+    IMAGENET_STD = [0.229, 0.224, 0.225]
+    
+    def __init__(self, mode='torch', **kwargs):
+        super().__init__(**kwargs)
+        self.mode = mode
+        
+    def call(self, inputs):
+        x = inputs
+        
+        if self.mode == 'torch':
+            # Scale from [0, 1] to [0, 1] (no-op) then normalize with ImageNet stats
+            # Note: Assumes input is already [0, 1], scales to ImageNet range
+            x = x / 255.0  # Scale 0-255 to 0-1
+            # Normalize with ImageNet mean and std
+            mean = tf.constant(self.IMAGENET_MEAN, dtype=x.dtype)
+            std = tf.constant(self.IMAGENET_STD, dtype=x.dtype)
+            x = (x - mean) / std
+            
+        elif self.mode == 'tf':
+            # Scale to [-1, 1]
+            x = x / 127.5 - 1.0
+            
+        elif self.mode == 'caffe':
+            # Convert RGB to BGR and subtract ImageNet mean
+            x = x[..., ::-1]  # RGB -> BGR
+            mean = tf.constant([103.939, 116.779, 123.68], dtype=x.dtype)
+            x = x - mean
+            
+        return x
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({'mode': self.mode})
+        return config
+
+
+# ============================================
 # FOCAL LOSS FOR HARD EXAMPLE MINING
 # ============================================
 
@@ -238,7 +309,13 @@ def cutmix(images, labels, alpha=0.2):
 
 
 def resolve_backbone(backbone_name: str, input_shape):
-    """Return (base_model, preprocess_fn, canonical_name)."""
+    """Return (base_model, preprocess_mode, canonical_name).
+    
+    NOTE: We return the preprocessing MODE (string) instead of a lambda function
+    because Lambda layers with closures don't serialize properly in Keras 3.x.
+    The preprocessing should be applied via keras.src.applications.imagenet_utils.preprocess_input
+    with the appropriate mode, or using a Rescaling layer.
+    """
     name = (backbone_name or '').strip().lower()
 
     if name in {'mobilenetv3large', 'mobilenet_v3_large', 'mobilenetv3'}:
@@ -248,8 +325,8 @@ def resolve_backbone(backbone_name: str, input_shape):
             weights='imagenet',
             pooling='avg',
         )
-        preprocess_fn = lambda x: tf.keras.applications.mobilenet_v3.preprocess_input(x * 255.0)
-        return base_model, preprocess_fn, 'mobilenetv3large'
+        # MobileNetV3 uses 'tf' mode: scale to [-1, 1]
+        return base_model, 'tf', 'mobilenetv3large'
 
     if name in {'efficientnetb0', 'efficientnet_b0', 'efficientnet'}:
         base_model = EfficientNetB0(
@@ -258,8 +335,8 @@ def resolve_backbone(backbone_name: str, input_shape):
             weights='imagenet',
             pooling='avg',
         )
-        preprocess_fn = lambda x: tf.keras.applications.efficientnet.preprocess_input(x * 255.0)
-        return base_model, preprocess_fn, 'efficientnetb0'
+        # EfficientNet uses 'torch' mode: ImageNet mean/std normalization
+        return base_model, 'torch', 'efficientnetb0'
 
     if name in {'efficientnetb2', 'efficientnet_b2'}:
         base_model = EfficientNetB2(
@@ -268,8 +345,8 @@ def resolve_backbone(backbone_name: str, input_shape):
             weights='imagenet',
             pooling='avg',
         )
-        preprocess_fn = lambda x: tf.keras.applications.efficientnet.preprocess_input(x * 255.0)
-        return base_model, preprocess_fn, 'efficientnetb2'
+        # EfficientNet uses 'torch' mode: ImageNet mean/std normalization
+        return base_model, 'torch', 'efficientnetb2'
 
     raise ValueError(
         f"Unsupported backbone '{backbone_name}'. Supported: mobilenetv3large, efficientnetb0, efficientnetb2"
@@ -517,6 +594,20 @@ QUALITY_PRESETS = {
     },
 }
 
+# Crop-specific tuning to lift weaker models without manual tweaks each time
+CROP_TRAINING_OVERRIDES = {
+    'maize': {
+        'backbone': 'efficientnetb2',
+        'epochs_min': 140,
+        'batch_size_max': 16,
+        'learning_rate_max': 8e-05,
+        'mixup_alpha': 0.3,
+        'warmup_epochs_min': 8,
+        'patience_min': 25,
+        'image_size': (256, 256),
+    },
+}
+
 
 # ============================================
 # DATA LOADING
@@ -533,6 +624,35 @@ def load_and_preprocess_image(image_path, target_size=(224, 224), augment=False)
             img_array = advanced_augment_image(img_array)
         
         return img_array
+
+
+    def apply_crop_overrides(crop_id: str, base_config: dict) -> dict:
+        """Apply crop-specific tuning (non-destructive)."""
+        cfg = dict(base_config)
+        override = CROP_TRAINING_OVERRIDES.get(crop_id)
+        if not override:
+            return cfg
+
+        if 'backbone' in override:
+            cfg['backbone'] = override['backbone']
+        if 'mixup_alpha' in override:
+            cfg['mixup_alpha'] = override['mixup_alpha']
+        if 'image_size' in override:
+            cfg['image_size'] = override['image_size']
+
+        if 'epochs_min' in override:
+            cfg['epochs'] = max(cfg.get('epochs', DEFAULT_CONFIG['epochs']), override['epochs_min'])
+        if 'warmup_epochs_min' in override:
+            cfg['warmup_epochs'] = max(cfg.get('warmup_epochs', DEFAULT_CONFIG['warmup_epochs']), override['warmup_epochs_min'])
+        if 'patience_min' in override:
+            cfg['patience'] = max(cfg.get('patience', DEFAULT_CONFIG['patience']), override['patience_min'])
+
+        if 'batch_size_max' in override:
+            cfg['batch_size'] = min(cfg.get('batch_size', DEFAULT_CONFIG['batch_size']), override['batch_size_max'])
+        if 'learning_rate_max' in override:
+            cfg['learning_rate'] = min(cfg.get('learning_rate', DEFAULT_CONFIG['learning_rate']), override['learning_rate_max'])
+
+        return cfg
     except Exception as e:
         print(f"⚠️ Error loading {image_path}: {e}")
         return None
@@ -691,13 +811,17 @@ class SqueezeExcite(layers.Layer):
 
 
 def create_model(input_shape=(224, 224, 3), num_outputs=3, *, backbone: str = 'efficientnetb0', dropout_rate=0.5):
-    """Create optimized NPK model with deeper classification head."""
-    base_model, preprocess_fn, canonical = resolve_backbone(backbone, input_shape)
+    """Create optimized NPK model with deeper classification head.
+    
+    NOTE: This model expects input in [0, 255] range. The ImageNetPreprocessing layer
+    handles normalization internally and is properly serialized with the model.
+    """
+    base_model, preprocess_mode, canonical = resolve_backbone(backbone, input_shape)
     base_model.trainable = False
     
     inputs = keras.Input(shape=input_shape)
     
-    # Strong data augmentation pipeline
+    # Strong data augmentation pipeline (operates on 0-255 range images)
     x = layers.RandomFlip("horizontal_and_vertical")(inputs)
     x = layers.RandomRotation(0.3, fill_mode='reflect')(x)
     x = layers.RandomZoom((-0.2, 0.2), fill_mode='reflect')(x)
@@ -705,8 +829,9 @@ def create_model(input_shape=(224, 224, 3), num_outputs=3, *, backbone: str = 'e
     x = layers.RandomBrightness(0.3)(x)
     x = layers.RandomContrast(0.3)(x)
     
-    # Preprocessing for backbone
-    x = preprocess_fn(x)
+    # Preprocessing for backbone - using our SERIALIZABLE custom layer
+    # This ensures preprocessing is saved with the model and works during inference
+    x = ImageNetPreprocessing(mode=preprocess_mode, name='imagenet_preprocessing')(x)
     
     # Feature extraction
     features = base_model(x, training=False)
@@ -1272,6 +1397,16 @@ def train_crop_model(crop_id, config=None, disable_early_stopping=False):
 def update_crop_registry():
     """Update the central crop registry with all trained models."""
     registry = {}
+
+    def _to_rel(path: Path):
+        path = Path(path).resolve()
+        try:
+            return path.relative_to(BASE_DIR).as_posix()
+        except Exception:
+            try:
+                return Path(os.path.relpath(path, BASE_DIR)).as_posix()
+            except Exception:
+                return path.as_posix()
     
     for crop_id in CROP_CONFIGS:
         model_dir = MODEL_ROOT / crop_id
@@ -1283,11 +1418,12 @@ def update_crop_registry():
             registry[crop_id] = {
                 'name': meta['crop_name'],
                 'name_hi': meta['crop_name_hi'],
-                'model_path': str(model_dir / 'best.keras'),
-                'tflite_path': str(model_dir / 'model.tflite'),
+                'model_path': _to_rel(model_dir / 'best.keras'),
+                'tflite_path': _to_rel(model_dir / 'model.tflite'),
                 'outputs': meta['outputs'],
                 'test_auc': meta.get('test_auc'),
                 'trained_at': meta.get('created_at'),
+                'backbone': meta.get('backbone', 'efficientnetb0'),
             }
     
     registry_path = MODEL_ROOT / 'crop_registry.json'
@@ -1374,19 +1510,23 @@ Examples:
         failed = []
         
         for crop_id in CROP_CONFIGS:
+            crop_config = apply_crop_overrides(crop_id, config)
             try:
                 if args.smoke_test:
                     print(f"\n🧪 Smoke test: {crop_id}")
                     model, _base = create_model(
                         num_outputs=len(CROP_CONFIGS[crop_id]['outputs']),
-                        backbone=config.get('backbone', 'efficientnetb0')
+                        backbone=crop_config.get('backbone', 'efficientnetb0')
                     )
-                    compile_model(model, config['learning_rate'])
+                    compile_model(model, crop_config['learning_rate'])
                     print(f"   ✅ {model.name}")
                     successful.append(crop_id)
                     continue
                 
-                result = train_crop_model(crop_id, config, args.disable_early_stopping)
+                if crop_config != config:
+                    print(f"   ℹ️  Applying {crop_id} overrides: backbone={crop_config['backbone']}, epochs={crop_config['epochs']}, batch={crop_config['batch_size']}, lr={crop_config['learning_rate']}")
+
+                result = train_crop_model(crop_id, crop_config, args.disable_early_stopping)
                 if result:
                     successful.append(crop_id)
                 else:
@@ -1404,19 +1544,23 @@ Examples:
             print(f"❌ Unknown crop: {crop_id}")
             print(f"   Available: {list(CROP_CONFIGS.keys())}")
             return
+
+        crop_config = apply_crop_overrides(crop_id, config)
+        if crop_config != config:
+            print(f"   ℹ️  Applying {crop_id} overrides: backbone={crop_config['backbone']}, epochs={crop_config['epochs']}, batch={crop_config['batch_size']}, lr={crop_config['learning_rate']}")
         
         if args.smoke_test:
             print(f"\n🧪 Smoke test: building model for {crop_id}")
             model, _base = create_model(
                 num_outputs=len(CROP_CONFIGS[crop_id]['outputs']),
-                backbone=config.get('backbone', 'efficientnetb0')
+                backbone=crop_config.get('backbone', 'efficientnetb0')
             )
-            compile_model(model, config['learning_rate'])
+            compile_model(model, crop_config['learning_rate'])
             model.summary()
             print("✅ Smoke test passed!")
             return
         
-        train_crop_model(crop_id, config, args.disable_early_stopping)
+        train_crop_model(crop_id, crop_config, args.disable_early_stopping)
     
     # Update registry
     update_crop_registry()

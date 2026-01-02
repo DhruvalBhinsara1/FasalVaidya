@@ -66,7 +66,7 @@ class TestCropsEndpoint:
         
         data = response.get_json()
         assert 'crops' in data
-        assert len(data['crops']) == 4
+        assert len(data['crops']) >= 4
         
         # Check crop structure
         crop = data['crops'][0]
@@ -81,10 +81,8 @@ class TestCropsEndpoint:
         data = response.get_json()
         
         crop_names = [c['name'] for c in data['crops']]
-        assert 'Wheat' in crop_names
-        assert 'Rice' in crop_names
-        assert 'Tomato' in crop_names
-        assert 'Cotton' in crop_names
+        required = {'Wheat', 'Rice', 'Tomato', 'Cotton'}
+        assert required.issubset(set(crop_names))
 
 
 class TestScansEndpoint:

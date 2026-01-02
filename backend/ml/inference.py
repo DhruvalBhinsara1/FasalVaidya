@@ -25,7 +25,62 @@ try:
 except Exception:
     cv2 = None
 
+
+# ============================================
+# CUSTOM LAYER REGISTRATION FOR MODEL LOADING
+# ============================================
+
+# Get the correct serialization decorator for different Keras versions
+try:
+    # Keras 3.x
+    from keras.saving import register_keras_serializable
+except (ImportError, AttributeError):
+    try:
+        # TensorFlow Keras
+        from tensorflow.keras.utils import register_keras_serializable
+    except (ImportError, AttributeError):
+        # Fallback: define a no-op decorator
+        def register_keras_serializable(package='Custom'):
+            def decorator(cls):
+                return cls
+            return decorator
+
+@register_keras_serializable(package='FasalVaidya')
+class ImageNetPreprocessing(keras.layers.Layer):
+    """
+    Preprocessing layer for ImageNet-pretrained backbones.
+    Must be registered for models that include this layer to load correctly.
+    """
+    IMAGENET_MEAN = [0.485, 0.456, 0.406]
+    IMAGENET_STD = [0.229, 0.224, 0.225]
+    
+    def __init__(self, mode='torch', **kwargs):
+        super().__init__(**kwargs)
+        self.mode = mode
+        
+    def call(self, inputs):
+        x = inputs
+        if self.mode == 'torch':
+            x = x / 255.0
+            mean = tf.constant(self.IMAGENET_MEAN, dtype=x.dtype)
+            std = tf.constant(self.IMAGENET_STD, dtype=x.dtype)
+            x = (x - mean) / std
+        elif self.mode == 'tf':
+            x = x / 127.5 - 1.0
+        elif self.mode == 'caffe':
+            x = x[..., ::-1]
+            mean = tf.constant([103.939, 116.779, 123.68], dtype=x.dtype)
+            x = x - mean
+        return x
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({'mode': self.mode})
+        return config
+
+
 # Paths
+BASE_DIR = Path(__file__).resolve().parents[2]
 MODELS_DIR = Path(__file__).parent / 'models'
 CROP_REGISTRY_PATH = MODELS_DIR / 'crop_registry.json'
 
@@ -55,6 +110,30 @@ _default_model_path = None
 logger = logging.getLogger('fasalvaidya.ml')
 
 
+def _resolve_path(path_str):
+    """Resolve a path string relative to project root."""
+    if not path_str:
+        return None
+    p = Path(path_str)
+    if not p.is_absolute():
+        p = BASE_DIR / p
+    return p.resolve()
+
+
+def _find_latest_model(crop_id):
+    """Pick the newest .keras file inside models/<crop_id>/ for auto-refresh."""
+    crop_dir = MODELS_DIR / crop_id
+    if not crop_dir.exists():
+        return None
+
+    candidates = sorted(
+        crop_dir.glob('*.keras'),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return candidates[0] if candidates else None
+
+
 def load_crop_registry():
     """Load the crop model registry."""
     if CROP_REGISTRY_PATH.exists():
@@ -71,33 +150,69 @@ def get_crop_model(crop_id):
         crop_id: Crop identifier (e.g., 'rice', 'tomato', 'wheat')
     
     Returns:
-        tuple: (model, model_path, outputs) or (None, None, None) if not found
+        tuple: (model, model_path, outputs, backbone, has_builtin_preprocessing) or (None, None, None, None, False)
     """
     global _crop_models
-    
+
+    # Return cached model if path is still valid; otherwise drop cache so retrained models reload
     if crop_id in _crop_models:
-        return _crop_models[crop_id]
+        cached_model, cached_path, outputs, backbone, has_builtin = _crop_models[crop_id]
+        if cached_path and os.path.exists(cached_path):
+            return _crop_models[crop_id]
+        _crop_models.pop(crop_id, None)
     
     registry = load_crop_registry()
     
     if crop_id in registry:
         entry = registry[crop_id]
-        model_path = entry.get('model_path')
-        
-        if model_path and os.path.exists(model_path):
-            logger.info("ml_crop_model_loading crop=%s path=%s", crop_id, model_path)
+
+        # Resolve relative/absolute paths, then fall back to latest saved model
+        resolved_model_path = _resolve_path(entry.get('model_path'))
+        tflite_path = _resolve_path(entry.get('tflite_path'))
+
+        if (resolved_model_path is None or not resolved_model_path.exists()):
+            fallback_model = _find_latest_model(crop_id)
+            if fallback_model:
+                resolved_model_path = fallback_model
+                logger.info(
+                    "ml_crop_model_fallback crop=%s path=%s reason=missing_or_invalid_registry_path",
+                    crop_id,
+                    resolved_model_path,
+                )
+
+        if resolved_model_path and resolved_model_path.exists():
+            logger.info("ml_crop_model_loading crop=%s path=%s", crop_id, resolved_model_path)
             try:
-                model = keras.models.load_model(model_path)
+                model = keras.models.load_model(resolved_model_path)
                 outputs = entry.get('outputs', ['N', 'P', 'K'])
-                _crop_models[crop_id] = (model, model_path, outputs)
-                logger.info("ml_crop_model_loaded crop=%s ok=true", crop_id)
+                backbone = entry.get('backbone', 'efficientnetb0')  # Default backbone
+                
+                # Check if model has built-in preprocessing layer
+                has_builtin_preprocessing = any(
+                    'imagenet_preprocessing' in layer.name.lower() 
+                    for layer in model.layers
+                )
+                
+                _crop_models[crop_id] = (
+                    model,
+                    str(resolved_model_path),
+                    outputs,
+                    backbone,
+                    has_builtin_preprocessing,
+                )
+                logger.info(
+                    "ml_crop_model_loaded crop=%s ok=true backbone=%s builtin_preproc=%s",
+                    crop_id,
+                    backbone,
+                    has_builtin_preprocessing,
+                )
                 return _crop_models[crop_id]
             except Exception as e:
                 logger.error("ml_crop_model_load_error crop=%s error=%s", crop_id, str(e))
     
     # Crop model not found
     logger.warning("ml_crop_model_not_found crop=%s", crop_id)
-    return None, None, None
+    return None, None, None, None, False
 
 
 def get_model():
@@ -148,17 +263,23 @@ def get_tflite_interpreter():
     return _tflite_interpreter
 
 
-def preprocess_image(image_input, target_size=(224, 224)):
+def preprocess_image(image_input, target_size=(224, 224), backbone='efficientnetb0', has_builtin_preprocessing=False):
     """
     Preprocess image for model inference.
     
     Args:
         image_input: Can be file path, PIL Image, numpy array, or file-like object
         target_size: Target size for resize (default: 224x224)
+        backbone: Model backbone type for correct preprocessing (default: 'efficientnetb0')
+        has_builtin_preprocessing: If True, model has ImageNetPreprocessing layer baked in,
+                                   so we only scale to 0-255 range without further preprocessing
     
     Returns:
         Preprocessed numpy array ready for model input
     """
+    # Import preprocessing helper that works in Keras 3.x
+    from keras.src.applications.imagenet_utils import preprocess_input as keras_preprocess
+    
     # Handle different input types
     if isinstance(image_input, str):
         # File path
@@ -181,9 +302,26 @@ def preprocess_image(image_input, target_size=(224, 224)):
     # Resize
     img = img.resize(target_size, Image.LANCZOS)
     
-    # Convert to numpy array and normalize
+    # Convert to numpy array (keep as float32 in 0-255 range)
     img_array = np.array(img, dtype=np.float32)
-    img_array = img_array / 255.0
+    
+    if has_builtin_preprocessing:
+        # New models have ImageNetPreprocessing layer baked in
+        # They expect input in [0, 255] range
+        pass  # img_array already in 0-255 range
+    else:
+        # Old models need preprocessing applied here
+        # NOTE: Keras 3.x has a bug where tf.keras.applications.efficientnet.preprocess_input
+        # doesn't actually preprocess! Use keras.src.applications.imagenet_utils.preprocess_input instead.
+        if backbone and 'efficientnet' in backbone.lower():
+            # EfficientNet uses 'torch' mode: scale to [0,1] then normalize with ImageNet mean/std
+            img_array = keras_preprocess(img_array, mode='torch')
+        elif backbone and 'mobilenet' in backbone.lower():
+            # MobileNetV3 uses 'tf' mode: scale to [-1, 1]
+            img_array = keras_preprocess(img_array, mode='tf')
+        else:
+            # Fallback: normalize to 0-1 range for generic models
+            img_array = img_array / 255.0
     
     # Add batch dimension
     img_array = np.expand_dims(img_array, axis=0)
@@ -223,25 +361,43 @@ def predict_npk(image_input, use_tflite=False, crop_id=None):
     Returns:
         dict with predictions, confidence scores, severity, and metadata
     """
-    # Preprocess image
-    img_array, original_img = preprocess_image(image_input)
-    
     model = None
     model_path_used = None
     outputs = ['N', 'P', 'K']
+    backbone = 'efficientnetb0'  # Default backbone
+    has_builtin_preprocessing = False  # Old models don't have it
     
     # Try crop-specific model first
     if crop_id:
-        model, model_path_used, outputs = get_crop_model(crop_id)
+        model, model_path_used, outputs, backbone, has_builtin_preprocessing = get_crop_model(crop_id)
     
     # Fallback to default model
     if model is None:
         model = get_model()
         model_path_used = _default_model_path
+        backbone = 'efficientnetb0'  # Default model uses EfficientNetB0
+        has_builtin_preprocessing = False
+    
+    # Preprocess image with correct backbone preprocessing
+    img_array, original_img = preprocess_image(
+        image_input, 
+        backbone=backbone,
+        has_builtin_preprocessing=has_builtin_preprocessing
+    )
+    
+    # DEBUG: Log image array stats to verify preprocessing works
+    img_mean = float(np.mean(img_array))
+    img_std = float(np.std(img_array))
+    img_hash = hash(img_array.tobytes()) % 100000
+    logger.info("ml_preprocess_debug mean=%.4f std=%.4f hash=%d shape=%s backbone=%s builtin_preproc=%s", 
+                img_mean, img_std, img_hash, img_array.shape, backbone, has_builtin_preprocessing)
     
     if model is not None:
         # Real model prediction
         predictions = model.predict(img_array, verbose=0)[0]
+        
+        # DEBUG: Log raw predictions
+        logger.info("ml_raw_predictions raw=%s", predictions.tolist())
         
         # Calculate confidence based on prediction certainty
         # Higher confidence when predictions are closer to 0 or 1

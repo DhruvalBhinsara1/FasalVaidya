@@ -11,9 +11,9 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Image,
   Alert,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -88,37 +88,44 @@ const HomeScreen: React.FC = () => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Greeting + avatar */}
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>🌱</Text>
-            <Text style={styles.appName}>{t('appName')}</Text>
+          <View>
+            <Text style={styles.greeting}>{t('welcome')}</Text>
+            <Text style={styles.greetingSub}>{t('tagline')}</Text>
           </View>
-          <TouchableOpacity onPress={handleOpenSettings} style={styles.settingsButton}>
-            <Ionicons name="settings-outline" size={26} color={colors.textSecondary} />
+          <TouchableOpacity onPress={handleOpenSettings} style={styles.avatarWrapper}>
+            <Image
+              source={{ uri: 'https://i.pravatar.cc/80?img=68' }}
+              style={styles.avatar}
+            />
           </TouchableOpacity>
         </View>
-        <Text style={styles.tagline}>{t('tagline')}</Text>
 
-        {/* Connection Status */}
-        {!isConnected && (
-          <Card style={styles.warningCard}>
-            <View style={styles.warningContent}>
-              <Ionicons name="cloud-offline" size={24} color={colors.warning} />
-              <Text style={styles.warningText}>{t('networkError')}</Text>
+        {/* Hero actions */}
+        <View style={styles.heroRow}>
+          <TouchableOpacity style={[styles.heroCard, styles.heroPrimary]} onPress={handleStartScan}>
+            <View style={styles.heroIconWrap}>
+              <Ionicons name="camera" size={28} color={colors.textWhite} />
             </View>
-          </Card>
-        )}
-
-        {/* Welcome Card */}
-        <Card style={styles.welcomeCard}>
-          <Text style={styles.welcomeTitle}>{t('welcome')}</Text>
-          <Text style={styles.welcomeMessage}>{t('welcomeMessage')}</Text>
-        </Card>
+            <Text style={styles.heroTitle}>{t('startScan')}</Text>
+            <Text style={styles.heroSub}>{t('aiAnalysis')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.heroCard, styles.heroDark]} onPress={handleViewHistory}>
+            <View style={[styles.heroIconWrap, styles.heroIconDark]}>
+              <Ionicons name="time" size={28} color={colors.primary} />
+            </View>
+            <Text style={[styles.heroTitle, styles.heroTitleLight]}>{t('viewHistory')}</Text>
+            <Text style={[styles.heroSub, styles.heroSubLight]}>{t('lessThan3Sec')}</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Crop Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('selectCrop')}</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t('selectCrop')}</Text>
+            <Text style={styles.sectionMeta}>{t('aiAnalysis')}</Text>
+          </View>
           <CropSelector
             crops={crops}
             selectedCropId={selectedCropId}
@@ -131,41 +138,27 @@ const HomeScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actions}>
-          <Button
-            title={t('startScan')}
-            onPress={handleStartScan}
-            icon={<Ionicons name="camera" size={24} color={colors.textWhite} />}
-          />
-          
-          <Button
-            title={t('viewHistory')}
-            onPress={handleViewHistory}
-            variant="outline"
-            icon={<Ionicons name="time" size={24} color={colors.primary} />}
-          />
-        </View>
+        {/* Reminder / info card */}
+        <Card style={styles.reminderCard}>
+          <View style={styles.reminderIconWrap}>
+            <Ionicons name="water" size={24} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.reminderTitle}>{t('aiAnalysis')}</Text>
+            <Text style={styles.reminderText}>{t('welcomeMessage')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
+        </Card>
 
-        {/* Info Cards */}
-        <View style={styles.infoSection}>
-          <Card style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoIcon}>🔬</Text>
-                <Text style={styles.infoLabel}>{t('aiAnalysis')}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoIcon}>⚡</Text>
-                <Text style={styles.infoLabel}>{t('lessThan3Sec')}</Text>
-              </View>
-              <View style={styles.infoItem}>
-                <Text style={styles.infoIcon}>🎯</Text>
-                <Text style={styles.infoLabel}>{t('npkDetection')}</Text>
-              </View>
+        {/* Connection Status */}
+        {!isConnected && (
+          <Card style={styles.warningCard}>
+            <View style={styles.warningContent}>
+              <Ionicons name="cloud-offline" size={24} color={colors.warning} />
+              <Text style={styles.warningText}>{t('networkError')}</Text>
             </View>
           </Card>
-        </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -180,7 +173,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.md,
+    padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
   header: {
@@ -189,32 +182,131 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing.lg,
   },
-  logoContainer: {
+  greeting: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  greetingSub: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    fontSize: 15,
+  },
+  avatarWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  heroRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  heroCard: {
+    flex: 1,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    justifyContent: 'space-between',
+    minHeight: 160,
+    ...shadows.lg,
+  },
+  heroPrimary: {
+    backgroundColor: colors.primary,
+  },
+  heroDark: {
+    backgroundColor: colors.surfaceDark,
+  },
+  heroIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  heroIconDark: {
+    backgroundColor: 'rgba(15,193,95,0.15)',
+  },
+  heroTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textWhite,
+  },
+  heroTitleLight: {
+    color: colors.textWhite,
+  },
+  heroSub: {
+    marginTop: spacing.sm,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 14,
+  },
+  heroSubLight: {
+    color: '#E5E7EB',
+  },
+  section: {
+    marginBottom: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  sectionMeta: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  selectedCropInfo: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  reminderCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: `${colors.primary}25`,
+    backgroundColor: '#F7FBF7',
   },
-  logoIcon: {
-    fontSize: 40,
+  reminderIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: `${colors.primary}20`,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  appName: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  settingsButton: {
-    padding: spacing.sm,
-  },
-  tagline: {
+  reminderTitle: {
     fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  reminderText: {
+    marginTop: 4,
     color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
+    fontSize: 13,
   },
   warningCard: {
     backgroundColor: `${colors.warning}15`,
     borderColor: colors.warning,
-    marginBottom: spacing.md,
+    marginTop: spacing.lg,
   },
   warningContent: {
     flexDirection: 'row',
@@ -223,65 +315,8 @@ const styles = StyleSheet.create({
   },
   warningText: {
     color: colors.warning,
-    fontWeight: '500',
+    fontWeight: '600',
     flex: 1,
-  },
-  welcomeCard: {
-    backgroundColor: `${colors.primary}10`,
-    borderColor: `${colors.primary}30`,
-    marginBottom: spacing.lg,
-  },
-  welcomeTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  welcomeMessage: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    lineHeight: 24,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  selectedCropInfo: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-  },
-  actions: {
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  infoSection: {
-    marginTop: spacing.md,
-  },
-  infoCard: {
-    padding: spacing.md,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  infoItem: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  infoIcon: {
-    fontSize: 28,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
   },
 });
 
