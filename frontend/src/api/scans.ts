@@ -33,20 +33,23 @@ export interface ScanResult {
   crop_name_hi: string;
   crop_icon: string;
   
-  // NPK Scores (0-100%)
+  // NPKMg Scores (0-100%)
   n_score: number;
   p_score: number;
   k_score: number;
+  mg_score?: number; // Magnesium score (optional for backward compatibility)
   
   // Confidence (0-100%)
   n_confidence: number;
   p_confidence: number;
   k_confidence: number;
+  mg_confidence?: number; // Magnesium confidence (optional)
   
   // Severity levels
   n_severity: 'healthy' | 'attention' | 'critical';
   p_severity: 'healthy' | 'attention' | 'critical';
   k_severity: 'healthy' | 'attention' | 'critical';
+  mg_severity?: 'healthy' | 'attention' | 'critical'; // Magnesium severity (optional)
   overall_status: 'healthy' | 'attention' | 'critical';
   
   // Detected class
@@ -57,14 +60,17 @@ export interface ScanResult {
     n: Recommendation;
     p: Recommendation;
     k: Recommendation;
+    mg?: Recommendation; // Magnesium recommendation (optional)
   };
   priority: 'healthy' | 'attention' | 'critical';
   
-  // Heatmap
+  // Heatmap - can be base64 data URL or relative path
   heatmap?: string;
+  heatmap_url?: string; // Alternative heatmap URL field
   
   // Image URL
   image_url?: string;
+  original_image_url?: string; // Original image without heatmap overlay
   
   // Timestamp
   created_at: string;
@@ -82,9 +88,11 @@ export interface ScanHistoryItem {
   n_score: number;
   p_score: number;
   k_score: number;
+  mg_score?: number; // Magnesium score (optional)
   n_severity: string;
   p_severity: string;
   k_severity: string;
+  mg_severity?: string; // Magnesium severity (optional)
   overall_status: string;
   detected_class: string;
   created_at: string;
@@ -172,8 +180,14 @@ export const healthCheck = async (): Promise<boolean> => {
 
 /**
  * Get full image URL from relative path
+ * Handles base64 data URLs, http URLs, and relative paths
  */
 export const getImageUrl = (path: string): string => {
+  if (!path) return '';
+  // Already a data URL (base64)
+  if (path.startsWith('data:')) return path;
+  // Already an absolute URL
   if (path.startsWith('http')) return path;
+  // Relative path - prepend API base URL
   return `${API_BASE_URL}${path}`;
 };

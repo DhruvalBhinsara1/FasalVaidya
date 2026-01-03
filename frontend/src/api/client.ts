@@ -6,6 +6,7 @@
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 // Auto-detect API base URL from Expo dev server or env
 const getBaseUrl = (): string => {
@@ -18,9 +19,9 @@ const getBaseUrl = (): string => {
     return envUrl;
   }
 
-  // 2. Explicit host override
+  // 2. Explicit host override (only if actually set, not empty)
   const envHost = process.env.EXPO_PUBLIC_API_HOST?.trim();
-  if (envHost) {
+  if (envHost && envHost.length > 0 && !envHost.startsWith('#')) {
     const url = `http://${envHost}:${port}`;
     console.log('🌐 Using env host API URL:', url);
     return url;
@@ -35,22 +36,60 @@ const getBaseUrl = (): string => {
   
   if (hostUri) {
     const host = hostUri.split(':')[0]; // strip metro port
+    
+    // Check if this is a tunnel URL (can't reach local backend via tunnel)
+    if (host.includes('.exp.direct') || host.includes('ngrok') || host.includes('tunnel')) {
+      console.warn('⚠️ Detected Expo tunnel mode - cannot reach local backend!');
+      console.warn('💡 Options:');
+      console.warn('   1. Run: npx expo start --lan (recommended)');
+      console.warn('   2. Set EXPO_PUBLIC_API_HOST=YOUR_LAN_IP in .env');
+      
+      // Try Android emulator fallback
+      if (Platform.OS === 'android') {
+        const url = `http://10.0.2.2:${port}`;
+        console.log('🌐 Trying Android emulator localhost:', url);
+        return url;
+      }
+      
+      // Fallback to localhost (won't work on physical device with tunnel)
+      const fallback = `http://localhost:${port}`;
+      console.log('🌐 Fallback (may not work with tunnel):', fallback);
+      return fallback;
+    }
+    
     const url = `http://${host}:${port}`;
-    console.log('🌐 Auto-detected API URL:', url);
+    console.log('🌐 Auto-detected API URL from Expo:', url);
     return url;
   }
 
-  // 4. Fallback for web or unknown
+  // 4. Platform-specific fallbacks
+  if (Platform.OS === 'android') {
+    // Android emulator uses 10.0.2.2 to reach host machine's localhost
+    const url = `http://10.0.2.2:${port}`;
+    console.log('🌐 Using Android emulator localhost:', url);
+    return url;
+  }
+
+  // 5. Fallback for iOS simulator, web, or unknown
   const fallback = `http://localhost:${port}`;
   console.log('🌐 Fallback API URL:', fallback);
   return fallback;
 };
 
-const BASE_URL = getBaseUrl();
+// Memoize the base URL so it doesn't recalculate on every import
+let _cachedBaseUrl: string | null = null;
+const getCachedBaseUrl = (): string => {
+  if (!_cachedBaseUrl) {
+    _cachedBaseUrl = getBaseUrl();
+  }
+  return _cachedBaseUrl;
+};
+
+export const API_BASE_URL = getCachedBaseUrl();
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   timeout: 30000, // 30 seconds timeout for image uploads
   headers: {
     'Content-Type': 'application/json',
@@ -79,7 +118,7 @@ apiClient.interceptors.response.use(
     if (error.response) {
       console.error(`❌ Response error: ${error.response.status}`, error.response.data);
     } else if (error.request) {
-      console.error(`❌ Network error: Cannot reach ${BASE_URL} - is the backend running?`);
+      console.error(`❌ Network error: Cannot reach ${API_BASE_URL} - is the backend running?`);
     } else {
       console.error('❌ Error:', error.message);
     }
@@ -88,6 +127,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-
-// Export base URL for direct use
-export const API_BASE_URL = getBaseUrl();

@@ -60,6 +60,7 @@ const en = {
   nitrogen: 'Nitrogen (N)',
   phosphorus: 'Phosphorus (P)',
   potassium: 'Potassium (K)',
+  magnesium: 'Magnesium (Mg)',
   deficiencyScore: 'Deficiency Score',
   confidence: 'Confidence',
   recommendation: 'Recommendation',
@@ -67,6 +68,26 @@ const en = {
   noActionNeeded: 'No action needed - healthy levels',
   analysisHeatmap: 'Analysis Heatmap',
   npkDeficiencyScores: 'NPK Deficiency Scores',
+  npkmgDeficiencyScores: 'Nutrient Deficiency Scores',
+  
+  // Heatmap & Analysis
+  showHeatmap: 'Show Heatmap',
+  hideHeatmap: 'Hide Heatmap',
+  analysisView: 'Analysis View',
+  originalImage: 'Original Image',
+  heatmapNotAvailable: 'Heatmap not available for this image',
+  problemAreas: 'Problem Areas',
+  severe: 'Severe',
+  moderate: 'Moderate',
+  mild: 'Mild',
+  
+  // Product Recommendations
+  recommendedProducts: 'Recommended Products',
+  buyNow: 'Buy Now',
+  viewOnAmazon: 'View on Amazon',
+  noProductsNeeded: 'Your crop is healthy! No fertilizers needed at this time.',
+  fertilizersForYou: 'Fertilizers for your crop',
+  basedOnAnalysis: 'Based on your analysis, we recommend these products:',
   
   // Fertilizer Recommendations
   rec_wheat_n: 'Apply 50-70 kg Urea per acre. Split into 2-3 doses during growth stages.',
@@ -99,6 +120,18 @@ const en = {
   rec_gourd_n: 'Apply 8-12 kg Urea per 1000 sq.m in 3-4 splits during vine growth.',
   rec_gourd_p: 'Apply 6-10 kg DAP per 1000 sq.m at sowing/transplanting.',
   rec_gourd_k: 'Apply 10-14 kg MOP per 1000 sq.m. Important for fruit development.',
+  
+  // Magnesium Recommendations
+  rec_general_mg: 'Apply 20-30 kg Magnesium Sulfate (Epsom Salt) per acre. Helps chlorophyll production.',
+  rec_wheat_mg: 'Apply 15-25 kg Magnesium Sulfate per acre during early growth stage.',
+  rec_rice_mg: 'Apply 20-30 kg Magnesium Sulfate per acre as foliar spray during tillering.',
+  rec_tomato_mg: 'Apply 5-10 kg Magnesium Sulfate per 1000 sq.m as foliar spray every 2 weeks.',
+  rec_maize_mg: 'Apply 20-30 kg Magnesium Sulfate per acre at knee-high stage.',
+  rec_banana_mg: 'Apply 50-100g Magnesium Sulfate per plant per year in 2-3 splits.',
+  rec_coffee_mg: 'Apply 15-20g Magnesium Sulfate per plant during active growth.',
+  rec_cucumber_mg: 'Apply 5-8 kg Magnesium Sulfate per 1000 sq.m as foliar spray.',
+  rec_eggplant_mg: 'Apply 5-10 kg Magnesium Sulfate per 1000 sq.m in 2-3 applications.',
+  rec_gourd_mg: 'Apply 5-8 kg Magnesium Sulfate per 1000 sq.m for better vine growth.',
   
   // Severity Levels
   healthy: 'Healthy',
@@ -199,6 +232,7 @@ const hi = {
   nitrogen: 'नाइट्रोजन (N)',
   phosphorus: 'फॉस्फोरस (P)',
   potassium: 'पोटेशियम (K)',
+  magnesium: 'मैग्नीशियम (Mg)',
   deficiencyScore: 'कमी स्कोर',
   confidence: 'विश्वास',
   recommendation: 'सिफारिश',
@@ -206,6 +240,26 @@ const hi = {
   noActionNeeded: 'कोई कार्रवाई आवश्यक नहीं - स्वस्थ स्तर',
   analysisHeatmap: 'विश्लेषण हीटमैप',
   npkDeficiencyScores: 'NPK कमी स्कोर',
+  npkmgDeficiencyScores: 'पोषक तत्व कमी स्कोर',
+  
+  // Heatmap & Analysis
+  showHeatmap: 'हीटमैप दिखाएं',
+  hideHeatmap: 'हीटमैप छुपाएं',
+  analysisView: 'विश्लेषण दृश्य',
+  originalImage: 'मूल छवि',
+  heatmapNotAvailable: 'इस छवि के लिए हीटमैप उपलब्ध नहीं है',
+  problemAreas: 'समस्या क्षेत्र',
+  severe: 'गंभीर',
+  moderate: 'मध्यम',
+  mild: 'हल्का',
+  
+  // Product Recommendations
+  recommendedProducts: 'अनुशंसित उत्पाद',
+  buyNow: 'अभी खरीदें',
+  viewOnAmazon: 'Amazon पर देखें',
+  noProductsNeeded: 'आपकी फसल स्वस्थ है! इस समय किसी उर्वरक की आवश्यकता नहीं।',
+  fertilizersForYou: 'आपकी फसल के लिए उर्वरक',
+  basedOnAnalysis: 'आपके विश्लेषण के आधार पर, हम इन उत्पादों की सिफारिश करते हैं:',
   
   // Fertilizer Recommendations
   rec_wheat_n: 'प्रति एकड़ 50-70 किलो यूरिया डालें। विकास चरणों में 2-3 खुराक में बांटें।',
@@ -238,6 +292,18 @@ const hi = {
   rec_gourd_n: 'बेल वृद्धि के दौरान प्रति 1000 वर्ग मीटर 8-12 किलो यूरिया 3-4 बार में डालें।',
   rec_gourd_p: 'बुवाई/रोपाई के समय प्रति 1000 वर्ग मीटर 6-10 किलो डीएपी डालें।',
   rec_gourd_k: 'प्रति 1000 वर्ग मीटर 10-14 किलो एमओपी डालें। फल विकास के लिए महत्वपूर्ण।',
+  
+  // Magnesium Recommendations
+  rec_general_mg: 'प्रति एकड़ 20-30 किलो मैग्नीशियम सल्फेट (एप्सम सॉल्ट) डालें। क्लोरोफिल उत्पादन में मदद करता है।',
+  rec_wheat_mg: 'प्रारंभिक विकास चरण में प्रति एकड़ 15-25 किलो मैग्नीशियम सल्फेट डालें।',
+  rec_rice_mg: 'टिलरिंग के दौरान प्रति एकड़ 20-30 किलो मैग्नीशियम सल्फेट फोलियर स्प्रे के रूप में डालें।',
+  rec_tomato_mg: 'हर 2 सप्ताह में प्रति 1000 वर्ग मीटर 5-10 किलो मैग्नीशियम सल्फेट फोलियर स्प्रे के रूप में डालें।',
+  rec_maize_mg: 'घुटने की ऊंचाई पर प्रति एकड़ 20-30 किलो मैग्नीशियम सल्फेट डालें।',
+  rec_banana_mg: 'प्रति पौधा प्रति वर्ष 50-100 ग्राम मैग्नीशियम सल्फेट 2-3 बार में डालें।',
+  rec_coffee_mg: 'सक्रिय विकास के दौरान प्रति पौधा 15-20 ग्राम मैग्नीशियम सल्फेट डालें।',
+  rec_cucumber_mg: 'प्रति 1000 वर्ग मीटर 5-8 किलो मैग्नीशियम सल्फेट फोलियर स्प्रे के रूप में डालें।',
+  rec_eggplant_mg: 'प्रति 1000 वर्ग मीटर 5-10 किलो मैग्नीशियम सल्फेट 2-3 बार में डालें।',
+  rec_gourd_mg: 'बेहतर बेल विकास के लिए प्रति 1000 वर्ग मीटर 5-8 किलो मैग्नीशियम सल्फेट डालें।',
   
   // Severity Levels
   healthy: 'स्वस्थ',
@@ -409,9 +475,9 @@ export const getCropName = (cropName: string): string => {
 /**
  * Get translated recommendation text
  * @param cropName - The crop name (e.g., 'Wheat', 'Rice')  
- * @param nutrient - The nutrient type ('n', 'p', or 'k')
+ * @param nutrient - The nutrient type ('n', 'p', 'k', or 'mg')
  */
-export const getRecommendation = (cropName: string, nutrient: 'n' | 'p' | 'k'): string => {
+export const getRecommendation = (cropName: string, nutrient: 'n' | 'p' | 'k' | 'mg'): string => {
   const cropKey = cropName.toLowerCase().replace(/\s+/g, '');
   // Try specific crop recommendation first
   let key = `rec_${cropKey}_${nutrient}`;
@@ -420,6 +486,12 @@ export const getRecommendation = (cropName: string, nutrient: 'n' | 'p' | 'k'): 
   // Fall back to gourd recommendations for gourd variants
   if (translated.startsWith('[missing') && cropKey.includes('gourd')) {
     key = `rec_gourd_${nutrient}`;
+    translated = i18n.t(key);
+  }
+  
+  // Fall back to general magnesium recommendation if specific not found
+  if (translated.startsWith('[missing') && nutrient === 'mg') {
+    key = 'rec_general_mg';
     translated = i18n.t(key);
   }
   

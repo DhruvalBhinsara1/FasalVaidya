@@ -19,7 +19,7 @@
     {
       "label": "📱 Frontend: Start Expo (Tunnel)",
       "type": "shell",
-      "command": "npx expo start --tunnel",
+      "command": "npx expo start --lan -c",
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       },
