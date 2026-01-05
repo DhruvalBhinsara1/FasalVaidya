@@ -1,0 +1,32 @@
+[
+  {
+    "key": "ctrl+shift+b",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🚀 FasalVaidya: Start All (Backend + Frontend)"
+  },
+  {
+    "key": "ctrl+shift+f5",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🌱 Backend: Start Flask Server"
+  },
+  {
+    "key": "ctrl+shift+f6",
+    "command": "workbench.action.tasks.runTask",
+    "args": "📱 Frontend: Start Expo (Tunnel)"
+  },
+  {
+    "key": "ctrl+shift+t",
+    "command": "workbench.action.tasks.runTask",
+    "args": "🧪 Tests: Run API Tests"
+  },
+  {
+    "key": "f5",
+    "command": "workbench.action.debug.start",
+    "when": "!inDebugMode"
+  },
+  {
+    "key": "shift+f5",
+    "command": "workbench.action.debug.stop",
+    "when": "inDebugMode"
+  }
+]
