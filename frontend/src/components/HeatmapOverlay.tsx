@@ -38,8 +38,21 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   isHindi = false,
   onFullScreen,
 }) => {
-  const [showHeatmap, setShowHeatmap] = useState(true);
+  // State: Show heatmap by default if available, otherwise show original
+  const hasHeatmap = !!heatmapImage && heatmapImage.length > 0;
+  const hasOriginal = !!originalImage && originalImage.length > 0;
+  const [showHeatmap, setShowHeatmap] = useState(hasHeatmap);
   const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+
+  // Update showHeatmap when heatmap availability changes
+  React.useEffect(() => {
+    if (hasHeatmap) {
+      setShowHeatmap(true);
+    } else if (hasOriginal) {
+      setShowHeatmap(false);
+    }
+  }, [hasHeatmap, hasOriginal]);
 
   const getSeverityColor = () => {
     switch (severity) {
@@ -80,9 +93,6 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
     return labels[nutrient] || nutrient;
   };
 
-  const hasHeatmap = !!heatmapImage && heatmapImage.length > 0;
-  const hasOriginal = !!originalImage && originalImage.length > 0;
-  
   // Display logic: 
   // - If showHeatmap is true and heatmap exists, show heatmap
   // - Otherwise show original image (or heatmap as fallback if no original)
@@ -95,6 +105,15 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   
   // Can toggle only if we have BOTH images
   const canToggle = hasHeatmap && hasOriginal;
+  
+  // Handle toggle
+  const handleToggle = () => {
+    if (canToggle) {
+      setImageLoading(true);
+      setImageError(false);
+      setShowHeatmap(!showHeatmap);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -129,8 +148,22 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
               resizeMode="cover"
               onLoadStart={() => setImageLoading(true)}
               onLoadEnd={() => setImageLoading(false)}
-              onError={() => setImageLoading(false)}
+              onError={(error) => {
+                console.error('Image load error:', error.nativeEvent.error);
+                setImageLoading(false);
+                setImageError(true);
+              }}
             />
+          )}
+          
+          {/* Error message if image fails to load */}
+          {imageError && hasValidImage && (
+            <View style={styles.errorPlaceholder}>
+              <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+              <Text style={styles.errorText}>
+                {isHindi ? 'छवि लोड करने में विफल' : 'Failed to load image'}
+              </Text>
+            </View>
           )}
           
           {/* Severity Badge - only show when image is visible */}
@@ -208,7 +241,7 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
               styles.toggleButton,
               showHeatmap && styles.toggleButtonActive,
             ]}
-            onPress={() => setShowHeatmap(!showHeatmap)}
+            onPress={handleToggle}
             activeOpacity={0.7}
           >
             <Ionicons
@@ -224,8 +257,8 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
             >
               {showHeatmap
                 ? isHindi
-                  ? 'हीटमैप छुपाएं'
-                  : 'Hide Heatmap'
+                  ? 'मूल छवि दिखाएं'
+                  : 'Show Original'
                 : isHindi
                 ? 'हीटमैप दिखाएं'
                 : 'Show Heatmap'}
@@ -302,6 +335,19 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  errorPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    zIndex: 2,
+  },
+  errorText: {
+    marginTop: spacing.sm,
+    fontSize: 14,
+    color: colors.error,
+    textAlign: 'center',
   },
   severityBadge: {
     position: 'absolute',

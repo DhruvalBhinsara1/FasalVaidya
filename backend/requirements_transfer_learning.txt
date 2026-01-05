@@ -1,0 +1,26 @@
+# FasalVaidya Transfer Learning Requirements
+# Install with: pip install -r requirements_transfer_learning.txt
+
+# Core ML Framework
+tensorflow>=2.13.0,<3.0.0
+keras>=2.13.0
+
+# Data Processing
+numpy>=1.23.0
+pillow>=9.5.0
+scikit-learn>=1.3.0
+
+# Progress Bars & Visualization
+tqdm>=4.65.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Dataset Download
+kaggle>=1.5.16
+
+# Utilities
+requests>=2.31.0
+
+# Optional: For model conversion/export
+# tensorflowjs>=4.10.0
+# tf2onnx>=1.15.0

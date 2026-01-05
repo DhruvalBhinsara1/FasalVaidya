@@ -19,7 +19,7 @@
     {
       "label": "📱 Frontend: Start Expo (Tunnel)",
       "type": "shell",
-      "command": "npx expo start --lan -c",
+      "command": "npx expo start --lan",
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       },
@@ -213,6 +213,58 @@
       "label": "🧠 ML: Test Inference",
       "type": "shell",
       "command": ".venv311\\Scripts\\Activate.ps1; python -c \"from ml.inference import NPKPredictor; p = NPKPredictor(); print('✅ Model loaded!' if p.model else '⚠️ Using mock mode'); print(p.predict_npk('test.jpg'))\"",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌿 Transfer Learning: Prepare PlantVillage Dataset",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install kaggle pillow; python ml/prepare_plantvillage_data.py --all",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌿 Transfer Learning: Stage 1 - PlantVillage Training",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn pillow; python ml/train_npk_model_transfer.py --stage plantvillage --plantvillage-epochs 30",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌿 Transfer Learning: Stage 2 - NPK Fine-tuning",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; python ml/train_npk_model_transfer.py --stage npk --npk-epochs 50",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "🌿 Transfer Learning: Full Pipeline (Both Stages)",
+      "type": "shell",
+      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn pillow; python ml/train_npk_model_transfer.py --stage both",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },

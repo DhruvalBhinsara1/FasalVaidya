@@ -640,7 +640,7 @@ def create_scan():
     try:
         from ml.inference import predict_npk, generate_gradcam_heatmap
         prediction = predict_npk(str(filepath), crop_id=ml_crop_id)
-        heatmap = generate_gradcam_heatmap(str(filepath))
+        heatmap = generate_gradcam_heatmap(str(filepath), crop_id=ml_crop_id)
 
         logger.info(
             "scan_inference_ok scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s overall=%s",

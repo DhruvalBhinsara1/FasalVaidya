@@ -536,24 +536,47 @@ def determine_detected_class(n_score, p_score, k_score, mg_score=0.0):
         return 'healthy'
 
 
-def generate_gradcam_heatmap(image_input, target_class=None):
+def generate_gradcam_heatmap(image_input, target_class=None, crop_id=None):
     """
     Generate Grad-CAM heatmap for visual explanation.
     
     Args:
         image_input: Image to analyze
         target_class: Class index to explain (0=N, 1=P, 2=K, 3=Mg, None=highest)
+        crop_id: Optional crop identifier for crop-specific model
     
     Returns:
         Base64 encoded heatmap overlay image
     """
-    model = get_model()
+    model = None
+    model_path_used = None
+    outputs = ['N', 'P', 'K', 'Mg']
+    backbone = 'efficientnetb0'
+    has_builtin_preprocessing = False
+    
+    # Try crop-specific model first
+    if crop_id:
+        model, model_path_used, outputs, backbone, has_builtin_preprocessing = get_crop_model(crop_id)
+    
+    # Fallback to default model
+    if model is None:
+        model = get_model()
+        model_path_used = _default_model_path
     
     if model is None:
+        logger.warning("gradcam_failed reason=no_model_available")
         return None
     
-    # Preprocess image
-    img_array, original_img = preprocess_image(image_input)
+    if cv2 is None:
+        logger.warning("gradcam_failed reason=opencv_not_available")
+        return None
+    
+    # Preprocess image with correct backbone preprocessing
+    img_array, original_img = preprocess_image(
+        image_input,
+        backbone=backbone,
+        has_builtin_preprocessing=has_builtin_preprocessing
+    )
     
     # Get predictions to determine target class
     predictions = model.predict(img_array, verbose=0)[0]
@@ -569,12 +592,8 @@ def generate_gradcam_heatmap(image_input, target_class=None):
             break
     
     if last_conv_layer is None:
-        # Fallback: return original image with mild overlay
-        return create_simple_overlay(original_img, predictions)
-
-    if cv2 is None:
-        # Grad-CAM requires OpenCV for resizing/colormap. Fall back to a simple overlay.
-        return create_simple_overlay(original_img, predictions)
+        logger.warning("gradcam_failed reason=no_conv_layer_found")
+        return None
     
     try:
         # Create gradient model
@@ -598,33 +617,40 @@ def generate_gradcam_heatmap(image_input, target_class=None):
         heatmap = conv_output @ pooled_grads[..., tf.newaxis]
         heatmap = tf.squeeze(heatmap)
         
-        # Normalize heatmap
-        heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
+        # Normalize heatmap to [0, 1]
+        heatmap = tf.maximum(heatmap, 0)
+        if tf.math.reduce_max(heatmap) > 0:
+            heatmap = heatmap / tf.math.reduce_max(heatmap)
         heatmap = heatmap.numpy()
         
-        # Resize heatmap to original image size
-        heatmap = cv2.resize(heatmap, (original_img.width, original_img.height))
+        # Resize heatmap to original image size using high-quality interpolation
+        heatmap_resized = cv2.resize(heatmap, (original_img.width, original_img.height), interpolation=cv2.INTER_CUBIC)
         
-        # Convert to colormap
-        heatmap = np.uint8(255 * heatmap)
-        heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        # Apply Gaussian blur for smoother visualization
+        heatmap_resized = cv2.GaussianBlur(heatmap_resized, (0, 0), sigmaX=10, sigmaY=10)
+        
+        # Convert to colormap (JET colormap: blue=low, red=high activation)
+        heatmap_uint8 = np.uint8(255 * heatmap_resized)
+        heatmap_colored = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
         heatmap_colored = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
         
-        # Overlay on original image
+        # Overlay on original image with better blending
+        # Use 0.5/0.5 for balanced visibility of both original and heatmap
         original_array = np.array(original_img)
-        overlay = cv2.addWeighted(original_array, 0.6, heatmap_colored, 0.4, 0)
+        overlay = cv2.addWeighted(original_array, 0.5, heatmap_colored, 0.5, 0)
         
         # Convert to base64
         overlay_img = Image.fromarray(overlay)
         buffered = BytesIO()
-        overlay_img.save(buffered, format="JPEG", quality=85)
+        overlay_img.save(buffered, format="JPEG", quality=90)
         img_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
         
+        logger.info("gradcam_generated target_class=%d conv_layer=%s", target_class, last_conv_layer)
         return f"data:image/jpeg;base64,{img_base64}"
         
     except Exception as e:
-        print(f"⚠️  Grad-CAM generation failed: {e}")
-        return create_simple_overlay(original_img, predictions)
+        logger.error("gradcam_error error=%s", str(e), exc_info=True)
+        return None
 
 
 def create_simple_overlay(original_img, predictions):
