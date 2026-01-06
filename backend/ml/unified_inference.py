@@ -105,7 +105,21 @@ def load_unified_model():
         with open(UNIFIED_LABELS_PATH) as f:
             _unified_labels = [line.strip() for line in f.readlines()]
     
-    # Try rebuilt Keras model first (this is the clean version we created)
+    # Try SavedModel FIRST (most reliable with trained weights)
+    if UNIFIED_SAVEDMODEL_PATH.exists() and HAS_TF:
+        try:
+            import tensorflow as tf
+            tf.keras.backend.clear_session()
+            tf.keras.mixed_precision.set_global_policy('float32')
+            
+            # Load SavedModel using TensorFlow (not Keras load_model)
+            _unified_model = tf.saved_model.load(str(UNIFIED_SAVEDMODEL_PATH))
+            logger.info("unified_savedmodel_loaded path=%s", UNIFIED_SAVEDMODEL_PATH)
+            return _unified_model, 'savedmodel'
+        except Exception as e:
+            logger.error("unified_savedmodel_load_error error=%s", str(e))
+    
+    # Fallback to rebuilt Keras model
     if UNIFIED_KERAS_PATH.exists():
         try:
             import tensorflow as tf
@@ -127,16 +141,6 @@ def load_unified_model():
         except Exception as e:
             logger.error("unified_keras_model_load_error error=%s", str(e))
             _unified_model = None
-    
-    # Fallback to SavedModel format
-    if UNIFIED_SAVEDMODEL_PATH.exists() and HAS_TF:
-        try:
-            import tensorflow as tf
-            _unified_model = tf.saved_model.load(str(UNIFIED_SAVEDMODEL_PATH))
-            logger.info("unified_savedmodel_loaded path=%s", UNIFIED_SAVEDMODEL_PATH)
-            return _unified_model, 'savedmodel'
-        except Exception as e:
-            logger.error("unified_savedmodel_load_error error=%s", str(e))
     
     logger.warning("unified_model_not_found keras=%s savedmodel=%s - will use mock predictions", 
                    UNIFIED_KERAS_PATH.exists(), UNIFIED_SAVEDMODEL_PATH.exists())
@@ -235,10 +239,20 @@ def predict_unified(image_input, crop_id=None):
         # Keras model inference
         predictions = model_or_interpreter.predict(img_array, verbose=0)[0]
     elif model_type == 'savedmodel':
-        # SavedModel inference
+        # SavedModel inference using TF signatures
         import tensorflow as tf
-        result = model_or_interpreter.signatures['serve'](tf.constant(img_array))
-        # Get the output tensor (might be named 'output_0' or similar)
+        infer = model_or_interpreter.signatures['serving_default']
+        # Get input tensor name
+        input_name = list(infer.structured_input_signature[1].keys())[0]
+        
+        # Check if model expects float16 and convert if needed
+        expected_dtype = infer.structured_input_signature[1][input_name].dtype
+        input_tensor = tf.constant(img_array)
+        if expected_dtype == tf.float16:
+            input_tensor = tf.cast(input_tensor, tf.float16)
+        
+        result = infer(**{input_name: input_tensor})
+        # Get output tensor
         output_key = list(result.keys())[0]
         predictions = result[output_key].numpy()[0]
     else:
