@@ -1,0 +1,86 @@
+{
+  "model_type": "unified_multi_crop",
+  "model_version": "2.0",
+  "training_date": "2026-01-06T16:28:50.715662",
+  "architecture": "MobileNetV2",
+  "supported_crops": [
+    "rice",
+    "wheat",
+    "tomato",
+    "maize"
+  ],
+  "num_crops": 4,
+  "input_shape": [
+    224,
+    224,
+    3
+  ],
+  "num_classes": 18,
+  "class_names": [
+    "maize_ALL Present",
+    "maize_ALLAB",
+    "maize_KAB",
+    "maize_NAB",
+    "maize_PAB",
+    "maize_ZNAB",
+    "rice_Nitrogen(N)",
+    "rice_Phosphorus(P)",
+    "rice_Potassium(K)",
+    "tomato_Tomato - Healthy",
+    "tomato_Tomato - Jassid and Mite",
+    "tomato_Tomato - Leaf Miner",
+    "tomato_Tomato - Mite",
+    "tomato_Tomato - Nitrogen Deficiency",
+    "tomato_Tomato - Nitrogen and Potassium Deficiency",
+    "tomato_Tomato - Potassium Deficiency",
+    "wheat_control",
+    "wheat_deficiency"
+  ],
+  "crop_class_mapping": {
+    "rice": [
+      "rice_Nitrogen(N)",
+      "rice_Phosphorus(P)",
+      "rice_Potassium(K)"
+    ],
+    "wheat": [
+      "wheat_control",
+      "wheat_deficiency"
+    ],
+    "tomato": [
+      "tomato_Tomato - Healthy",
+      "tomato_Tomato - Jassid and Mite",
+      "tomato_Tomato - Leaf Miner",
+      "tomato_Tomato - Mite",
+      "tomato_Tomato - Nitrogen Deficiency",
+      "tomato_Tomato - Nitrogen and Potassium Deficiency",
+      "tomato_Tomato - Potassium Deficiency"
+    ],
+    "maize": [
+      "maize_ALL Present",
+      "maize_ALLAB",
+      "maize_KAB",
+      "maize_NAB",
+      "maize_PAB",
+      "maize_ZNAB"
+    ]
+  },
+  "metrics": {
+    "accuracy": 0.9644110202789307,
+    "top3_accuracy": 0.9964912533760071
+  },
+  "preprocessing": {
+    "method": "MobileNetV2",
+    "normalization": "[-1, 1]"
+  },
+  "training_config": {
+    "batch_size": 16,
+    "plantvillage_epochs": 5,
+    "unified_epochs": 10,
+    "dropout_rate": 0.25,
+    "optimizations": [
+      "mixed_precision_fp16",
+      "jit_compile",
+      "autotune_prefetch"
+    ]
+  }
+}

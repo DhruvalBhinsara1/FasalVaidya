@@ -5,18 +5,18 @@
  * Includes toggle functionality to show/hide heatmap
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
-  View,
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  Dimensions,
-  ActivityIndicator,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, shadows } from '../theme';
+import { borderRadius, colors, shadows, spacing } from '../theme';
 
 interface HeatmapOverlayProps {
   originalImage: string;
@@ -198,35 +198,34 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
           )}
         </TouchableOpacity>
 
-        {/* Heatmap Legend (when heatmap is shown) */}
+        {/* Heatmap Legend (when heatmap is shown) - Updated for blue-to-red scale */}
         {showHeatmap && hasHeatmap && (
           <View style={styles.legend}>
             <Text style={styles.legendTitle}>
-              {isHindi ? 'कमी क्षेत्र' : 'Deficiency Areas'}
+              {isHindi ? 'पोषक तत्व कमी हीटमैप' : 'Nutrient Deficiency Heatmap'}
             </Text>
-            <View style={styles.legendItems}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#FF0000' }]} />
-                <Text style={styles.legendText}>
-                  {isHindi ? 'गंभीर' : 'Severe'}
-                </Text>
+            <View style={styles.legendGradient}>
+              {/* Gradient bar from blue to red */}
+              <View style={styles.gradientBar}>
+                <View style={[styles.gradientSegment, { backgroundColor: '#1E88E5' }]} />
+                <View style={[styles.gradientSegment, { backgroundColor: '#00BCD4' }]} />
+                <View style={[styles.gradientSegment, { backgroundColor: '#8BC34A' }]} />
+                <View style={[styles.gradientSegment, { backgroundColor: '#FFEB3B' }]} />
+                <View style={[styles.gradientSegment, { backgroundColor: '#FF9800' }]} />
+                <View style={[styles.gradientSegment, { backgroundColor: '#F44336' }]} />
               </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#FFFF00' }]} />
-                <Text style={styles.legendText}>
-                  {isHindi ? 'मध्यम' : 'Moderate'}
-                </Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#00FF00' }]} />
-                <Text style={styles.legendText}>
+              <View style={styles.gradientLabels}>
+                <Text style={styles.gradientLabel}>
                   {isHindi ? 'स्वस्थ' : 'Healthy'}
+                </Text>
+                <Text style={styles.gradientLabel}>
+                  {isHindi ? 'गंभीर कमी' : 'Deficient'}
                 </Text>
               </View>
             </View>
             <Text style={styles.legendHint}>
               {isHindi 
-                ? 'लाल क्षेत्र = पोषक तत्वों की कमी' 
+                ? 'लाल/पीला क्षेत्र = पोषक तत्वों की कमी' 
                 : 'Red/Yellow areas indicate nutrient deficiency'}
             </Text>
           </View>
@@ -426,6 +425,29 @@ const styles = StyleSheet.create({
     fontSize: 9,
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  // New gradient legend styles
+  legendGradient: {
+    marginVertical: 4,
+  },
+  gradientBar: {
+    flexDirection: 'row',
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  gradientSegment: {
+    flex: 1,
+  },
+  gradientLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  gradientLabel: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 9,
+    fontWeight: '500',
   },
   toggleContainer: {
     flexDirection: 'row',

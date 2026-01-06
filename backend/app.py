@@ -636,23 +636,45 @@ def create_scan():
         fp.get('sha256_1mb'),
     )
     
-    # Run ML inference
+    # Run ML inference using unified model
     try:
-        from ml.inference import predict_npk, generate_gradcam_heatmap
-        prediction = predict_npk(str(filepath), crop_id=ml_crop_id)
-        heatmap = generate_gradcam_heatmap(str(filepath), crop_id=ml_crop_id)
-
-        logger.info(
-            "scan_inference_ok scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s overall=%s",
-            scan_uuid,
-            ml_crop_id,
-            prediction.get('inference_method'),
-            float(prediction.get('n_score', 0.0)),
-            float(prediction.get('p_score', 0.0)),
-            float(prediction.get('k_score', 0.0)),
-            prediction.get('detected_class'),
-            prediction.get('overall_status'),
-        )
+        # Try unified model first (supports rice, wheat, tomato, maize)
+        from ml.unified_inference import predict_npk_unified, get_unified_metadata
+        
+        unified_meta = get_unified_metadata()
+        supported_crops = unified_meta.get('supported_crops', [])
+        
+        if ml_crop_id and ml_crop_id.lower() in supported_crops:
+            # Use unified model for supported crops
+            prediction = predict_npk_unified(str(filepath), crop_id=ml_crop_id, generate_heatmap=True)
+            heatmap = prediction.pop('heatmap', None)
+            logger.info(
+                "scan_inference_unified scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s overall=%s",
+                scan_uuid,
+                ml_crop_id,
+                prediction.get('inference_method'),
+                float(prediction.get('n_score', 0.0)),
+                float(prediction.get('p_score', 0.0)),
+                float(prediction.get('k_score', 0.0)),
+                prediction.get('detected_class'),
+                prediction.get('overall_status'),
+            )
+        else:
+            # Fallback to old crop-specific model for other crops
+            from ml.inference import predict_npk, generate_gradcam_heatmap
+            prediction = predict_npk(str(filepath), crop_id=ml_crop_id)
+            heatmap = generate_gradcam_heatmap(str(filepath), crop_id=ml_crop_id)
+            logger.info(
+                "scan_inference_legacy scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s overall=%s",
+                scan_uuid,
+                ml_crop_id,
+                prediction.get('inference_method'),
+                float(prediction.get('n_score', 0.0)),
+                float(prediction.get('p_score', 0.0)),
+                float(prediction.get('k_score', 0.0)),
+                prediction.get('detected_class'),
+                prediction.get('overall_status'),
+            )
     
     except Exception as e:
         logger.exception("scan_inference_error scan_uuid=%s filename=%s", scan_uuid, filename)
