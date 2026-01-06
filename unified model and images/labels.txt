@@ -1,0 +1,18 @@
+maize_ALL Present
+maize_ALLAB
+maize_KAB
+maize_NAB
+maize_PAB
+maize_ZNAB
+rice_Nitrogen(N)
+rice_Phosphorus(P)
+rice_Potassium(K)
+tomato_Tomato - Healthy
+tomato_Tomato - Jassid and Mite
+tomato_Tomato - Leaf Miner
+tomato_Tomato - Mite
+tomato_Tomato - Nitrogen Deficiency
+tomato_Tomato - Nitrogen and Potassium Deficiency
+tomato_Tomato - Potassium Deficiency
+wheat_control
+wheat_deficiency

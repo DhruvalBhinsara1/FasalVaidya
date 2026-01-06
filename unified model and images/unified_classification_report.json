@@ -1,0 +1,105 @@
+{
+  "maize_ALL Present": {
+    "precision": 1.0,
+    "recall": 0.8928571428571429,
+    "f1-score": 0.9433962264150944,
+    "support": 28.0
+  },
+  "maize_ALLAB": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 39.0
+  },
+  "maize_KAB": {
+    "precision": 0.9428571428571428,
+    "recall": 1.0,
+    "f1-score": 0.9705882352941176,
+    "support": 66.0
+  },
+  "maize_NAB": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 23.0
+  },
+  "maize_PAB": {
+    "precision": 0.9518072289156626,
+    "recall": 1.0,
+    "f1-score": 0.9753086419753086,
+    "support": 79.0
+  },
+  "maize_ZNAB": {
+    "precision": 1.0,
+    "recall": 0.8717948717948718,
+    "f1-score": 0.9315068493150684,
+    "support": 39.0
+  },
+  "rice_Nitrogen(N)": {
+    "precision": 0.9230769230769231,
+    "recall": 1.0,
+    "f1-score": 0.96,
+    "support": 12.0
+  },
+  "rice_Phosphorus(P)": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 4.0
+  },
+  "rice_Potassium(K)": {
+    "precision": 1.0,
+    "recall": 0.8571428571428571,
+    "f1-score": 0.9230769230769231,
+    "support": 7.0
+  },
+  "tomato_Tomato - Healthy": {
+    "precision": 0.5,
+    "recall": 0.5,
+    "f1-score": 0.5,
+    "support": 2.0
+  },
+  "tomato_Tomato - Leaf Miner": {
+    "precision": 0.8,
+    "recall": 1.0,
+    "f1-score": 0.8888888888888888,
+    "support": 4.0
+  },
+  "tomato_Tomato - Mite": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1-score": 1.0,
+    "support": 1.0
+  },
+  "tomato_Tomato - Nitrogen Deficiency": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 1.0
+  },
+  "wheat_control": {
+    "precision": 0.625,
+    "recall": 1.0,
+    "f1-score": 0.7692307692307693,
+    "support": 5.0
+  },
+  "wheat_deficiency": {
+    "precision": 1.0,
+    "recall": 0.7,
+    "f1-score": 0.8235294117647058,
+    "support": 10.0
+  },
+  "accuracy": 0.95625,
+  "macro avg": {
+    "precision": 0.8495160863233153,
+    "recall": 0.8547863247863248,
+    "f1-score": 0.8457017297307252,
+    "support": 320.0
+  },
+  "weighted avg": {
+    "precision": 0.9588227049682244,
+    "recall": 0.95625,
+    "f1-score": 0.9545956552789574,
+    "support": 320.0
+  }
+}
