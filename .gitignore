@@ -23,6 +23,8 @@ CoLeaf Dataset/
 ml/models/logs/
 Propossed_Data/
 Leaf Nutrient Data Sets/
+PlantVillage/
+unified_savedmodel_output/
 
 # Uploads and temp files
 backend/uploads/
@@ -50,6 +52,10 @@ Thumbs.db
 
 # IDE
 .idea/
+
+# Kaggle.json
+
+Kaggle.json
 
 # Environment files
 .env
