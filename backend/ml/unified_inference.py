@@ -274,21 +274,33 @@ def preprocess_image(image_input, target_size=(224, 224)):
     """
     Preprocess image for MobileNetV2 inference.
     MobileNetV2 expects input normalized to [-1, 1].
+    
+    Handles EXIF orientation from mobile photos.
     """
     # Handle different input types
     if isinstance(image_input, str):
-        img = Image.open(image_input).convert('RGB')
+        img = Image.open(image_input)
     elif isinstance(image_input, np.ndarray):
         if image_input.dtype == np.uint8:
             img = Image.fromarray(image_input)
         else:
             img = Image.fromarray((image_input * 255).astype(np.uint8))
     elif hasattr(image_input, 'read'):
-        img = Image.open(image_input).convert('RGB')
+        img = Image.open(image_input)
     elif isinstance(image_input, Image.Image):
-        img = image_input.convert('RGB')
+        img = image_input
     else:
         raise ValueError(f"Unsupported image input type: {type(image_input)}")
+    
+    # Fix EXIF orientation (critical for mobile photos!)
+    try:
+        from PIL import ImageOps
+        img = ImageOps.exif_transpose(img)
+    except Exception as e:
+        logger.warning("exif_transpose_failed error=%s", str(e))
+    
+    # Convert to RGB (after orientation fix)
+    img = img.convert('RGB')
     
     # Resize
     img = img.resize(target_size, Image.LANCZOS)
@@ -297,6 +309,7 @@ def preprocess_image(image_input, target_size=(224, 224)):
     img_array = np.array(img, dtype=np.float32)
     
     # MobileNetV2 preprocessing: normalize to [-1, 1]
+    # This matches tf.keras.applications.mobilenet_v2.preprocess_input
     img_array = (img_array / 127.5) - 1.0
     
     # Add batch dimension
@@ -305,11 +318,15 @@ def preprocess_image(image_input, target_size=(224, 224)):
     return img_array, img
 
 
-def get_severity(score):
-    """Determine severity level based on deficiency score."""
-    if score >= SEVERITY_THRESHOLDS['critical']:
+def get_severity(health_score):
+    """Determine severity level based on health score (0-1, higher is healthier)."""
+    # Health thresholds:
+    # < 30% health (0.3) = critical deficiency
+    # < 60% health (0.6) = needs attention
+    # >= 60% health = healthy
+    if health_score <= 0.30:
         return 'critical'
-    elif score >= SEVERITY_THRESHOLDS['attention']:
+    elif health_score <= 0.60:
         return 'attention'
     else:
         return 'healthy'
@@ -375,23 +392,66 @@ def predict_unified(image_input, crop_id=None):
     if crop_id:
         crop_prefix = f"{crop_id.lower()}_"
         crop_indices = [i for i, label in enumerate(labels) if label.startswith(crop_prefix)]
+        
+        # Get the actual top prediction (what model really thinks)
+        actual_top_class, actual_top_confidence = top_classes[0]
+        actual_crop = actual_top_class.split('_')[0] if '_' in actual_top_class else ''
+        
         if crop_indices:
             crop_predictions = [(labels[i], float(predictions[i])) for i in crop_indices]
             crop_predictions.sort(key=lambda x: x[1], reverse=True)
-            top_class, top_confidence = crop_predictions[0]
+            filtered_top_class, filtered_top_confidence = crop_predictions[0]
+            
+            # CRITICAL: Check if model is confident about a DIFFERENT crop
+            # If top prediction is different crop AND has >20% confidence AND 2x more confident
+            if (actual_crop != crop_id.lower() and 
+                actual_top_confidence > 0.20 and 
+                actual_top_confidence > filtered_top_confidence * 2):
+                # Model is MUCH more confident it's a different crop!
+                logger.warning("crop_mismatch_detected expected=%s actual=%s (%.1f%%) vs filtered=%s (%.1f%%) - using actual",
+                             crop_id, actual_top_class, actual_top_confidence * 100, 
+                             filtered_top_class, filtered_top_confidence * 100)
+                top_class = actual_top_class
+                top_confidence = actual_top_confidence
+            elif filtered_top_confidence < 0.15:
+                # Very low confidence (<15%) - unreliable scan
+                logger.warning("unreliable_scan crop=%s filtered_confidence=%.1f%% actual_top=%s (%.1f%%)",
+                             crop_id, filtered_top_confidence * 100, actual_top_class, actual_top_confidence * 100)
+                # Use the actual top prediction instead of low-confidence filtered one
+                top_class = actual_top_class
+                top_confidence = actual_top_confidence
+            else:
+                # Use filtered prediction
+                top_class = filtered_top_class
+                top_confidence = filtered_top_confidence
         else:
             top_class, top_confidence = top_classes[0]
     else:
         top_class, top_confidence = top_classes[0]
     
-    # Map class to NPK scores
-    npk_scores = CLASS_TO_NPK.get(top_class, {'N': 0.3, 'P': 0.3, 'K': 0.3, 'Mg': 0.0})
+    # Map class to NPK scores (these are DEFICIENCY indicators from CLASS_TO_NPK)
+    npk_deficiency = CLASS_TO_NPK.get(top_class, {'N': 0.3, 'P': 0.3, 'K': 0.3, 'Mg': 0.0})
     
-    # Adjust scores based on confidence
-    n_score = npk_scores['N'] * top_confidence
-    p_score = npk_scores['P'] * top_confidence
-    k_score = npk_scores['K'] * top_confidence
-    mg_score = npk_scores['Mg'] * top_confidence
+    # FIXED: Use deficiency values directly, NOT scaled by confidence
+    # The class already tells us the deficiency type - confidence tells us how sure we are
+    # If we detect rice_nitrogen, it's N deficient - doesn't matter if 24% or 90% confident
+    n_deficiency = npk_deficiency['N']
+    p_deficiency = npk_deficiency['P']
+    k_deficiency = npk_deficiency['K']
+    mg_deficiency = npk_deficiency['Mg']
+    
+    # Convert to HEALTH scores (0-1 range, higher = healthier)
+    # Health = 1 - Deficiency
+    n_score = 1.0 - n_deficiency
+    p_score = 1.0 - p_deficiency
+    k_score = 1.0 - k_deficiency
+    mg_score = 1.0 - mg_deficiency
+    
+    # Log the calculation for debugging
+    logger.info("npk_calculation detected=%s conf=%.1f%% deficiency=(N=%.2f,P=%.2f,K=%.2f) health=(N=%.1f%%,P=%.1f%%,K=%.1f%%)",
+               top_class, top_confidence * 100,
+               n_deficiency, p_deficiency, k_deficiency,
+               n_score * 100, p_score * 100, k_score * 100)
     
     # Calculate confidence (based on prediction certainty)
     base_conf = min(0.98, top_confidence + 0.1)
@@ -441,12 +501,22 @@ def predict_unified(image_input, crop_id=None):
 
 
 def determine_overall_status(n_score, p_score, k_score, mg_score=0.0):
-    """Determine overall crop health status."""
-    max_score = max(n_score, p_score, k_score, mg_score)
+    """Determine overall crop health status based on health scores (higher is better)."""
+    # Find the LOWEST health score (most deficient nutrient)
+    # mg_score of 1.0 means no Mg issue, so we handle 0.0 mg_score specially
+    scores_to_check = [n_score, p_score, k_score]
+    if mg_score < 0.9:  # Only include Mg if it shows deficiency
+        scores_to_check.append(mg_score)
     
-    if max_score >= SEVERITY_THRESHOLDS['critical']:
+    min_health = min(scores_to_check)
+    
+    # Severity based on worst nutrient:
+    # < 30% health = critical
+    # < 60% health = attention  
+    # >= 60% health = healthy
+    if min_health <= 0.30:
         return 'critical'
-    elif max_score >= SEVERITY_THRESHOLDS['attention']:
+    elif min_health <= 0.60:
         return 'attention'
     else:
         return 'healthy'
@@ -605,11 +675,17 @@ def generate_deficiency_regions(img_array, leaf_mask, predictions_result):
     # Analyze leaf colors to find deficiency regions
     hsv = cv2.cvtColor(img_array, cv2.COLOR_RGB2HSV)
     
-    # Get deficiency scores
-    n_score = predictions_result.get('n_score', 0)
-    p_score = predictions_result.get('p_score', 0)
-    k_score = predictions_result.get('k_score', 0)
-    max_deficiency = max(n_score, p_score, k_score)
+    # Get HEALTH scores and convert to DEFICIENCY scores for heatmap
+    # Health scores are 0-1 where 1 = healthy, so deficiency = 1 - health
+    n_health = predictions_result.get('n_score', 1.0)
+    p_health = predictions_result.get('p_score', 1.0)
+    k_health = predictions_result.get('k_score', 1.0)
+    
+    # Convert to deficiency scores (0 = healthy, 1 = severe deficiency)
+    n_deficiency = 1.0 - n_health
+    p_deficiency = 1.0 - p_health
+    k_deficiency = 1.0 - k_health
+    max_deficiency = max(n_deficiency, p_deficiency, k_deficiency)
     
     # Create base heatmap from color analysis
     heatmap = np.zeros((height, width), dtype=np.float32)
@@ -618,19 +694,19 @@ def generate_deficiency_regions(img_array, leaf_mask, predictions_result):
         # Nitrogen deficiency: Yellow/pale green areas
         # Hue around 30-50 (yellow-green) with high value
         yellow_mask = cv2.inRange(hsv, np.array([20, 30, 100]), np.array([45, 255, 255]))
-        n_heatmap = yellow_mask.astype(np.float32) / 255.0 * n_score
+        n_heatmap = yellow_mask.astype(np.float32) / 255.0 * n_deficiency
         
         # Phosphorus deficiency: Purple/dark areas
         # Low saturation or purple hues
         dark_mask = cv2.inRange(hsv, np.array([0, 0, 0]), np.array([180, 255, 80]))
         purple_mask = cv2.inRange(hsv, np.array([120, 20, 20]), np.array([160, 255, 200]))
-        p_heatmap = (dark_mask.astype(np.float32) + purple_mask.astype(np.float32)) / 510.0 * p_score
+        p_heatmap = (dark_mask.astype(np.float32) + purple_mask.astype(np.float32)) / 510.0 * p_deficiency
         
         # Potassium deficiency: Brown edges, tip burn
         # Create edge-weighted mask
         edge_mask = create_edge_emphasis_mask(leaf_mask, width, height)
         brown_mask = cv2.inRange(hsv, np.array([8, 50, 30]), np.array([25, 255, 180]))
-        k_heatmap = (brown_mask.astype(np.float32) / 255.0 * 0.7 + edge_mask * 0.3) * k_score
+        k_heatmap = (brown_mask.astype(np.float32) / 255.0 * 0.7 + edge_mask * 0.3) * k_deficiency
         
         # Combine heatmaps
         heatmap = np.maximum(np.maximum(n_heatmap, p_heatmap), k_heatmap)
