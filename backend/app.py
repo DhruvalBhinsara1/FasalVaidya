@@ -165,7 +165,7 @@ CROPS = {
         'name_hi': 'खीरा',
         'season': 'Summer',
         'icon': '🥒',
-        'ml_crop_id': 'cucumber'
+        'ml_crop_id': None  # Skipped in v2 (insufficient data)
     },
     9: {
         'name': 'Eggplant',
@@ -193,7 +193,7 @@ CROPS = {
         'name_hi': 'तुरई',
         'season': 'Summer',
         'icon': '🥬',
-        'ml_crop_id': 'ridgegourd'
+        'ml_crop_id': None  # Skipped in v2 (borderline data)
     },
     13: {
         'name': 'Snake Gourd',

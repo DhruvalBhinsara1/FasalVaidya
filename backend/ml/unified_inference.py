@@ -1,9 +1,11 @@
 """
-FasalVaidya Unified Model Inference
-===================================
-Handles inference using the unified multi-crop TFLite model trained on 4 crops.
+FasalVaidya Unified Model Inference v2
+=======================================
+Handles inference using the unified multi-crop model trained on 9 crops (43 classes).
 Maps class predictions to NPK deficiency scores.
 Generates beautiful Grad-CAM style heatmaps showing deficiency areas.
+
+Supported Crops: Rice, Wheat, Maize, Banana, Coffee, Ashgourd, EggPlant, Snakegourd, Bittergourd
 """
 
 import os
@@ -29,8 +31,14 @@ except ImportError:
 
 # Paths
 MODELS_DIR = Path(__file__).parent / 'models'
-UNIFIED_KERAS_PATH = MODELS_DIR / 'unified_rebuilt.keras'  # Use rebuilt model
-UNIFIED_KERAS_ORIGINAL_PATH = MODELS_DIR / 'unified_nutrient_best.keras'  # Original (has loading issues)
+# V2 Model (9 crops, 43 classes)
+UNIFIED_KERAS_PATH_V2 = MODELS_DIR / 'unified_v2_nutrient_best.keras'
+UNIFIED_TFLITE_PATH_V2 = MODELS_DIR / 'fasalvaidya_unified_v2.tflite'
+UNIFIED_METADATA_PATH_V2 = MODELS_DIR / 'unified_v2_model_metadata.json'
+UNIFIED_LABELS_PATH_V2 = MODELS_DIR / 'unified_v2_labels.txt'
+# V1 Model (4 crops, 11 classes) - Legacy
+UNIFIED_KERAS_PATH = MODELS_DIR / 'unified_rebuilt.keras'
+UNIFIED_KERAS_ORIGINAL_PATH = MODELS_DIR / 'unified_nutrient_best.keras'
 UNIFIED_SAVEDMODEL_PATH = MODELS_DIR / 'unified_savedmodel'
 UNIFIED_TFLITE_PATH = MODELS_DIR / 'fasalvaidya_unified.tflite'
 UNIFIED_METADATA_PATH = MODELS_DIR / 'unified_model_metadata.json'
@@ -45,36 +53,82 @@ _unified_metadata = None
 _unified_labels = None
 
 # =============================================================================
-# CLASS TO NPK MAPPING
+# CLASS TO NPK MAPPING - UNIFIED MODEL V2 (9 crops, 43 classes)
 # =============================================================================
 # Maps each class to NPK+Mg deficiency scores (0.0 = healthy, 1.0 = severe deficiency)
 
 CLASS_TO_NPK = {
-    # MAIZE classes
-    'maize_ALL Present': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},  # All nutrients present = healthy
-    'maize_ALLAB': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},  # All absent baseline
-    'maize_NAB': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Nitrogen absent
-    'maize_PAB': {'N': 0.1, 'P': 0.85, 'K': 0.1, 'Mg': 0.0},  # Phosphorus absent
-    'maize_KAB': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},  # Potassium absent
-    'maize_ZNAB': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.7},  # Zinc absent (map to Mg)
+    # RICE classes (3)
+    'rice_nitrogen': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'rice_phosphorus': {'N': 0.1, 'P': 0.85, 'K': 0.1, 'Mg': 0.0},
+    'rice_potassium': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
     
-    # RICE classes
+    # WHEAT classes (2)
+    'wheat_control': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'wheat_deficiency': {'N': 0.75, 'P': 0.3, 'K': 0.3, 'Mg': 0.0},
+    
+    # MAIZE classes (6)
+    'maize_all_present': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'maize_allab': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'maize_nab': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'maize_pab': {'N': 0.1, 'P': 0.85, 'K': 0.1, 'Mg': 0.0},
+    'maize_kab': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'maize_znab': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.7},
+    
+    # BANANA classes (3)
+    'banana_healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'banana_magnesium': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.85},
+    'banana_potassium': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    
+    # COFFEE classes (4)
+    'coffee_healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'coffee_nitrogen_n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'coffee_phosphorus_p': {'N': 0.1, 'P': 0.85, 'K': 0.1, 'Mg': 0.0},
+    'coffee_potassium_k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    
+    # ASHGOURD classes (7)
+    'ashgourd_healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'ashgourd_n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'ashgourd_k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'ashgourd_n_k': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    'ashgourd_n_mg': {'N': 0.75, 'P': 0.1, 'K': 0.1, 'Mg': 0.75},
+    'ashgourd_k_mg': {'N': 0.1, 'P': 0.1, 'K': 0.75, 'Mg': 0.75},
+    'ashgourd_pm': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Powdery mildew
+    
+    # EGGPLANT classes (4)
+    'eggplant_healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'eggplant_n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'eggplant_k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'eggplant_n_k': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    
+    # SNAKEGOURD classes (5)
+    'snakegourd_healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'snakegourd_n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'snakegourd_k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'snakegourd_n_k': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    'snakegourd_ls': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Leaf spot
+    
+    # BITTERGOURD classes (9)
+    'bittergourd_healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'bittergourd_n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'bittergourd_k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'bittergourd_n_k': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    'bittergourd_n_mg': {'N': 0.75, 'P': 0.1, 'K': 0.1, 'Mg': 0.75},
+    'bittergourd_k_mg': {'N': 0.1, 'P': 0.1, 'K': 0.75, 'Mg': 0.75},
+    'bittergourd_dm': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Downy mildew
+    'bittergourd_ls': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Leaf spot
+    'bittergourd_jas': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Jassid attack
+    
+    # Legacy V1 classes (for backward compatibility)
     'rice_Nitrogen(N)': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
     'rice_Phosphorus(P)': {'N': 0.1, 'P': 0.85, 'K': 0.1, 'Mg': 0.0},
     'rice_Potassium(K)': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
-    
-    # TOMATO classes - DISABLED (low confidence, removed from app)
-    # 'tomato_Tomato - Healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
-    # 'tomato_Tomato - Nitrogen Deficiency': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
-    # 'tomato_Tomato - Potassium Deficiency': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
-    # 'tomato_Tomato - Nitrogen and Potassium Deficiency': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
-    # 'tomato_Tomato - Leaf Miner': {'N': 0.2, 'P': 0.2, 'K': 0.2, 'Mg': 0.0},
-    # 'tomato_Tomato - Mite': {'N': 0.2, 'P': 0.2, 'K': 0.2, 'Mg': 0.0},
-    # 'tomato_Tomato - Jassid and Mite': {'N': 0.3, 'P': 0.2, 'K': 0.3, 'Mg': 0.0},
-    
-    # WHEAT classes
-    'wheat_control': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},  # Healthy control
-    'wheat_deficiency': {'N': 0.75, 'P': 0.3, 'K': 0.3, 'Mg': 0.0},  # General deficiency (mainly N)
+    'maize_ALL Present': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'maize_ALLAB': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'maize_NAB': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'maize_PAB': {'N': 0.1, 'P': 0.85, 'K': 0.1, 'Mg': 0.0},
+    'maize_KAB': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'maize_ZNAB': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.7},
 }
 
 # Severity thresholds
@@ -86,7 +140,7 @@ SEVERITY_THRESHOLDS = {
 
 
 def load_unified_model():
-    """Load the unified Keras model (preferred) or TFLite model."""
+    """Load the unified Keras model v2 (9 crops, 43 classes) or fallback to v1."""
     global _unified_model, _unified_interpreter, _unified_metadata, _unified_labels
     
     # Return cached model if available
@@ -95,18 +149,30 @@ def load_unified_model():
     if _unified_interpreter is not None:
         return _unified_interpreter, 'tflite'
     
-    # Load metadata first
-    if UNIFIED_METADATA_PATH.exists():
+    # Load metadata first (try v2, fallback to v1)
+    if UNIFIED_METADATA_PATH_V2.exists():
+        with open(UNIFIED_METADATA_PATH_V2) as f:
+            _unified_metadata = json.load(f)
+            logger.info("loaded_v2_metadata crops=%d classes=%d", 
+                       _unified_metadata.get('num_crops', 0), 
+                       _unified_metadata.get('num_classes', 0))
+    elif UNIFIED_METADATA_PATH.exists():
         with open(UNIFIED_METADATA_PATH) as f:
             _unified_metadata = json.load(f)
+            logger.info("loaded_v1_metadata (fallback)")
     
-    # Load labels
-    if UNIFIED_LABELS_PATH.exists():
+    # Load labels (try v2, fallback to v1)
+    if UNIFIED_LABELS_PATH_V2.exists():
+        with open(UNIFIED_LABELS_PATH_V2) as f:
+            _unified_labels = [line.strip() for line in f.readlines()]
+            logger.info("loaded_v2_labels count=%d", len(_unified_labels))
+    elif UNIFIED_LABELS_PATH.exists():
         with open(UNIFIED_LABELS_PATH) as f:
             _unified_labels = [line.strip() for line in f.readlines()]
+            logger.info("loaded_v1_labels (fallback) count=%d", len(_unified_labels))
     
-    # Try Keras model FIRST (simpler, more reliable)
-    if UNIFIED_KERAS_PATH.exists():
+    # Try Keras model v2 FIRST (simpler, more reliable)
+    if UNIFIED_KERAS_PATH_V2.exists():
         try:
             import tensorflow as tf
             
@@ -117,11 +183,32 @@ def load_unified_model():
             tf.keras.mixed_precision.set_global_policy('float32')
             
             _unified_model = tf.keras.models.load_model(
+                str(UNIFIED_KERAS_PATH_V2), 
+                compile=False
+            )
+            
+            logger.info("unified_keras_v2_loaded path=%s layers=%d classes=%d", 
+                       UNIFIED_KERAS_PATH_V2, len(_unified_model.layers),
+                       _unified_model.output_shape[-1])
+            return _unified_model, 'keras'
+        except Exception as e:
+            logger.warning("keras_v2_load_failed error=%s fallback=v1", str(e))
+            _unified_model = None
+    
+    # Fallback to v1 Keras model
+    if _unified_model is None and UNIFIED_KERAS_PATH.exists():
+        try:
+            import tensorflow as tf
+            
+            tf.keras.backend.clear_session()
+            tf.keras.mixed_precision.set_global_policy('float32')
+            
+            _unified_model = tf.keras.models.load_model(
                 str(UNIFIED_KERAS_PATH), 
                 compile=False
             )
             
-            logger.info("unified_keras_model_loaded path=%s layers=%d", 
+            logger.info("unified_keras_v1_loaded (fallback) path=%s layers=%d", 
                        UNIFIED_KERAS_PATH, len(_unified_model.layers))
             return _unified_model, 'keras'
         except Exception as e:
@@ -142,12 +229,28 @@ def load_unified_model():
         except Exception as e:
             logger.error("unified_savedmodel_load_error error=%s", str(e))
     
-    logger.warning("unified_model_not_found keras=%s savedmodel=%s - will use mock predictions", 
-                   UNIFIED_KERAS_PATH.exists(), UNIFIED_SAVEDMODEL_PATH.exists())
-    return None, None
+    # Last resort: TFLite model (v2 first, then v1)
+    if UNIFIED_TFLITE_PATH_V2.exists() and HAS_TF:
+        try:
+            import tensorflow as tf
+            _unified_interpreter = tf.lite.Interpreter(model_path=str(UNIFIED_TFLITE_PATH_V2))
+            _unified_interpreter.allocate_tensors()
+            logger.info("unified_tflite_v2_loaded path=%s", UNIFIED_TFLITE_PATH_V2)
+            return _unified_interpreter, 'tflite'
+        except Exception as e:
+            logger.warning("tflite_v2_load_failed error=%s fallback=v1_tflite", str(e))
     
-    logger.warning("unified_model_not_found keras=%s tflite=%s - will use mock predictions", 
-                   UNIFIED_KERAS_PATH.exists(), UNIFIED_TFLITE_PATH.exists())
+    if UNIFIED_TFLITE_PATH.exists() and HAS_TF:
+        try:
+            import tensorflow as tf
+            _unified_interpreter = tf.lite.Interpreter(model_path=str(UNIFIED_TFLITE_PATH))
+            _unified_interpreter.allocate_tensors()
+            logger.info("unified_tflite_v1_loaded (fallback) path=%s", UNIFIED_TFLITE_PATH)
+            return _unified_interpreter, 'tflite'
+        except Exception as e:
+            logger.error("tflite_load_failed error=%s", str(e))
+    
+    logger.warning("unified_model_not_found - no working model found, will use mock predictions")
     return None, None
 
 
