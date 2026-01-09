@@ -44,6 +44,28 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
   const [showHeatmap, setShowHeatmap] = useState(hasHeatmap);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  
+  // Debug: Log when images change
+  React.useEffect(() => {
+    console.log('[HeatmapOverlay] Image props updated:', {
+      hasHeatmap,
+      hasOriginal,
+      heatmapLength: heatmapImage?.length || 0,
+      originalLength: originalImage?.length || 0,
+      heatmapPrefix: heatmapImage?.substring(0, 50) || 'N/A',
+    });
+  }, [heatmapImage, originalImage, hasHeatmap, hasOriginal]);
+  
+  // Add timeout to prevent infinite loading (5 seconds)
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (imageLoading) {
+        console.warn('[HeatmapOverlay] Image load timeout - forcing load complete');
+        setImageLoading(false);
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [imageLoading, showHeatmap]);
 
   // Update showHeatmap when heatmap availability changes
   React.useEffect(() => {
@@ -146,11 +168,17 @@ const HeatmapOverlay: React.FC<HeatmapOverlayProps> = ({
               source={{ uri: displayImage }}
               style={styles.image}
               resizeMode="cover"
-              onLoadStart={() => setImageLoading(true)}
-              onLoadEnd={() => setImageLoading(false)}
-              onError={(error) => {
-                console.error('Image load error:', error.nativeEvent.error);
+              onLoadStart={() => {
+                console.log('[HeatmapOverlay] Image load started');
+                setImageLoading(true);
+              }}
+              onLoadEnd={() => {
+                console.log('[HeatmapOverlay] Image load completed successfully');
                 setImageLoading(false);
+              }}
+              onError={(error) => {
+                console.error('[HeatmapOverlay] Image load error:', error.nativeEvent.error);
+                setImageLoading(false);;
                 setImageError(true);
               }}
             />

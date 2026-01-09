@@ -4,27 +4,26 @@
  * Display NPK + Mg diagnosis results with recommendations and product suggestions
  */
 
-import React, { useState, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  FlatList,
-  Modal,
-} from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
+import React, { useMemo, useState } from 'react';
+import {
+    Image,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
-import { colors, spacing, borderRadius, shadows } from '../theme';
-import { Button, Card, StatusChip, ScoreBar, ProductCard, HeatmapOverlay } from '../components';
-import { t, getCurrentLanguage, getCropName, getRecommendation } from '../i18n';
-import { ScanResult, getImageUrl } from '../api';
-import { getProductsForDeficiencies, Product } from '../data/productData';
+import { getImageUrl, ScanResult } from '../api';
+import { Button, Card, HeatmapOverlay, ProductCard, ScoreBar, StatusChip } from '../components';
+import { getProductsForDeficiencies } from '../data/productData';
+import { getCropName, getCurrentLanguage, getRecommendation, t } from '../i18n';
+import { borderRadius, colors, spacing } from '../theme';
 
 const ResultsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -245,7 +244,9 @@ const ResultsScreen: React.FC = () => {
             onPress={() => setFullscreenImage(false)}
           >
             <Image
-              source={{ uri: scanResult.heatmap || scanResult.image_url }}
+              source={{ uri: scanResult.heatmap 
+                ? getImageUrl(scanResult.heatmap) 
+                : getImageUrl(scanResult.original_image_url || scanResult.image_url || '') }}
               style={styles.fullscreenImage}
               resizeMode="contain"
             />

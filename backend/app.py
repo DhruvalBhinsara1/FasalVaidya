@@ -647,7 +647,30 @@ def create_scan():
         if ml_crop_id and ml_crop_id.lower() in supported_crops:
             # Use unified model for supported crops
             prediction = predict_npk_unified(str(filepath), crop_id=ml_crop_id, generate_heatmap=True)
-            heatmap = prediction.pop('heatmap', None)
+            heatmap_base64 = prediction.pop('heatmap', None)
+            
+            # Save heatmap to disk if generated
+            heatmap_filename = None
+            heatmap_url = None
+            if heatmap_base64 and heatmap_base64.startswith('data:image'):
+                try:
+                    # Extract base64 data and decode
+                    import base64
+                    base64_data = heatmap_base64.split(',', 1)[1]
+                    heatmap_bytes = base64.b64decode(base64_data)
+                    
+                    # Save to uploads folder
+                    heatmap_filename = f"heatmap_{scan_uuid}.jpg"
+                    heatmap_path = UPLOAD_FOLDER / heatmap_filename
+                    with open(heatmap_path, 'wb') as f:
+                        f.write(heatmap_bytes)
+                    
+                    heatmap_url = f"/api/images/{heatmap_filename}"
+                    logger.info("heatmap_saved filename=%s", heatmap_filename)
+                except Exception as e:
+                    logger.warning("heatmap_save_failed error=%s", str(e))
+                    heatmap_url = heatmap_base64  # Fallback to base64
+            
             logger.info(
                 "scan_inference_unified scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s overall=%s",
                 scan_uuid,
@@ -663,7 +686,28 @@ def create_scan():
             # Fallback to old crop-specific model for other crops
             from ml.inference import predict_npk, generate_gradcam_heatmap
             prediction = predict_npk(str(filepath), crop_id=ml_crop_id)
-            heatmap = generate_gradcam_heatmap(str(filepath), crop_id=ml_crop_id)
+            heatmap_base64 = generate_gradcam_heatmap(str(filepath), crop_id=ml_crop_id)
+            
+            # Save heatmap to disk if generated
+            heatmap_filename = None
+            heatmap_url = None
+            if heatmap_base64 and isinstance(heatmap_base64, str) and heatmap_base64.startswith('data:image'):
+                try:
+                    import base64
+                    base64_data = heatmap_base64.split(',', 1)[1]
+                    heatmap_bytes = base64.b64decode(base64_data)
+                    
+                    heatmap_filename = f"heatmap_{scan_uuid}.jpg"
+                    heatmap_path_file = UPLOAD_FOLDER / heatmap_filename
+                    with open(heatmap_path_file, 'wb') as f:
+                        f.write(heatmap_bytes)
+                    
+                    heatmap_url = f"/api/images/{heatmap_filename}"
+                    logger.info("heatmap_saved filename=%s", heatmap_filename)
+                except Exception as e:
+                    logger.warning("heatmap_save_failed error=%s", str(e))
+                    heatmap_url = heatmap_base64
+            
             logger.info(
                 "scan_inference_legacy scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s overall=%s",
                 scan_uuid,
@@ -694,7 +738,8 @@ def create_scan():
             'detected_class': 'nitrogen_deficiency',
             'inference_method': 'app_fallback_random'
         }
-        heatmap = None
+        heatmap_url = None
+        heatmap_filename = None
 
         logger.warning(
             "scan_inference_fallback scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f)",
@@ -726,20 +771,20 @@ def create_scan():
     
     scan_id = cursor.lastrowid
     
-    # Insert diagnosis record
+    # Insert diagnosis record (include heatmap_path)
     cursor.execute('''
         INSERT INTO diagnoses (
             scan_id, n_score, p_score, k_score,
             n_confidence, p_confidence, k_confidence,
             n_severity, p_severity, k_severity,
-            overall_status, detected_class
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            overall_status, detected_class, heatmap_path
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         scan_id,
         prediction['n_score'], prediction['p_score'], prediction['k_score'],
         prediction['n_confidence'], prediction['p_confidence'], prediction['k_confidence'],
         prediction['n_severity'], prediction['p_severity'], prediction['k_severity'],
-        prediction['overall_status'], prediction['detected_class']
+        prediction['overall_status'], prediction['detected_class'], heatmap_filename
     ))
     
     # Insert recommendations
@@ -797,8 +842,8 @@ def create_scan():
         'recommendations': recommendations,
         'priority': priority,
         
-        # Heatmap (base64 encoded)
-        'heatmap': heatmap,
+        # Heatmap URL (served as image file for better compatibility)
+        'heatmap': heatmap_url,
         
         # Timestamp
         'created_at': datetime.now().isoformat()
