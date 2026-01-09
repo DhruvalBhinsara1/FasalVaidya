@@ -842,7 +842,9 @@ def create_scan():
         'recommendations': recommendations,
         'priority': priority,
         
-        # Heatmap URL (served as image file for better compatibility)
+        # Image URLs
+        'image_url': f"/api/images/{filename}",
+        'original_image_url': f"/api/images/{filename}",
         'heatmap': heatmap_url,
         
         # Timestamp
@@ -961,6 +963,8 @@ def get_scan(scan_id):
         'k_severity': row['k_severity'],
         'overall_status': row['overall_status'],
         'detected_class': row['detected_class'],
+        'heatmap': f"/api/images/{row['heatmap_path']}" if row['heatmap_path'] else None,
+        'original_image_url': f"/api/images/{row['image_filename']}" if row['image_filename'] else None,
         'recommendations': {
             'n': {
                 'en': row['n_recommendation'] or '',
