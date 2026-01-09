@@ -1,0 +1,185 @@
+{
+  "model_type": "unified_multi_crop",
+  "model_version": "2.0",
+  "training_date": "2026-01-09T16:34:12.258837",
+  "architecture": "MobileNetV2",
+  "supported_crops": [
+    "rice",
+    "wheat",
+    "maize",
+    "banana",
+    "coffee",
+    "ashgourd",
+    "eggplant",
+    "snakegourd",
+    "bittergourd"
+  ],
+  "skipped_crops": [
+    "tomato",
+    "ridgegourd",
+    "cucumber"
+  ],
+  "skip_reasons": {
+    "tomato": "Class imbalance: 3 classes with only 9-11 samples",
+    "ridgegourd": "Borderline dataset: 72 images per class",
+    "cucumber": "Insufficient data: 62 images per class"
+  },
+  "num_crops": 9,
+  "input_shape": [
+    224,
+    224,
+    3
+  ],
+  "num_classes": 43,
+  "class_names": [
+    "ashgourd_healthy",
+    "ashgourd_k",
+    "ashgourd_k_mg",
+    "ashgourd_n",
+    "ashgourd_n_k",
+    "ashgourd_n_mg",
+    "ashgourd_pm",
+    "banana_healthy",
+    "banana_magnesium",
+    "banana_potassium",
+    "bittergourd_dm",
+    "bittergourd_healthy",
+    "bittergourd_jas",
+    "bittergourd_k",
+    "bittergourd_k_mg",
+    "bittergourd_ls",
+    "bittergourd_n",
+    "bittergourd_n_k",
+    "bittergourd_n_mg",
+    "coffee_healthy",
+    "coffee_nitrogen_n",
+    "coffee_phosphorus_p",
+    "coffee_potassium_k",
+    "eggplant_healthy",
+    "eggplant_k",
+    "eggplant_n",
+    "eggplant_n_k",
+    "maize_all_present",
+    "maize_allab",
+    "maize_kab",
+    "maize_nab",
+    "maize_pab",
+    "maize_znab",
+    "rice_nitrogen",
+    "rice_phosphorus",
+    "rice_potassium",
+    "snakegourd_healthy",
+    "snakegourd_k",
+    "snakegourd_ls",
+    "snakegourd_n",
+    "snakegourd_n_k",
+    "wheat_control",
+    "wheat_deficiency"
+  ],
+  "crop_class_mapping": {
+    "rice": [
+      "rice_nitrogen",
+      "rice_phosphorus",
+      "rice_potassium"
+    ],
+    "wheat": [
+      "wheat_control",
+      "wheat_deficiency"
+    ],
+    "maize": [
+      "maize_all_present",
+      "maize_allab",
+      "maize_kab",
+      "maize_nab",
+      "maize_pab",
+      "maize_znab"
+    ],
+    "banana": [
+      "banana_healthy",
+      "banana_magnesium",
+      "banana_potassium"
+    ],
+    "coffee": [
+      "coffee_healthy",
+      "coffee_nitrogen_n",
+      "coffee_phosphorus_p",
+      "coffee_potassium_k"
+    ],
+    "ashgourd": [
+      "ashgourd_healthy",
+      "ashgourd_k",
+      "ashgourd_k_mg",
+      "ashgourd_n",
+      "ashgourd_n_k",
+      "ashgourd_n_mg",
+      "ashgourd_pm"
+    ],
+    "eggplant": [
+      "eggplant_healthy",
+      "eggplant_k",
+      "eggplant_n",
+      "eggplant_n_k"
+    ],
+    "snakegourd": [
+      "snakegourd_healthy",
+      "snakegourd_k",
+      "snakegourd_ls",
+      "snakegourd_n",
+      "snakegourd_n_k"
+    ],
+    "bittergourd": [
+      "bittergourd_dm",
+      "bittergourd_healthy",
+      "bittergourd_jas",
+      "bittergourd_k",
+      "bittergourd_k_mg",
+      "bittergourd_ls",
+      "bittergourd_n",
+      "bittergourd_n_k",
+      "bittergourd_n_mg"
+    ]
+  },
+  "metrics": {
+    "accuracy": 0.7253277897834778,
+    "top3_accuracy": 0.8971704840660095
+  },
+  "expected_performance": {
+    "overall_accuracy": "85-92%",
+    "top3_accuracy": "95-98%",
+    "per_crop": {
+      "banana": "95-97%",
+      "rice": "92-97%",
+      "maize": "74-96%",
+      "wheat": "81-90%",
+      "ashgourd": "88-94%",
+      "coffee": "85-92%",
+      "eggplant": "82-88%",
+      "snakegourd": "82-88%",
+      "bittergourd": "80-86%"
+    }
+  },
+  "preprocessing": {
+    "method": "MobileNetV2",
+    "normalization": "[-1, 1]"
+  },
+  "training_config": {
+    "batch_size": 32,
+    "plantvillage_epochs": 10,
+    "unified_epochs": 30,
+    "dropout_rate": 0.3,
+    "early_stop_patience": 10,
+    "learning_rates": {
+      "stage2": 0.001,
+      "stage3": 0.0005,
+      "finetune": 1e-05
+    },
+    "optimizations": [
+      "float32_precision",
+      "jit_compile",
+      "autotune_prefetch",
+      "class_weighting"
+    ],
+    "total_training_images": "~40,000+",
+    "data_imbalance": "Maize 31.5% (class weights applied)"
+  }
+}
