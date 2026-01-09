@@ -4,7 +4,7 @@
  * Axios instance configured for backend communication
  */
 
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosError, AxiosInstance } from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -90,7 +90,7 @@ export const API_BASE_URL = getCachedBaseUrl();
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 30 seconds timeout for image uploads
+  timeout: 120000, // 120 seconds timeout for AI chat (Ollama can be slow)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -115,6 +115,15 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
+    console.log('🔍 Error Debug:', {
+      hasResponse: !!error.response,
+      hasRequest: !!error.request,
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      responseData: error.response?.data
+    });
+    
     if (error.response) {
       console.error(`❌ Response error: ${error.response.status}`, error.response.data);
     } else if (error.request) {

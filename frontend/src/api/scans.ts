@@ -191,3 +191,136 @@ export const getImageUrl = (path: string): string => {
   // Relative path - prepend API base URL
   return `${API_BASE_URL}${path}`;
 };
+
+// ============================================
+// AI CHAT TYPES AND FUNCTIONS
+// ============================================
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string;
+  image?: string; // Base64 encoded image
+}
+
+export interface ChatResponse {
+  success: boolean;
+  response?: string;
+  error?: string;
+  needs_connection?: boolean;
+  message?: string;
+  model?: string;
+}
+
+export interface ChatStatus {
+  available: boolean;
+  models?: string[];
+  has_vision_model?: boolean;
+  error?: string;
+  message?: string;
+}
+
+/**
+ * Check if AI chat service is available
+ */
+export const checkChatStatus = async (): Promise<ChatStatus> => {
+  try {
+    const response = await apiClient.get('/api/chat/status');
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 503) {
+      return {
+        available: false,
+        error: error.response?.data?.error || 'AI service unavailable',
+        message: error.response?.data?.message || 'Need an active internet connection'
+      };
+    }
+    return {
+      available: false,
+      error: 'Failed to check AI status'
+    };
+  }
+};
+
+/**
+ * Send a chat message to the AI
+ */
+export const sendChatMessage = async (
+  message: string,
+  history: ChatMessage[] = [],
+  context?: Partial<ScanResult> | null,
+  imageBase64?: string
+): Promise<ChatResponse> => {
+  try {
+    const payload = {
+      message,
+      history: history.map(m => ({ role: m.role, content: m.content })),
+      context,
+      image: imageBase64
+    };
+    
+    // Debug logging
+    console.log('🤖 AI Chat Request Payload:', {
+      message,
+      historyLength: history.length,
+      hasContext: !!context,
+      hasImage: !!imageBase64,
+      contextDetails: context ? {
+        crop_name: context.crop_name,
+        n_score: context.n_score,
+        p_score: context.p_score,
+        k_score: context.k_score,
+        n_severity: context.n_severity,
+        p_severity: context.p_severity,
+        k_severity: context.k_severity,
+        overall_status: context.overall_status
+      } : null,
+      imageSize: imageBase64 ? `${(imageBase64.length / 1024).toFixed(2)} KB` : 'N/A'
+    });
+    
+    const response = await apiClient.post('/api/chat', payload);
+    
+    console.log('✅ AI Chat Response:', {
+      success: response.data.success,
+      hasResponse: !!response.data.response,
+      model: response.data.model,
+      responseLength: response.data.response?.length || 0,
+      responsePreview: response.data.response?.substring(0, 100) + '...'
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('❌ AI Chat Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      errorData: error.response?.data,
+      message: error.message,
+      hasResponse: !!error.response
+    });
+    
+    // Handle connection errors
+    if (error.response?.status === 503) {
+      return {
+        success: false,
+        needs_connection: true,
+        error: error.response?.data?.error || 'AI service unavailable',
+        message: error.response?.data?.message || 'Need an active internet connection to use AI analysis.'
+      };
+    }
+    
+    // Handle network errors
+    if (!error.response) {
+      return {
+        success: false,
+        needs_connection: true,
+        error: 'Network error',
+        message: 'Need an active internet connection to use AI analysis.'
+      };
+    }
+    
+    return {
+      success: false,
+      error: error.response?.data?.error || error.message || 'Unknown error'
+    };
+  }
+};

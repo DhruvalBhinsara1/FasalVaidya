@@ -1038,6 +1038,123 @@ def bad_request(error):
     return jsonify({'error': 'Bad request'}), 400
 
 
+# ============================================
+# AI CHAT ENDPOINT
+# ============================================
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """
+    AI chat endpoint using Ollama with vision support.
+    
+    Request body:
+        message: str - User's message
+        history: list - Previous chat messages [{'role': 'user'/'assistant', 'content': '...'}]
+        context: dict - Scan data context (optional)
+        image: str - Base64 encoded image for vision analysis (optional)
+        
+    Returns:
+        response: str - AI response
+        success: bool
+        error: str (if failed)
+        needs_connection: bool (if Ollama unavailable)
+    """
+    try:
+        from ml.ollama_client import chat_with_ollama, check_ollama_available
+        
+        data = request.json or {}
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({'error': 'Message is required', 'success': False}), 400
+        
+        # Get optional parameters
+        chat_history = data.get('history', [])
+        context = data.get('context')
+        image_base64 = data.get('image')
+        
+        logger.info("chat_request message_length=%d history_count=%d has_context=%s has_image=%s",
+                   len(message), len(chat_history), bool(context), bool(image_base64))
+        
+        # Call Ollama
+        result = chat_with_ollama(
+            message=message,
+            chat_history=chat_history,
+            context=context,
+            image_base64=image_base64
+        )
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'response': result['response'],
+                'model': result.get('model')
+            }), 200
+        else:
+            # Check if it's a connection issue
+            if result.get('needs_connection'):
+                return jsonify({
+                    'success': False,
+                    'error': result.get('error', 'AI service unavailable'),
+                    'needs_connection': True,
+                    'message': 'Need an active internet connection to use AI analysis. Please ensure Ollama is running on your computer.'
+                }), 503
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': result.get('error', 'Unknown error')
+                }), 500
+                
+    except ImportError as e:
+        logger.error("ollama_import_failed error=%s", str(e))
+        return jsonify({
+            'success': False,
+            'error': 'AI module not available',
+            'needs_connection': True
+        }), 503
+    except Exception as e:
+        logger.exception("chat_error")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/chat/status', methods=['GET'])
+def chat_status():
+    """Check if AI chat service (Ollama) is available."""
+    try:
+        from ml.ollama_client import check_ollama_available
+        
+        status = check_ollama_available()
+        
+        if status['available']:
+            return jsonify({
+                'available': True,
+                'models': status.get('models', []),
+                'has_vision_model': status.get('has_vision_model', False),
+                'recommended_model': status.get('recommended_model')
+            }), 200
+        else:
+            return jsonify({
+                'available': False,
+                'error': status.get('error', 'Ollama not available'),
+                'message': 'Need an active internet connection to use AI analysis. Please ensure Ollama is running.'
+            }), 503
+            
+    except ImportError:
+        return jsonify({
+            'available': False,
+            'error': 'AI module not installed'
+        }), 503
+    except Exception as e:
+        logger.exception("chat_status_error")
+        return jsonify({
+            'available': False,
+            'error': str(e)
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Not found'}), 404
@@ -1074,6 +1191,8 @@ if __name__ == '__main__':
     print("  GET  /api/scans/<id>   - Get single scan details")
     print("  DELETE /api/scans      - Clear all history")
     print("  GET  /api/model/info   - Get model information")
+    print("  POST /api/chat         - AI chat with Ollama (vision)")
+    print("  GET  /api/chat/status  - Check AI service status")
     print("")
     
     # Start server

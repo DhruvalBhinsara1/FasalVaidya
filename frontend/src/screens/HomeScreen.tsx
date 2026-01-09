@@ -138,17 +138,19 @@ const HomeScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Reminder / info card */}
-        <Card style={styles.reminderCard}>
-          <View style={styles.reminderIconWrap}>
-            <Ionicons name="water" size={24} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.reminderTitle}>{t('aiAnalysis')}</Text>
-            <Text style={styles.reminderText}>{t('welcomeMessage')}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
-        </Card>
+        {/* AI Analysis Chat Card */}
+        <TouchableOpacity onPress={() => navigation.navigate('Chat' as any, { cropId: selectedCropId })}>
+          <Card style={styles.reminderCard}>
+            <View style={styles.reminderIconWrap}>
+              <Ionicons name="chatbubbles" size={24} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.reminderTitle}>{t('aiAnalysis')}</Text>
+              <Text style={styles.reminderText}>{t('welcomeMessage')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
+          </Card>
+        </TouchableOpacity>
 
         {/* Connection Status */}
         {!isConnected && (
