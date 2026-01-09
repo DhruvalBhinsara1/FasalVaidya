@@ -4,24 +4,23 @@
  * Language selection and app settings
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  Modal,
-  Pressable,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import {
+    Modal,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
-import { colors, spacing, borderRadius, shadows } from '../theme';
 import { Card } from '../components';
-import { t, getCurrentLanguage, setLanguage, loadLanguage, SUPPORTED_LANGUAGES } from '../i18n';
+import { getCurrentLanguage, loadLanguage, setLanguage, SUPPORTED_LANGUAGES, t } from '../i18n';
+import { borderRadius, colors, shadows, spacing } from '../theme';
 
 const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -196,8 +195,8 @@ const SettingsScreen: React.FC = () => {
               <Text style={styles.cropLabel}>Rice</Text>
             </View>
             <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🍅</Text>
-              <Text style={styles.cropLabel}>Tomato</Text>
+              <Text style={styles.cropEmoji}>�</Text>
+              <Text style={styles.cropLabel}>Maize</Text>
             </View>
             <View style={styles.cropItem}>
               <Text style={styles.cropEmoji}>🌿</Text>

@@ -63,14 +63,14 @@ CLASS_TO_NPK = {
     'rice_Phosphorus(P)': {'N': 0.1, 'P': 0.85, 'K': 0.1, 'Mg': 0.0},
     'rice_Potassium(K)': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
     
-    # TOMATO classes
-    'tomato_Tomato - Healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
-    'tomato_Tomato - Nitrogen Deficiency': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
-    'tomato_Tomato - Potassium Deficiency': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
-    'tomato_Tomato - Nitrogen and Potassium Deficiency': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
-    'tomato_Tomato - Leaf Miner': {'N': 0.2, 'P': 0.2, 'K': 0.2, 'Mg': 0.0},  # Pest - minor stress
-    'tomato_Tomato - Mite': {'N': 0.2, 'P': 0.2, 'K': 0.2, 'Mg': 0.0},
-    'tomato_Tomato - Jassid and Mite': {'N': 0.3, 'P': 0.2, 'K': 0.3, 'Mg': 0.0},
+    # TOMATO classes - DISABLED (low confidence, removed from app)
+    # 'tomato_Tomato - Healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    # 'tomato_Tomato - Nitrogen Deficiency': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    # 'tomato_Tomato - Potassium Deficiency': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    # 'tomato_Tomato - Nitrogen and Potassium Deficiency': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    # 'tomato_Tomato - Leaf Miner': {'N': 0.2, 'P': 0.2, 'K': 0.2, 'Mg': 0.0},
+    # 'tomato_Tomato - Mite': {'N': 0.2, 'P': 0.2, 'K': 0.2, 'Mg': 0.0},
+    # 'tomato_Tomato - Jassid and Mite': {'N': 0.3, 'P': 0.2, 'K': 0.3, 'Mg': 0.0},
     
     # WHEAT classes
     'wheat_control': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},  # Healthy control
@@ -105,21 +105,7 @@ def load_unified_model():
         with open(UNIFIED_LABELS_PATH) as f:
             _unified_labels = [line.strip() for line in f.readlines()]
     
-    # Try SavedModel FIRST (most reliable with trained weights)
-    if UNIFIED_SAVEDMODEL_PATH.exists() and HAS_TF:
-        try:
-            import tensorflow as tf
-            tf.keras.backend.clear_session()
-            tf.keras.mixed_precision.set_global_policy('float32')
-            
-            # Load SavedModel using TensorFlow (not Keras load_model)
-            _unified_model = tf.saved_model.load(str(UNIFIED_SAVEDMODEL_PATH))
-            logger.info("unified_savedmodel_loaded path=%s", UNIFIED_SAVEDMODEL_PATH)
-            return _unified_model, 'savedmodel'
-        except Exception as e:
-            logger.error("unified_savedmodel_load_error error=%s", str(e))
-    
-    # Fallback to rebuilt Keras model
+    # Try Keras model FIRST (simpler, more reliable)
     if UNIFIED_KERAS_PATH.exists():
         try:
             import tensorflow as tf
@@ -141,6 +127,20 @@ def load_unified_model():
         except Exception as e:
             logger.error("unified_keras_model_load_error error=%s", str(e))
             _unified_model = None
+    
+    # Fallback to SavedModel
+    if UNIFIED_SAVEDMODEL_PATH.exists() and HAS_TF:
+        try:
+            import tensorflow as tf
+            tf.keras.backend.clear_session()
+            tf.keras.mixed_precision.set_global_policy('float32')
+            
+            # Load SavedModel using TensorFlow (not Keras load_model)
+            _unified_model = tf.saved_model.load(str(UNIFIED_SAVEDMODEL_PATH))
+            logger.info("unified_savedmodel_loaded path=%s", UNIFIED_SAVEDMODEL_PATH)
+            return _unified_model, 'savedmodel'
+        except Exception as e:
+            logger.error("unified_savedmodel_load_error error=%s", str(e))
     
     logger.warning("unified_model_not_found keras=%s savedmodel=%s - will use mock predictions", 
                    UNIFIED_KERAS_PATH.exists(), UNIFIED_SAVEDMODEL_PATH.exists())
@@ -245,18 +245,14 @@ def predict_unified(image_input, crop_id=None):
         # Get input tensor name
         input_name = list(infer.structured_input_signature[1].keys())[0]
         
-        # Check if model expects float16 and convert if needed
-        expected_dtype = infer.structured_input_signature[1][input_name].dtype
-        input_tensor = tf.constant(img_array)
-        if expected_dtype == tf.float16:
-            input_tensor = tf.cast(input_tensor, tf.float16)
-        
+        # Convert to tensor and run
+        input_tensor = tf.constant(img_array, dtype=tf.float32)
         result = infer(**{input_name: input_tensor})
         # Get output tensor
         output_key = list(result.keys())[0]
         predictions = result[output_key].numpy()[0]
     else:
-        # TFLite inference
+        # TFLite inference (fallback, not currently used)
         input_details = model_or_interpreter.get_input_details()
         output_details = model_or_interpreter.get_output_details()
         model_or_interpreter.set_tensor(input_details[0]['index'], img_array)
@@ -266,6 +262,9 @@ def predict_unified(image_input, crop_id=None):
     # Get top predictions
     top_indices = np.argsort(predictions)[::-1][:5]
     top_classes = [(labels[i], float(predictions[i])) for i in top_indices if i < len(labels)]
+    
+    # Filter out tomato classes (low confidence, removed from app)
+    top_classes = [(cls, conf) for cls, conf in top_classes if not cls.startswith('tomato_')]
     
     logger.info("unified_predictions top=%s", top_classes[:3])
     

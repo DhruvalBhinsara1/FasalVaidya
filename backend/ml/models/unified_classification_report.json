@@ -1,0 +1,123 @@
+{
+  "maize_ALL Present": {
+    "precision": 0.7857142857142857,
+    "recall": 0.7674418604651163,
+    "f1-score": 0.7764705882352941,
+    "support": 43.0
+  },
+  "maize_ALLAB": {
+    "precision": 0.8205128205128205,
+    "recall": 0.8888888888888888,
+    "f1-score": 0.8533333333333334,
+    "support": 36.0
+  },
+  "maize_KAB": {
+    "precision": 0.8208955223880597,
+    "recall": 0.9166666666666666,
+    "f1-score": 0.8661417322834646,
+    "support": 60.0
+  },
+  "maize_NAB": {
+    "precision": 0.9615384615384616,
+    "recall": 0.9433962264150944,
+    "f1-score": 0.9523809523809523,
+    "support": 53.0
+  },
+  "maize_PAB": {
+    "precision": 0.7446808510638298,
+    "recall": 0.8974358974358975,
+    "f1-score": 0.813953488372093,
+    "support": 39.0
+  },
+  "maize_ZNAB": {
+    "precision": 0.9333333333333333,
+    "recall": 0.711864406779661,
+    "f1-score": 0.8076923076923077,
+    "support": 59.0
+  },
+  "rice_Nitrogen(N)": {
+    "precision": 0.972972972972973,
+    "recall": 0.9473684210526315,
+    "f1-score": 0.96,
+    "support": 38.0
+  },
+  "rice_Phosphorus(P)": {
+    "precision": 0.925,
+    "recall": 0.9024390243902439,
+    "f1-score": 0.9135802469135802,
+    "support": 41.0
+  },
+  "rice_Potassium(K)": {
+    "precision": 0.9512195121951219,
+    "recall": 0.9285714285714286,
+    "f1-score": 0.9397590361445783,
+    "support": 42.0
+  },
+  "tomato_Tomato - Healthy": {
+    "precision": 0.6444444444444445,
+    "recall": 0.7631578947368421,
+    "f1-score": 0.6987951807228916,
+    "support": 38.0
+  },
+  "tomato_Tomato - Jassid and Mite": {
+    "precision": 0.875,
+    "recall": 0.6363636363636364,
+    "f1-score": 0.7368421052631579,
+    "support": 11.0
+  },
+  "tomato_Tomato - Leaf Miner": {
+    "precision": 0.84,
+    "recall": 0.8076923076923077,
+    "f1-score": 0.8235294117647058,
+    "support": 26.0
+  },
+  "tomato_Tomato - Mite": {
+    "precision": 0.6774193548387096,
+    "recall": 0.9130434782608695,
+    "f1-score": 0.7777777777777778,
+    "support": 23.0
+  },
+  "tomato_Tomato - Nitrogen Deficiency": {
+    "precision": 0.6,
+    "recall": 0.3333333333333333,
+    "f1-score": 0.42857142857142855,
+    "support": 9.0
+  },
+  "tomato_Tomato - Nitrogen and Potassium Deficiency": {
+    "precision": 0.5,
+    "recall": 0.4444444444444444,
+    "f1-score": 0.47058823529411764,
+    "support": 9.0
+  },
+  "tomato_Tomato - Potassium Deficiency": {
+    "precision": 0.8,
+    "recall": 0.4,
+    "f1-score": 0.5333333333333333,
+    "support": 10.0
+  },
+  "wheat_control": {
+    "precision": 0.8148148148148148,
+    "recall": 0.9361702127659575,
+    "f1-score": 0.8712871287128713,
+    "support": 47.0
+  },
+  "wheat_deficiency": {
+    "precision": 0.8979591836734694,
+    "recall": 0.7857142857142857,
+    "f1-score": 0.8380952380952381,
+    "support": 56.0
+  },
+  "accuracy": 0.8375,
+  "macro avg": {
+    "precision": 0.8091947531939069,
+    "recall": 0.7735551341098502,
+    "f1-score": 0.7812295291606182,
+    "support": 640.0
+  },
+  "weighted avg": {
+    "precision": 0.8445537540695497,
+    "recall": 0.8375,
+    "f1-score": 0.835355256031719,
+    "support": 640.0
+  }
+}

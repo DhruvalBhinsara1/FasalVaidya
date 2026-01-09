@@ -4,24 +4,24 @@
  * Main landing screen with crop selection and scan button
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import {
+    Alert,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
-import { colors, spacing, borderRadius, typography, shadows } from '../theme';
-import { Button, Card, CropSelector } from '../components';
-import { t, getCurrentLanguage, getCropName } from '../i18n';
-import { getCrops, Crop, healthCheck } from '../api';
+import { Crop, getCrops, healthCheck } from '../api';
+import { Card, CropSelector } from '../components';
+import { getCropName, getCurrentLanguage, t } from '../i18n';
+import { borderRadius, colors, shadows, spacing } from '../theme';
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -45,7 +45,7 @@ const HomeScreen: React.FC = () => {
       setCrops([
         { id: 1, name: 'Wheat', name_hi: 'गेहूँ', season: 'Rabi', icon: '🌾' },
         { id: 2, name: 'Rice', name_hi: 'चावल', season: 'Kharif', icon: '🌾' },
-        { id: 3, name: 'Tomato', name_hi: 'टमाटर', season: 'Year-round', icon: '🍅' },
+        { id: 3, name: 'Maize', name_hi: 'मक्का', season: 'Kharif/Rabi', icon: '🌽' },
         { id: 4, name: 'Cotton', name_hi: 'कपास', season: 'Kharif', icon: '🌿' },
       ]);
     }

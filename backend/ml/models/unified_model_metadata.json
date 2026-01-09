@@ -1,7 +1,7 @@
 {
   "model_type": "unified_multi_crop",
   "model_version": "2.0",
-  "training_date": "2026-01-06T16:28:50.715662",
+  "training_date": "2026-01-09T11:13:26.862259",
   "architecture": "MobileNetV2",
   "supported_crops": [
     "rice",
@@ -65,18 +65,18 @@
     ]
   },
   "metrics": {
-    "accuracy": 0.9644110202789307,
-    "top3_accuracy": 0.9964912533760071
+    "accuracy": 0.8415716290473938,
+    "top3_accuracy": 0.9594423174858093
   },
   "preprocessing": {
     "method": "MobileNetV2",
     "normalization": "[-1, 1]"
   },
   "training_config": {
-    "batch_size": 16,
-    "plantvillage_epochs": 5,
-    "unified_epochs": 10,
-    "dropout_rate": 0.25,
+    "batch_size": 32,
+    "plantvillage_epochs": 8,
+    "unified_epochs": 15,
+    "dropout_rate": 0.3,
     "optimizations": [
       "mixed_precision_fp16",
       "jit_compile",

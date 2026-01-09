@@ -126,11 +126,11 @@ CROPS = {
         'ml_crop_id': 'rice'
     },
     3: {
-        'name': 'Tomato',
-        'name_hi': 'टमाटर',
-        'season': 'Year-round',
-        'icon': '🍅',
-        'ml_crop_id': 'tomato'
+        'name': 'Maize',
+        'name_hi': 'मक्का',
+        'season': 'Kharif/Rabi',
+        'icon': '🌽',
+        'ml_crop_id': 'maize'
     },
     4: {
         'name': 'Cotton',
