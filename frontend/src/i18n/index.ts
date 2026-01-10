@@ -375,8 +375,13 @@ const hi = {
 const ta = {
   home: 'முகப்பு', scan: 'ஸ்கேன்', history: 'வரலாறு', settings: 'அமைப்புகள்',
   welcome: 'FasalVaidya-க்கு வரவேற்கிறோம்',
+  tagline: 'AI பயிர் நல ஆலோசகர்',
+  welcomeMessage: 'உங்கள் பயிர்களுக்கான உடனடி NPK நோயறிதலைப் பெறுங்கள்',
   startScan: 'இலை ஸ்கேன்',
+  viewHistory: 'வரலாறு',
+  lessThan3Sec: '< 3 வினாடி',
   selectCrop: 'பயிரைத் தேர்ந்தெடுக்கவும்',
+  aiAnalysis: 'AI பகுப்பாய்வு',
   crop_wheat: 'கோதுமை', crop_rice: 'அரிசி', crop_maize: 'சோளம்', crop_banana: 'வாழை',
   crop_tomato: 'தக்காளி', crop_cotton: 'பருத்தி', crop_coffee: 'காபி', crop_cucumber: 'வெள்ளரி',
   crop_eggplant: 'கத்திரிக்காய்', crop_ashgourd: 'சாம்பல் பூசணி', crop_bittergourd: 'பாகற்காய்',
@@ -386,15 +391,32 @@ const ta = {
   tutorialText: 'துல்லியமான ஆய்வுக்கு இலை சட்டத்தை நிரப்புவதை உறுதி செய்யவும்.',
   activity: 'செயல்பாடு', chatHistory: 'அரட்டை வரலாறு',
   language: 'மொழி', healthy: 'ஆரோக்கியமான', attention: 'கவனம் தேவை', critical: 'முக்கியமான',
-  season_rabi: 'ராபி', season_kharif: 'காரிஃப்', season_year_round: 'வருடம் முழுவதும்', season_summer: 'கோடை கால'
+  season_rabi: 'ராபி', season_kharif: 'காரிஃப்', season_year_round: 'வருடம் முழுவதும்', season_summer: 'கோடை கால',
+  networkError: 'பிணைய பிழை. உங்கள் இணைப்பைச் சரிபார்க்கவும்.',
+  retry: 'மீண்டும் முயற்சிக்கவும்',
+  cancel: 'ரத்துசெய்',
+  error: 'பிழை',
+  about: 'பற்றி',
+  version: 'பதிப்பு',
+  supportedCrops: 'ஆதரிக்கப்படும் பயிர்கள்',
+  features: 'அம்சங்கள்',
+  npkDetection: 'NPK கண்டறிதல்',
+  recommendations: 'பரிந்துரைகள்',
+  aboutApp: 'செயலி பற்றி',
+  purpose: 'நோக்கம்'
 };
 
 // Telugu
 const te = {
   home: 'హోమ్', scan: 'స్కాన్', history: 'చరిత్ర', settings: 'సెట్టింగ్‌లు',
   welcome: 'FasalVaidya కు స్వాగతం',
+  tagline: 'AI పంట ఆరోగ్య సలహాదారు',
+  welcomeMessage: 'మీ పంటలకు తక్షణ NPK నిర్ధారణ పొందండి',
   startScan: 'ఆకు స్కాన్',
+  viewHistory: 'చరిత్రను చూడండి',
+  lessThan3Sec: '< 3 సెకన్లు',
   selectCrop: 'పంటను ఎంచుకోండి',
+  aiAnalysis: 'AI విశ్లేషణ',
   crop_wheat: 'గోధుమ', crop_rice: 'బియ్యం', crop_maize: 'మొక్కజొన్న', crop_banana: 'అరటి',
   crop_tomato: 'టమోటా', crop_cotton: 'పత్తి', crop_coffee: 'కాఫీ', crop_cucumber: 'దోసకాయ',
   crop_eggplant: 'వంకాయ', crop_ashgourd: 'బూడిద గుమ్మడి', crop_bittergourd: 'కాకరకాయ',
@@ -404,15 +426,32 @@ const te = {
   tutorialText: 'ఖచ్చితమైన నిర్ధారణ కోసం ఆకు ఫ్రేమ్‌ను నింపుతుందని నిర్ధారించుకోండి.',
   activity: 'కార్యకలాపం', chatHistory: 'చాట్ చరిత్ర',
   language: 'భాష', healthy: 'ఆరోగ్యకరమైన', attention: 'శ్రద్ధ అవసరం', critical: 'కీలకమైన',
-  season_rabi: 'రాబీ', season_kharif: 'ఖరీఫ్', season_year_round: 'సంవత్సరం పొడవునా', season_summer: 'వేసవి'
+  season_rabi: 'రాబీ', season_kharif: 'ఖరీఫ్', season_year_round: 'సంవత్సరం పొడవునా', season_summer: 'వేసవి',
+  networkError: 'నెట్‌వర్క్ లోపం. దయచేసి మీ కనెక్షన్‌ని తనిఖీ చేయండి.',
+  retry: 'మళ్లీ ప్రయత్నించండి',
+  cancel: 'రద్దు చేయండి',
+  error: 'లోపం',
+  about: 'గురించి',
+  version: 'వెర్షన్',
+  supportedCrops: 'మద్దతు ఉన్న పంటలు',
+  features: 'లక్షణాలు',
+  npkDetection: 'NPK గుర్తింపు',
+  recommendations: 'సిఫార్సులు',
+  aboutApp: 'యాప్ గురించి',
+  purpose: 'ఉద్దేశ్యం'
 };
 
 // Bengali
 const bn = {
   home: 'হোম', scan: 'স্ক্যান', history: 'ইতিহাস', settings: 'সেটিংস',
   welcome: 'FasalVaidya-তে স্বাগতম',
+  tagline: 'AI ফসল স্বাস্থ্য উপদেষ্টা',
+  welcomeMessage: 'আপনার ফসলের জন্য অবিলম্বে NPK নির্ণয় পান',
   startScan: 'পাতা স্ক্যান',
+  viewHistory: 'ইতিহাস দেখুন',
+  lessThan3Sec: '< ৩ সেকেন্ড',
   selectCrop: 'ফসল নির্বাচন করুন',
+  aiAnalysis: 'AI বিশ্লেষণ',
   crop_wheat: 'গম', crop_rice: 'চাল', crop_maize: 'ভুট্টা', crop_banana: 'কলা',
   crop_tomato: 'টমেটো', crop_cotton: 'তুলা', crop_coffee: 'কফি', crop_cucumber: 'শসা',
   crop_eggplant: 'বেগুন', crop_ashgourd: 'চাল কুমড়া', crop_bittergourd: 'করলা',
@@ -422,15 +461,32 @@ const bn = {
   tutorialText: 'সঠিক নির্ণয়ের জন্য পাতাটি ফ্রেম পূর্ণ করে তা নিশ্চিত করুন।',
   activity: 'কার্যকলাপ', chatHistory: 'চ্যাট ইতিহাস',
   language: 'ভাষা', healthy: 'সুস্থ', attention: 'মনোযোগ প্রয়োজন', critical: 'গুরুত্বপূর্ণ',
-  season_rabi: 'রবি', season_kharif: 'খারিপ', season_year_round: 'সারা বছর', season_summer: 'গ্রীষ্ম'
+  season_rabi: 'রবি', season_kharif: 'খারিপ', season_year_round: 'সারা বছর', season_summer: 'গ্রীষ্ম',
+  networkError: 'নেটওয়ার্ক ত্রুটি। আপনার সংযোগ পরীক্ষা করুন।',
+  retry: 'পুনরায় চেষ্টা করুন',
+  cancel: 'বাতিল করুন',
+  error: 'ত্রুটি',
+  about: 'সম্পর্কে',
+  version: 'সংস্করণ',
+  supportedCrops: 'সমর্থিত ফসল',
+  features: 'বৈশিষ্ট্য',
+  npkDetection: 'NPK সনাক্তকরণ',
+  recommendations: 'সুপারিশ',
+  aboutApp: 'অ্যাপ সম্পর্কে',
+  purpose: 'উদ্দেশ্য'
 };
 
 // Marathi
 const mr = {
   home: 'होम', scan: 'स्कॅन', history: 'इतिहास', settings: 'सेटिंग्ज',
   welcome: 'FasalVaidya मध्ये आपले स्वागत आहे',
+  tagline: 'AI पीक आरोग्य सल्लागार',
+  welcomeMessage: 'तुमच्या पिकांसाठी त्वरित NPK निदान मिळवा',
   startScan: 'पान स्कॅन',
+  viewHistory: 'इतिहास पहा',
+  lessThan3Sec: '< ३ सेकंद',
   selectCrop: 'पीक निवडा',
+  aiAnalysis: 'AI विश्लेषण',
   crop_wheat: 'गहू', crop_rice: 'तांदूळ', crop_maize: 'मका', crop_banana: 'केळी',
   crop_tomato: 'टोमॅटो', crop_cotton: 'कापूस', crop_coffee: 'कॉफी', crop_cucumber: 'काकडी',
   crop_eggplant: 'वांगी', crop_ashgourd: 'कोहळा', crop_bittergourd: 'कारले',
@@ -440,15 +496,32 @@ const mr = {
   tutorialText: 'अचूक निदानासाठी पान फ्रेम भरत असल्याची खात्री करा.',
   activity: 'क्रियाकलाप', chatHistory: 'चॅट इतिहास',
   language: 'भाषा', healthy: 'निरोगी', attention: 'लक्ष देणे आवश्यक', critical: 'गंभीर',
-  season_rabi: 'रब्बी', season_kharif: 'खरीप', season_year_round: 'वर्षभर', season_summer: 'उन्हाळा'
+  season_rabi: 'रब्बी', season_kharif: 'खरीप', season_year_round: 'वर्षभर', season_summer: 'उन्हाळा',
+  networkError: 'नेटवर्क त्रुटी. कृपया तुमचे कनेक्शन तपासा.',
+  retry: 'पुन्हा प्रयत्न करा',
+  cancel: 'रद्द करा',
+  error: 'त्रुटी',
+  about: 'बद्दल',
+  version: 'आवृत्ती',
+  supportedCrops: 'समर्थित पिके',
+  features: 'वैशिष्ट्ये',
+  npkDetection: 'NPK शोध',
+  recommendations: 'शिफारसी',
+  aboutApp: 'अॅप बद्दल',
+  purpose: 'उद्देश'
 };
 
 // Gujarati
 const gu = {
   home: 'હોમ', scan: 'સ્કેન', history: 'ઇતિહાસ', settings: 'સેટિંગ્સ',
   welcome: 'FasalVaidya માં સ્વાગત છે',
+  tagline: 'AI પાક આરોગ્ય સલાહકાર',
+  welcomeMessage: 'તમારા પાક માટે ત્વરિત NPK નિદાન મેળવો',
   startScan: 'પર્ણ સ્કેન',
+  viewHistory: 'ઇતિહાસ જુઓ',
+  lessThan3Sec: '< 3 સેકન્ડ',
   selectCrop: 'પાક પસંદ કરો',
+  aiAnalysis: 'AI વિશ્લેષણ',
   crop_wheat: 'ઘઉં', crop_rice: 'ચોખા', crop_maize: 'મકાઈ', crop_banana: 'કેળા',
   crop_tomato: 'ટામેટા', crop_cotton: 'કપાસ', crop_coffee: 'કોફી', crop_cucumber: 'કાકડી',
   crop_eggplant: 'રીંગણ', crop_ashgourd: 'કોળું', crop_bittergourd: 'કારેલા',
@@ -458,15 +531,32 @@ const gu = {
   tutorialText: 'ચોક્કસ નિદાન માટે પાંદડું ફ્રેમ ભરે છે કે નહીં તે ખાતરી કરો.',
   activity: 'પ્રવૃત્તિ', chatHistory: 'ચેટ ઇતિહાસ',
   language: 'ભાષા', healthy: 'તંદુરસ્ત', attention: 'ધ્યાન આપવું જરૂરી', critical: 'ગંભીર',
-  season_rabi: 'રબી', season_kharif: 'ખરીફ', season_year_round: 'આખું વર્ષ', season_summer: 'ઉનાળો'
+  season_rabi: 'રબી', season_kharif: 'ખરીફ', season_year_round: 'આખું વર્ષ', season_summer: 'ઉનાળો',
+  networkError: 'નેટવર્ક ભૂલ. કૃપયા તમારું કનેક્શન તપાસો.',
+  retry: 'ફરી પ્રયાસ કરો',
+  cancel: 'રદ કરો',
+  error: 'ભૂલ',
+  about: 'વિશે',
+  version: 'આવૃત્તિ',
+  supportedCrops: 'સમર્થિત પાક',
+  features: 'વિશેષતાઓ',
+  npkDetection: 'NPK શોધ',
+  recommendations: 'ભલામણો',
+  aboutApp: 'એપ્લિકેશન વિશે',
+  purpose: 'હેતુ'
 };
 
 // Kannada
 const kn = {
   home: 'ಮುಖಪುಟ', scan: 'ಸ್ಕ್ಯಾನ್', history: 'ಇತಿಹಾಸ', settings: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
   welcome: 'FasalVaidya ಗೆ ಸುಸ್ವಾಗತ',
+  tagline: 'AI ಬೆಳೆ ಆರೋಗ್ಯ ಸಲಹೆಗಾರ',
+  welcomeMessage: 'ನಿಮ್ಮ ಬೆಳೆಗಳಿಗೆ ತ್ವರಿತ NPK ರೋಗನಿರ್ಣಯ ಪಡೆಯಿರಿ',
   startScan: 'ಎಲೆ ಸ್ಕ್ಯಾನ್',
+  viewHistory: 'ಇತಿಹಾಸ ನೋಡಿ',
+  lessThan3Sec: '< 3 ಸೆಕೆಂಡು',
   selectCrop: 'ಬೆಳೆ ಆಯ್ಕೆಮಾಡಿ',
+  aiAnalysis: 'AI ವಿಶ್ಲೇಷಣೆ',
   crop_wheat: 'ಗೋಧಿ', crop_rice: 'ಅಕ್ಕಿ', crop_maize: 'ಜೋಳ', crop_banana: 'ಬಾಳೆ',
   crop_tomato: 'ಟೊಮ್ಯಾಟೊ', crop_cotton: 'ಹತ್ತಿ', crop_coffee: 'ಕಾಫಿ', crop_cucumber: 'ಸೌತೆಕಾಯಿ',
   crop_eggplant: 'ಬದನೆಕಾಯಿ', crop_ashgourd: 'ಬೂದುಗುಂಬಳ', crop_bittergourd: 'ಹಾಗಲಕಾಯಿ',
@@ -476,15 +566,32 @@ const kn = {
   tutorialText: 'ನಿಖರವಾದ ರೋಗನಿರ್ಣಯಕ್ಕಾಗಿ ಎಲೆ ಫ್ರೇಮ್ ಅನ್ನು ತುಂಬುತ್ತದೆ ಎಂದು ಖಚಿತಪಡಿಸಿಕೊಳ್ಳಿ.',
   activity: 'ಚಟುವಟಿಕೆ', chatHistory: 'ಚಾಟ್ ಇತಿಹಾಸ',
   language: 'ಭಾಷೆ', healthy: 'ಆರೋಗ್ಯಕರ', attention: 'ಗಮನ ಅಗತ್ಯ', critical: 'ಗಂಭೀರ',
-  season_rabi: 'ರಬಿ', season_kharif: 'ಖಾರಿಫ್', season_year_round: 'ವರ್ಷಪೂರ್ತಿ', season_summer: 'ಬೇಸಿಗೆ'
+  season_rabi: 'ರಬಿ', season_kharif: 'ಖಾರಿಫ್', season_year_round: 'ವರ್ಷಪೂರ್ತಿ', season_summer: 'ಬೇಸಿಗೆ',
+  networkError: 'ನೆಟ್‌ವರ್ಕ್ ದೋಷ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ.',
+  retry: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+  cancel: 'ರದ್ದುಮಾಡಿ',
+  error: 'ದೋಷ',
+  about: 'ಕುರಿತು',
+  version: 'ಆವೃತ್ತಿ',
+  supportedCrops: 'ಬೆಂಬಲಿತ ಬೆಳೆಗಳು',
+  features: 'ವೈಶಿಷ್ಟ್ಯಗಳು',
+  npkDetection: 'NPK ಪತ್ತೆ',
+  recommendations: 'ಶಿಫಾರಸುಗಳು',
+  aboutApp: 'ಅಪ್ಲಿಕೇಶನ್ ಬಗ್ಗೆ',
+  purpose: 'ಉದ್ದೇಶ'
 };
 
 // Malayalam
 const ml = {
   home: 'ഹോം', scan: 'സ്കാൻ', history: 'ചരിത്രം', settings: 'ക്രമീകരണങ്ങൾ',
   welcome: 'FasalVaidya-ലേക്ക് സ്വാഗതം',
+  tagline: 'AI വിള ആരോഗ്യ ഉപദേഷ്ടാവ്',
+  welcomeMessage: 'നിങ്ങളുടെ വിളകൾക്ക് തൽക്ഷണ NPK രോഗനിർണയം നേടുക',
   startScan: 'ഇല സ്കാൻ',
+  viewHistory: 'ചരിത്രം കാണുക',
+  lessThan3Sec: '< 3 സെക്കൻഡ്',
   selectCrop: 'വിള തിരഞ്ഞെടുക്കുക',
+  aiAnalysis: 'AI വിശകലനം',
   crop_wheat: 'ഗോതമ്പ്', crop_rice: 'അരി', crop_maize: 'ചോളം', crop_banana: 'വാഴ',
   crop_tomato: 'തക്കാളി', crop_cotton: 'പരുത്തി', crop_coffee: 'കാപ്പി', crop_cucumber: 'വെള്ളരിക്ക',
   crop_eggplant: 'വഴുതന', crop_ashgourd: 'കുമ്പളങ്ങ', crop_bittergourd: 'പാവയ്ക്ക',
@@ -494,15 +601,32 @@ const ml = {
   tutorialText: 'കൃത്യമായ രോഗനിർണ്ണയത്തിനായി ഇല ഫ്രെയിം നിറയ്ക്കുന്നുണ്ടെന്ന് ഉറപ്പാക്കുക.',
   activity: 'പ്രവർത്തനം', chatHistory: 'ചാറ്റ് ചരിത്രം',
   language: 'ഭാഷ', healthy: 'ആരോഗ്യമുള്ള', attention: 'ശ്രദ്ധിക്കണം', critical: 'ഗുരുതരമായ',
-  season_rabi: 'റാബി', season_kharif: 'ഖാരിഫ്', season_year_round: 'വർഷം മുഴുവനും', season_summer: 'വേനൽ'
+  season_rabi: 'റാബി', season_kharif: 'ഖാരിഫ്', season_year_round: 'വർഷം മുഴുവനും', season_summer: 'വേനൽ',
+  networkError: 'നെറ്റ്‌വർക്ക് പിശക്. നിങ്ങളുടെ കണക്ഷൻ പരിശോധിക്കുക.',
+  retry: 'വീണ്ടും ശ്രമിക്കുക',
+  cancel: 'റദ്ദാക്കുക',
+  error: 'പിശക്',
+  about: 'കുറിച്ച്',
+  version: 'പതിപ്പ്',
+  supportedCrops: 'പിന്തുണയ്ക്കുന്ന വിളകൾ',
+  features: 'സവിശേഷതകൾ',
+  npkDetection: 'NPK കണ്ടെത്തൽ',
+  recommendations: 'ശുപാർശകൾ',
+  aboutApp: 'ആപ്പിനെക്കുറിച്ച്',
+  purpose: 'ഉദ്ദേശ്യം'
 };
 
 // Punjabi
 const pa = {
   home: 'ਘਰ', scan: 'ਸਕੈਨ', history: 'ਇਤਿਹਾਸ', settings: 'ਸੈਟਿੰਗਜ਼',
   welcome: 'FasalVaidya ਵਿੱਚ ਜੀ ਆਇਆਂ ਨੂੰ',
+  tagline: 'AI ਫਸਲ ਸਿਹਤ ਸਲਾਹਕਾਰ',
+  welcomeMessage: 'ਆਪਣੀਆਂ ਫਸਲਾਂ ਲਈ ਤੁਰੰਤ NPK ਜਾਂਚ ਪ੍ਰਾਪਤ ਕਰੋ',
   startScan: 'ਪੱਤਾ ਸਕੈਨ',
+  viewHistory: 'ਇਤਿਹਾਸ ਦੇਖੋ',
+  lessThan3Sec: '< 3 ਸਕਿੰਟ',
   selectCrop: 'ਫਸਲ ਚੁਣੋ',
+  aiAnalysis: 'AI ਵਿਸ਼ਲੇਸ਼ਣ',
   crop_wheat: 'ਕਣਕ', crop_rice: 'ਚਾਵਲ', crop_maize: 'ਮੱਕੀ', crop_banana: 'ਕੇਲਾ',
   crop_tomato: 'ਟਮਾਟਰ', crop_cotton: 'ਕਪਾਹ', crop_coffee: 'ਕੌਫੀ', crop_cucumber: 'ਖੀਰਾ',
   crop_eggplant: 'ਬੈਂਗਣ', crop_ashgourd: 'ਪੇਠਾ', crop_bittergourd: 'ਕਰੇਲਾ',
@@ -512,7 +636,19 @@ const pa = {
   tutorialText: 'ਸਹੀ ਜਾਂਚ ਲਈ ਯਕੀਨੀ ਬਣਾਓ ਕਿ ਪੱਤਾ ਫਰੇਮ ਨੂੰ ਭਰਦਾ ਹੈ।',
   activity: 'ਗਤੀਵਿਧੀ', chatHistory: 'ਗੱਲਬਾਤ ਇਤਿਹਾਸ',
   language: 'ਭਾਸ਼ਾ', healthy: 'ਸਿਹਤਮੰਦ', attention: 'ਧਿਆਨ ਦੀ ਲੋੜ', critical: 'ਗੰਭੀਰ',
-  season_rabi: 'ਹਾੜੀ', season_kharif: 'ਸਾਉਣੀ', season_year_round: 'ਸਾਰਾ ਸਾਲ', season_summer: 'ਗਰਮੀ'
+  season_rabi: 'ਹਾੜੀ', season_kharif: 'ਸਾਉਣੀ', season_year_round: 'ਸਾਰਾ ਸਾਲ', season_summer: 'ਗਰਮੀ',
+  networkError: 'ਨੈੱਟਵਰਕ ਗਲਤੀ. ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਕਨੈਕਸ਼ਨ ਚੈੱਕ ਕਰੋ।',
+  retry: 'ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ',
+  cancel: 'ਰੱਦ ਕਰੋ',
+  error: 'ਗਲਤੀ',
+  about: 'ਬਾਰੇ',
+  version: 'ਵਰਜਨ',
+  supportedCrops: 'ਸਮਰਥਿਤ ਫਸਲਾਂ',
+  features: 'ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ',
+  npkDetection: 'NPK ਖੋਜ',
+  recommendations: 'ਸਿਫਾਰਸ਼ਾਂ',
+  aboutApp: 'ਐਪ ਬਾਰੇ',
+  purpose: 'ਉਦੇਸ਼'
 };
 // Create i18n instance
 const i18n = new I18n({
