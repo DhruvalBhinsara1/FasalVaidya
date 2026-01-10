@@ -67,6 +67,38 @@ FasalVaidya/
 
 ---
 
+## 🛠️ Tech Stack
+
+### Frontend (Mobile App)
+- **React Native** (0.81.5) - Cross-platform mobile framework
+- **Expo** (~54.0.0) - Development platform and tooling
+- **TypeScript** - Type-safe JavaScript
+- **React Navigation** - Navigation library
+- **Expo Camera** - Camera integration
+- **Axios** - HTTP client for API calls
+- **i18n-js** - Internationalization
+
+### Backend (API Server)
+- **Flask** (3.0.0) - Python web framework
+- **Python** (3.11+) - Programming language
+- **SQLite** - Database
+- **Flask-CORS** - Cross-origin resource sharing
+
+### Machine Learning
+- **TensorFlow** (2.15+) - Deep learning framework
+- **TensorFlow Lite** - Mobile-optimized inference
+- **MobileNetV2** - Base model architecture (transfer learning)
+- **NumPy** - Numerical computing
+- **Pillow** - Image processing
+- **scikit-learn** - Machine learning utilities
+
+### Development Tools
+- **VS Code** - IDE with custom tasks and keybindings
+- **pytest** - Testing framework
+- **Git** - Version control
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
