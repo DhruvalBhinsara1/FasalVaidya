@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 
 import { uploadScan } from '../api';
-import { Button, LoadingIndicator } from '../components';
+import { AnalysisLoadingOverlay, Button } from '../components';
 import { t } from '../i18n';
 import { borderRadius, colors, spacing } from '../theme';
 
@@ -152,7 +152,7 @@ const CameraScreen: React.FC = () => {
   if (capturedImage) {
     return (
       <SafeAreaView style={styles.container}>
-        <LoadingIndicator visible={isProcessing} message={t('analyzing')} />
+        <AnalysisLoadingOverlay visible={isProcessing} />
         
         {/* Close button */}
         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>

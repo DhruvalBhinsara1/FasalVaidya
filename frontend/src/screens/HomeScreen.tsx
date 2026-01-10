@@ -8,14 +8,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { Crop, getCrops, healthCheck } from '../api';
@@ -91,6 +91,10 @@ const HomeScreen: React.FC = () => {
     navigation.navigate('Settings');
   };
 
+  const handleOpenChat = () => {
+    navigation.navigate('Chat' as any, { cropId: selectedCropId });
+  };
+
   const selectedCrop = crops.find((c) => c.id === selectedCropId);
 
   return (
@@ -155,7 +159,7 @@ const HomeScreen: React.FC = () => {
         </View>
 
         {/* AI Analysis Chat Card */}
-        <TouchableOpacity onPress={() => navigation.navigate('Chat' as any, { cropId: selectedCropId })}>
+        <TouchableOpacity onPress={handleOpenChat}>
           <Card style={styles.reminderCard}>
             <View style={styles.reminderIconWrap}>
               <Ionicons name="chatbubbles" size={24} color={colors.primary} />
@@ -178,6 +182,16 @@ const HomeScreen: React.FC = () => {
           </Card>
         )}
       </ScrollView>
+
+      {/* Always-visible AI chat access (icon-first, low-text) */}
+      <TouchableOpacity
+        style={styles.chatFab}
+        onPress={handleOpenChat}
+        activeOpacity={0.85}
+      >
+        <View style={styles.chatFabGlow} />
+        <Ionicons name="chatbubbles-outline" size={26} color={colors.textWhite} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -335,6 +349,26 @@ const styles = StyleSheet.create({
     color: colors.warning,
     fontWeight: '600',
     flex: 1,
+  },
+  chatFab: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    right: spacing.lg,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.lg,
+  },
+  chatFabGlow: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: `${colors.secondary}25`,
+    zIndex: -1,
   },
 });
 

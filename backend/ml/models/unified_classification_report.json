@@ -1,123 +1,273 @@
 {
-  "maize_ALL Present": {
-    "precision": 0.7857142857142857,
-    "recall": 0.7674418604651163,
-    "f1-score": 0.7764705882352941,
-    "support": 43.0
-  },
-  "maize_ALLAB": {
-    "precision": 0.8205128205128205,
-    "recall": 0.8888888888888888,
-    "f1-score": 0.8533333333333334,
-    "support": 36.0
-  },
-  "maize_KAB": {
-    "precision": 0.8208955223880597,
-    "recall": 0.9166666666666666,
-    "f1-score": 0.8661417322834646,
-    "support": 60.0
-  },
-  "maize_NAB": {
-    "precision": 0.9615384615384616,
-    "recall": 0.9433962264150944,
-    "f1-score": 0.9523809523809523,
-    "support": 53.0
-  },
-  "maize_PAB": {
-    "precision": 0.7446808510638298,
-    "recall": 0.8974358974358975,
-    "f1-score": 0.813953488372093,
-    "support": 39.0
-  },
-  "maize_ZNAB": {
-    "precision": 0.9333333333333333,
-    "recall": 0.711864406779661,
-    "f1-score": 0.8076923076923077,
-    "support": 59.0
-  },
-  "rice_Nitrogen(N)": {
-    "precision": 0.972972972972973,
-    "recall": 0.9473684210526315,
-    "f1-score": 0.96,
-    "support": 38.0
-  },
-  "rice_Phosphorus(P)": {
-    "precision": 0.925,
-    "recall": 0.9024390243902439,
-    "f1-score": 0.9135802469135802,
-    "support": 41.0
-  },
-  "rice_Potassium(K)": {
-    "precision": 0.9512195121951219,
-    "recall": 0.9285714285714286,
-    "f1-score": 0.9397590361445783,
-    "support": 42.0
-  },
-  "tomato_Tomato - Healthy": {
-    "precision": 0.6444444444444445,
-    "recall": 0.7631578947368421,
-    "f1-score": 0.6987951807228916,
-    "support": 38.0
-  },
-  "tomato_Tomato - Jassid and Mite": {
-    "precision": 0.875,
-    "recall": 0.6363636363636364,
-    "f1-score": 0.7368421052631579,
-    "support": 11.0
-  },
-  "tomato_Tomato - Leaf Miner": {
-    "precision": 0.84,
-    "recall": 0.8076923076923077,
-    "f1-score": 0.8235294117647058,
-    "support": 26.0
-  },
-  "tomato_Tomato - Mite": {
-    "precision": 0.6774193548387096,
-    "recall": 0.9130434782608695,
-    "f1-score": 0.7777777777777778,
-    "support": 23.0
-  },
-  "tomato_Tomato - Nitrogen Deficiency": {
-    "precision": 0.6,
-    "recall": 0.3333333333333333,
-    "f1-score": 0.42857142857142855,
-    "support": 9.0
-  },
-  "tomato_Tomato - Nitrogen and Potassium Deficiency": {
+  "ashgourd_healthy": {
     "precision": 0.5,
-    "recall": 0.4444444444444444,
-    "f1-score": 0.47058823529411764,
-    "support": 9.0
+    "recall": 0.2,
+    "f1-score": 0.2857142857142857,
+    "support": 5.0
   },
-  "tomato_Tomato - Potassium Deficiency": {
-    "precision": 0.8,
+  "ashgourd_k": {
+    "precision": 0.8181818181818182,
+    "recall": 0.72,
+    "f1-score": 0.7659574468085106,
+    "support": 25.0
+  },
+  "ashgourd_k_mg": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 3.0
+  },
+  "ashgourd_n": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 3.0
+  },
+  "ashgourd_n_k": {
+    "precision": 0.5428571428571428,
+    "recall": 0.7916666666666666,
+    "f1-score": 0.6440677966101694,
+    "support": 24.0
+  },
+  "ashgourd_n_mg": {
+    "precision": 0.4,
     "recall": 0.4,
-    "f1-score": 0.5333333333333333,
+    "f1-score": 0.4,
+    "support": 5.0
+  },
+  "ashgourd_pm": {
+    "precision": 0.5714285714285714,
+    "recall": 0.6666666666666666,
+    "f1-score": 0.6153846153846154,
+    "support": 6.0
+  },
+  "banana_healthy": {
+    "precision": 0.8333333333333334,
+    "recall": 0.8,
+    "f1-score": 0.8163265306122449,
+    "support": 25.0
+  },
+  "banana_magnesium": {
+    "precision": 0.6875,
+    "recall": 0.5789473684210527,
+    "f1-score": 0.6285714285714286,
+    "support": 19.0
+  },
+  "banana_potassium": {
+    "precision": 0.8333333333333334,
+    "recall": 0.8333333333333334,
+    "f1-score": 0.8333333333333334,
+    "support": 24.0
+  },
+  "bittergourd_dm": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
     "support": 10.0
   },
+  "bittergourd_healthy": {
+    "precision": 0.43478260869565216,
+    "recall": 0.47619047619047616,
+    "f1-score": 0.45454545454545453,
+    "support": 21.0
+  },
+  "bittergourd_jas": {
+    "precision": 1.0,
+    "recall": 0.5,
+    "f1-score": 0.6666666666666666,
+    "support": 6.0
+  },
+  "bittergourd_k": {
+    "precision": 0.75,
+    "recall": 0.6666666666666666,
+    "f1-score": 0.7058823529411765,
+    "support": 9.0
+  },
+  "bittergourd_k_mg": {
+    "precision": 0.4444444444444444,
+    "recall": 0.36363636363636365,
+    "f1-score": 0.4,
+    "support": 11.0
+  },
+  "bittergourd_ls": {
+    "precision": 0.16666666666666666,
+    "recall": 0.5,
+    "f1-score": 0.25,
+    "support": 2.0
+  },
+  "bittergourd_n": {
+    "precision": 0.14285714285714285,
+    "recall": 0.18181818181818182,
+    "f1-score": 0.16,
+    "support": 11.0
+  },
+  "bittergourd_n_k": {
+    "precision": 0.5,
+    "recall": 0.7,
+    "f1-score": 0.5833333333333334,
+    "support": 10.0
+  },
+  "bittergourd_n_mg": {
+    "precision": 0.36363636363636365,
+    "recall": 0.4444444444444444,
+    "f1-score": 0.4,
+    "support": 9.0
+  },
+  "coffee_healthy": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 1.0
+  },
+  "coffee_nitrogen_n": {
+    "precision": 0.8,
+    "recall": 0.5,
+    "f1-score": 0.6153846153846154,
+    "support": 8.0
+  },
+  "coffee_phosphorus_p": {
+    "precision": 0.8333333333333334,
+    "recall": 0.8695652173913043,
+    "f1-score": 0.851063829787234,
+    "support": 23.0
+  },
+  "coffee_potassium_k": {
+    "precision": 0.6666666666666666,
+    "recall": 0.8,
+    "f1-score": 0.7272727272727273,
+    "support": 10.0
+  },
+  "eggplant_healthy": {
+    "precision": 0.5,
+    "recall": 0.42857142857142855,
+    "f1-score": 0.46153846153846156,
+    "support": 7.0
+  },
+  "eggplant_k": {
+    "precision": 0.4444444444444444,
+    "recall": 0.7272727272727273,
+    "f1-score": 0.5517241379310345,
+    "support": 11.0
+  },
+  "eggplant_n": {
+    "precision": 0.6,
+    "recall": 0.8571428571428571,
+    "f1-score": 0.7058823529411765,
+    "support": 7.0
+  },
+  "eggplant_n_k": {
+    "precision": 0.8,
+    "recall": 0.25,
+    "f1-score": 0.38095238095238093,
+    "support": 16.0
+  },
+  "maize_all_present": {
+    "precision": 0.6764705882352942,
+    "recall": 0.8214285714285714,
+    "f1-score": 0.7419354838709677,
+    "support": 28.0
+  },
+  "maize_allab": {
+    "precision": 0.8888888888888888,
+    "recall": 0.9411764705882353,
+    "f1-score": 0.9142857142857143,
+    "support": 17.0
+  },
+  "maize_kab": {
+    "precision": 0.8518518518518519,
+    "recall": 0.7931034482758621,
+    "f1-score": 0.8214285714285714,
+    "support": 29.0
+  },
+  "maize_nab": {
+    "precision": 0.9166666666666666,
+    "recall": 0.9166666666666666,
+    "f1-score": 0.9166666666666666,
+    "support": 24.0
+  },
+  "maize_pab": {
+    "precision": 0.75,
+    "recall": 0.6774193548387096,
+    "f1-score": 0.711864406779661,
+    "support": 31.0
+  },
+  "maize_znab": {
+    "precision": 0.8695652173913043,
+    "recall": 0.8333333333333334,
+    "f1-score": 0.851063829787234,
+    "support": 24.0
+  },
+  "rice_nitrogen": {
+    "precision": 0.896551724137931,
+    "recall": 0.9285714285714286,
+    "f1-score": 0.9122807017543859,
+    "support": 28.0
+  },
+  "rice_phosphorus": {
+    "precision": 0.8,
+    "recall": 0.8,
+    "f1-score": 0.8,
+    "support": 25.0
+  },
+  "rice_potassium": {
+    "precision": 0.7857142857142857,
+    "recall": 0.8148148148148148,
+    "f1-score": 0.8,
+    "support": 27.0
+  },
+  "snakegourd_healthy": {
+    "precision": 0.5,
+    "recall": 0.3333333333333333,
+    "f1-score": 0.4,
+    "support": 3.0
+  },
+  "snakegourd_k": {
+    "precision": 0.3333333333333333,
+    "recall": 0.25,
+    "f1-score": 0.2857142857142857,
+    "support": 4.0
+  },
+  "snakegourd_ls": {
+    "precision": 0.8181818181818182,
+    "recall": 0.9,
+    "f1-score": 0.8571428571428571,
+    "support": 10.0
+  },
+  "snakegourd_n": {
+    "precision": 0.5,
+    "recall": 0.5,
+    "f1-score": 0.5,
+    "support": 8.0
+  },
+  "snakegourd_n_k": {
+    "precision": 0.7407407407407407,
+    "recall": 0.7692307692307693,
+    "f1-score": 0.7547169811320755,
+    "support": 26.0
+  },
   "wheat_control": {
-    "precision": 0.8148148148148148,
-    "recall": 0.9361702127659575,
-    "f1-score": 0.8712871287128713,
-    "support": 47.0
+    "precision": 0.84,
+    "recall": 0.875,
+    "f1-score": 0.8571428571428571,
+    "support": 24.0
   },
   "wheat_deficiency": {
-    "precision": 0.8979591836734694,
-    "recall": 0.7857142857142857,
-    "f1-score": 0.8380952380952381,
-    "support": 56.0
+    "precision": 0.85,
+    "recall": 0.8095238095238095,
+    "f1-score": 0.8292682926829268,
+    "support": 21.0
   },
-  "accuracy": 0.8375,
+  "accuracy": 0.7046875,
   "macro avg": {
-    "precision": 0.8091947531939069,
-    "recall": 0.7735551341098502,
-    "f1-score": 0.7812295291606182,
+    "precision": 0.596544906628396,
+    "recall": 0.5865005674145977,
+    "f1-score": 0.5780723813655129,
     "support": 640.0
   },
   "weighted avg": {
-    "precision": 0.8445537540695497,
-    "recall": 0.8375,
-    "f1-score": 0.835355256031719,
+    "precision": 0.7083660280993493,
+    "recall": 0.7046875,
+    "f1-score": 0.6976176106972714,
     "support": 640.0
   }
 }

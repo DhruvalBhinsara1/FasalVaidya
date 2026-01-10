@@ -9,14 +9,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 import React, { useMemo, useState } from 'react';
 import {
-    Image,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Image,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { getImageUrl, ScanResult } from '../api';
@@ -416,25 +416,6 @@ const ResultsScreen: React.FC = () => {
           </Card>
         )}
 
-        {/* AI Chat Card */}
-        <TouchableOpacity 
-          style={styles.aiChatCard}
-          onPress={() => navigation.navigate('Chat' as any, { scanId: scanResult.scan_id })}
-        >
-          <View style={styles.aiChatIcon}>
-            <Ionicons name="chatbubbles" size={24} color={colors.primary} />
-          </View>
-          <View style={styles.aiChatContent}>
-            <Text style={styles.aiChatTitle}>
-              {isHindi ? 'AI से पूछें' : 'Ask AI'}
-            </Text>
-            <Text style={styles.aiChatText}>
-              {isHindi ? 'इस निदान के बारे में प्रश्न पूछें' : 'Ask questions about this diagnosis'}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
-        </TouchableOpacity>
-
         {/* Action Buttons */}
         <View style={styles.actions}>
           <Button
@@ -450,6 +431,15 @@ const ResultsScreen: React.FC = () => {
           />
         </View>
       </ScrollView>
+      {/* Floating AI chat - icon-first, unobtrusive */}
+      <TouchableOpacity
+        style={styles.chatFab}
+        onPress={() => navigation.navigate('Chat' as any, { scanId: scanResult.scan_id })}
+        activeOpacity={0.85}
+      >
+        <View style={styles.chatFabGlow} />
+        <Ionicons name="chatbubbles-outline" size={26} color={colors.textWhite} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -679,36 +669,25 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     lineHeight: 20,
   },
-  aiChatCard: {
-    flexDirection: 'row',
+  chatFab: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    right: spacing.lg,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.secondary,
     alignItems: 'center',
-    backgroundColor: colors.card,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.lg,
-    ...shadows.sm,
-  },
-  aiChatIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary + '15',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
+    ...shadows.lg,
   },
-  aiChatContent: {
-    flex: 1,
-  },
-  aiChatTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  aiChatText: {
-    fontSize: 13,
-    color: colors.textSecondary,
+  chatFabGlow: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: `${colors.secondary}25`,
+    zIndex: -1,
   },
 });
 
