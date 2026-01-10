@@ -4,18 +4,17 @@
  * Displays fertilizer product recommendations with buy links
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   Image,
-  TouchableOpacity,
   Linking,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, shadows } from '../theme';
-import { t } from '../i18n';
+import { borderRadius, colors, shadows, spacing } from '../theme';
 
 export interface Product {
   id: string;
@@ -35,17 +34,21 @@ interface ProductCardProps {
   product: Product;
   isHindi?: boolean;
   onPress?: () => void;
+  recommended?: boolean;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, isHindi = false, onPress }) => {
+const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  isHindi = false,
+  onPress,
+  recommended = false,
+}) => {
   const [imageError, setImageError] = React.useState(false);
   
   const handleBuyPress = async () => {
     try {
       const supported = await Linking.canOpenURL(product.buyUrl);
-      if (supported) {
-        await Linking.openURL(product.buyUrl);
-      }
+      if (supported) await Linking.openURL(product.buyUrl);
     } catch (error) {
       console.error('Error opening URL:', error);
     }
@@ -108,6 +111,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isHindi = false, onP
         >
           <Text style={styles.nutrientText}>{product.nutrient}</Text>
         </View>
+        {recommended && (
+          <View style={styles.recommendedBadge}>
+            <Ionicons name="checkmark-circle" size={12} color="#fff" />
+            <Text style={styles.recommendedText}>
+              {isHindi ? 'इस कमी हेतु' : 'For this issue'}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.content}>
@@ -129,9 +140,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isHindi = false, onP
 
         <TouchableOpacity style={styles.buyButton} onPress={handleBuyPress}>
           <Ionicons name="cart-outline" size={16} color={colors.textWhite} />
-          <Text style={styles.buyButtonText}>
-            {isHindi ? 'अभी खरीदें' : 'Buy Now'}
-          </Text>
+          <Text style={styles.buyButtonText}>{isHindi ? 'खरीदें' : 'Buy'}</Text>
           <Ionicons name="open-outline" size={14} color={colors.textWhite} />
         </TouchableOpacity>
       </View>
@@ -144,12 +153,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
     ...shadows.sm,
-    flexDirection: 'row',
   },
   imageContainer: {
-    width: 100,
+    width: '100%',
     height: 140,
     position: 'relative',
   },
@@ -177,9 +185,26 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  recommendedBadge: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    backgroundColor: colors.secondary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  recommendedText: {
+    color: colors.textWhite,
+    fontSize: 10,
+    fontWeight: '700',
+  },
   content: {
-    flex: 1,
     padding: spacing.sm,
+    gap: spacing.xs,
   },
   brand: {
     fontSize: 10,
@@ -224,10 +249,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
     gap: 4,
   },
   buyButtonText: {

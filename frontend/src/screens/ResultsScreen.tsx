@@ -13,10 +13,11 @@ import {
   Modal,
   SafeAreaView,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 
 import { getImageUrl, ScanResult } from '../api';
@@ -31,6 +32,10 @@ const ResultsScreen: React.FC = () => {
   const scanResult: ScanResult = route.params?.scanResult;
   const isHindi = getCurrentLanguage() === 'hi';
   const [fullscreenImage, setFullscreenImage] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showScores, setShowScores] = useState(true);
+  const [showAction, setShowAction] = useState(true);
+  const [showWhy, setShowWhy] = useState(false);
 
   // Calculate recommended products based on deficiencies
   const recommendedProducts = useMemo(() => {
@@ -94,6 +99,26 @@ const ResultsScreen: React.FC = () => {
     navigation.navigate('Home');
   };
 
+  const handleShare = async () => {
+    const cropName = getCropName(scanResult.crop_name);
+    const status = scanResult.overall_status;
+    const topNutrient = getMostDeficientNutrient();
+    const shareLines = [
+      isHindi ? '🌿 फसल निदान' : '🌿 Crop check',
+      `${isHindi ? 'फसल' : 'Crop'}: ${cropName}`,
+      `${isHindi ? 'स्थिति' : 'Status'}: ${status}`,
+      topNutrient
+        ? `${isHindi ? 'ध्यान दें' : 'Needs'}: ${topNutrient}`
+        : isHindi ? 'सब ठीक है' : 'All good',
+    ];
+    const message = shareLines.join('\n');
+    try {
+      await Share.share({ message });
+    } catch (e) {
+      console.log('Share error', e);
+    }
+  };
+
   const getRecommendationText = (nutrient: 'n' | 'p' | 'k' | 'mg') => {
     // Try i18n recommendation first
     const i18nRec = getRecommendation(scanResult.crop_name, nutrient);
@@ -103,6 +128,32 @@ const ResultsScreen: React.FC = () => {
     const rec = scanResult.recommendations[nutrient];
     if (!rec) return t('noActionNeeded');
     return isHindi ? rec.hi || rec.en : rec.en || t('noActionNeeded');
+  };
+
+  const getBenefitLine = (nutrient: 'n' | 'p' | 'k' | 'mg') => {
+    if (isHindi) {
+      switch (nutrient) {
+        case 'n': return 'हरी पत्तियाँ • तेज बढ़त';
+        case 'p': return 'मजबूत जड़ें • ज्यादा फूल';
+        case 'k': return 'स्वस्थ फल • मजबूत तना';
+        case 'mg': return 'और हरा पत्ता';
+        default: return '';
+      }
+    }
+    switch (nutrient) {
+      case 'n': return 'Greener leaves • Faster growth';
+      case 'p': return 'Stronger roots • More blooms';
+      case 'k': return 'Healthy fruits • Strong stems';
+      case 'mg': return 'Greener leaf';
+      default: return '';
+    }
+  };
+
+  const getDose = (text: string): string | null => {
+    // Extract first quantity-like token (e.g., 12-15 kg, 15 kg, 200 g)
+    const match = text.match(/(\d+[\d\-–]*\s*(kg|g|ltr|l|ml|bags)?)/i);
+    if (match) return match[1].replace('ltr', 'L').replace('ml', 'mL').trim();
+    return null;
   };
 
   // Get the worst severity for heatmap display
@@ -155,6 +206,17 @@ const ResultsScreen: React.FC = () => {
     return undefined;
   };
 
+  const getNutrientName = (nutrient?: string) => {
+    if (!nutrient) return isHindi ? 'पोषक' : 'nutrient';
+    switch (nutrient) {
+      case 'N': return isHindi ? 'नाइट्रोजन' : 'Nitrogen';
+      case 'P': return isHindi ? 'फॉस्फोरस' : 'Phosphorus';
+      case 'K': return isHindi ? 'पोटाश' : 'Potash';
+      case 'Mg': return isHindi ? 'मैग्नीशियम' : 'Magnesium';
+      default: return nutrient;
+    }
+  };
+
   // Check if any confidence is below 50%
   const hasLowConfidence = (): boolean => {
     const confidences = [
@@ -180,6 +242,49 @@ const ResultsScreen: React.FC = () => {
     return Math.min(...confidences);
   };
 
+  const getSeverityColor = (severity?: string) => {
+    switch (severity) {
+      case 'critical':
+        return colors.critical;
+      case 'attention':
+        return colors.warning;
+      case 'healthy':
+      default:
+        return colors.healthy;
+    }
+  };
+
+  const getBagCountFor = (nutrient: 'n' | 'p' | 'k' | 'mg') => {
+    const dose = getDose(getRecommendationText(nutrient));
+    const numeric = dose ? parseFloat(dose) : 0;
+    if (!numeric || Number.isNaN(numeric)) return 1;
+    return Math.max(1, Math.round(numeric / 25));
+  };
+
+  const getProductHighlight = (nutrient: 'N' | 'P' | 'K' | 'Mg') => {
+    const severity =
+      nutrient === 'N' ? scanResult.n_severity :
+      nutrient === 'P' ? scanResult.p_severity :
+      nutrient === 'K' ? scanResult.k_severity :
+      scanResult.mg_severity;
+    return severity && severity !== 'healthy' ? getSeverityColor(severity) : undefined;
+  };
+
+  const topNutrient = getMostDeficientNutrient();
+  const actionItems = [
+    { key: 'n', nutrient: 'N', severity: scanResult.n_severity, dose: getDose(getRecommendationText('n')), benefit: getBenefitLine('n') },
+    { key: 'p', nutrient: 'P', severity: scanResult.p_severity, dose: getDose(getRecommendationText('p')), benefit: getBenefitLine('p') },
+    { key: 'k', nutrient: 'K', severity: scanResult.k_severity, dose: getDose(getRecommendationText('k')), benefit: getBenefitLine('k') },
+    scanResult.mg_severity !== undefined ? { key: 'mg', nutrient: 'Mg', severity: scanResult.mg_severity, dose: getDose(getRecommendationText('mg')), benefit: getBenefitLine('mg') } : null,
+  ].filter((item) => item && item.severity !== 'healthy') as {
+    key: string;
+    nutrient: 'N' | 'P' | 'K' | 'Mg';
+    severity: string;
+    dose: string | null;
+    benefit: string;
+  }[];
+  const primaryAction = actionItems[0];
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -193,12 +298,10 @@ const ResultsScreen: React.FC = () => {
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('diagnosisResults')}</Text>
-          <TouchableOpacity onPress={handleSpeak} style={styles.speakButton}>
-            <Ionicons name="volume-high" size={24} color={colors.primary} />
-          </TouchableOpacity>
+          <View style={{ width: 32 }} />
         </View>
 
-        {/* Crop & Status Card */}
+        {/* Crop & Status Card (classic) */}
         <Card style={styles.statusCard}>
           <View style={styles.cropInfo}>
             <Text style={styles.cropIcon}>{scanResult.crop_icon}</Text>
@@ -210,6 +313,9 @@ const ResultsScreen: React.FC = () => {
                 {new Date(scanResult.created_at).toLocaleString()}
               </Text>
             </View>
+            <TouchableOpacity onPress={handleSpeak} style={styles.speakButton}>
+              <Ionicons name="volume-high" size={24} color={colors.primary} />
+            </TouchableOpacity>
           </View>
           
           <View style={styles.overallStatus}>
@@ -218,17 +324,33 @@ const ResultsScreen: React.FC = () => {
           </View>
         </Card>
 
-        {/* Heatmap Image with Toggle */}
+        {/* Heatmap (collapsible) */}
         <Card style={styles.heatmapCard}>
-          <Text style={styles.sectionTitle}>{t('analysisHeatmap')}</Text>
-          <HeatmapOverlay
-            originalImage={getImageUrl(scanResult.original_image_url || scanResult.image_url || '')}
-            heatmapImage={scanResult.heatmap ? getImageUrl(scanResult.heatmap) : (scanResult.heatmap_url ? getImageUrl(scanResult.heatmap_url) : undefined)}
-            severity={getWorstSeverity()}
-            nutrient={getMostDeficientNutrient()}
-            isHindi={isHindi}
-            onFullScreen={() => setFullscreenImage(true)}
-          />
+          <TouchableOpacity
+            style={styles.sectionHeaderRow}
+            onPress={() => setShowHeatmap((v) => !v)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Ionicons name="flame" size={18} color={colors.primary} />
+              <Text style={styles.sectionTitle}>{t('analysisHeatmap')}</Text>
+            </View>
+            <Ionicons
+              name={showHeatmap ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {showHeatmap && (
+            <HeatmapOverlay
+              originalImage={getImageUrl(scanResult.original_image_url || scanResult.image_url || '')}
+              heatmapImage={scanResult.heatmap ? getImageUrl(scanResult.heatmap) : (scanResult.heatmap_url ? getImageUrl(scanResult.heatmap_url) : undefined)}
+              severity={getWorstSeverity()}
+              nutrient={getMostDeficientNutrient()}
+              isHindi={isHindi}
+              onFullScreen={() => setFullscreenImage(true)}
+            />
+          )}
         </Card>
 
         {/* Fullscreen Image Modal */}
@@ -259,150 +381,184 @@ const ResultsScreen: React.FC = () => {
           </TouchableOpacity>
         </Modal>
 
-        {/* NPKMg Scores */}
+        {/* NPKMg Scores (classic) */}
         <Card style={styles.scoresCard}>
-          <Text style={styles.sectionTitle}>
-            {scanResult.mg_score !== undefined ? t('npkmgDeficiencyScores') : t('npkDeficiencyScores')}
-          </Text>
-          
-          <ScoreBar
-            label={t('nitrogen')}
-            score={scanResult.n_score}
-            confidence={scanResult.n_confidence}
-            severity={scanResult.n_severity}
-          />
-          
-          <ScoreBar
-            label={t('phosphorus')}
-            score={scanResult.p_score}
-            confidence={scanResult.p_confidence}
-            severity={scanResult.p_severity}
-          />
-          
-          <ScoreBar
-            label={t('potassium')}
-            score={scanResult.k_score}
-            confidence={scanResult.k_confidence}
-            severity={scanResult.k_severity}
-          />
-          
-          {/* Magnesium Score (if available) */}
-          {scanResult.mg_score !== undefined && (
-            <ScoreBar
-              label={t('magnesium')}
-              score={scanResult.mg_score}
-              confidence={scanResult.mg_confidence || 0}
-              severity={scanResult.mg_severity || 'healthy'}
-            />
-          )}
-        </Card>
-
-        {/* Low Confidence Warning */}
-        {hasLowConfidence() && (
-          <Card style={styles.warningCard}>
-            <View style={styles.warningContent}>
-              <Ionicons name="alert-circle" size={28} color={colors.warning} />
-              <View style={styles.warningTextContainer}>
-                <Text style={styles.warningTitle}>
-                  {isHindi ? 'कम विश्वास स्कोर' : 'Low Confidence Score'}
-                </Text>
-                <Text style={styles.warningText}>
-                  {isHindi 
-                    ? `विश्लेषण विश्वास ${Math.round(getLowestConfidence())}% है। बेहतर परिणामों के लिए कृपया स्पष्ट रोशनी के साथ पत्ते की एक नई तस्वीर लें, या किसी मृदा विशेषज्ञ से संपर्क करें।`
-                    : `Analysis confidence is ${Math.round(getLowestConfidence())}%. For more accurate results, please take a new photo with clear lighting, or consult a soil specialist.`
-                  }
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity 
-              style={styles.retakeButton}
-              onPress={handleNewScan}
-            >
-              <Ionicons name="camera" size={18} color={colors.warning} />
-              <Text style={styles.retakeButtonText}>
-                {isHindi ? 'दोबारा तस्वीर लें' : 'Retake Photo'}
+          <TouchableOpacity
+            style={styles.sectionHeaderRow}
+            onPress={() => setShowScores((v) => !v)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <Ionicons name="stats-chart" size={18} color={colors.primary} />
+              <Text style={styles.sectionTitle}>
+                {scanResult.mg_score !== undefined ? t('npkmgDeficiencyScores') : t('npkDeficiencyScores')}
               </Text>
-            </TouchableOpacity>
-          </Card>
-        )}
+            </View>
+            <Ionicons
+              name={showScores ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+          {showScores && (
+            <>
+              {hasLowConfidence() && (
+                <View style={styles.warningCard}>
+                  <View style={styles.warningContent}>
+                    <View style={styles.warningIconContainer}>
+                      <Ionicons name="alert-circle" size={24} color={colors.warning} />
+                    </View>
+                    <View style={styles.warningTextContainer}>
+                      <Text style={styles.warningTitle}>
+                        {isHindi ? 'कम विश्वास स्कोर' : 'Low Confidence Score'}
+                      </Text>
+                      <Text style={styles.warningText}>
+                        {isHindi 
+                          ? `विश्वास ${Math.round(getLowestConfidence())}% है। साफ रोशनी में नई फोटो लें या विशेषज्ञ से पूछें।`
+                          : `Confidence is ${Math.round(getLowestConfidence())}%. Try a new photo in good light or ask an expert.`
+                        }
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.retakeButton}
+                    onPress={handleNewScan}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="camera" size={18} color={colors.warning} />
+                    <Text style={styles.retakeButtonText}>
+                      {isHindi ? 'दोबारा तस्वीर लें' : 'Retake Photo'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
-        {/* Recommendations */}
-        <Card style={styles.recommendationsCard}>
-          <Text style={styles.sectionTitle}>{t('recommendations')}</Text>
-          
-          {/* Nitrogen Recommendation */}
-          {scanResult.n_severity !== 'healthy' && (
-            <View style={styles.recItem}>
-              <View style={styles.recHeader}>
-                <View style={[styles.recDot, { backgroundColor: '#E53935' }]} />
-                <Text style={styles.recNutrient}>{t('nitrogen')}</Text>
-                <StatusChip status={scanResult.n_severity} size="small" />
-              </View>
-              <Text style={styles.recText}>{getRecommendationText('n')}</Text>
-            </View>
-          )}
-          
-          {/* Phosphorus Recommendation */}
-          {scanResult.p_severity !== 'healthy' && (
-            <View style={styles.recItem}>
-              <View style={styles.recHeader}>
-                <View style={[styles.recDot, { backgroundColor: '#FB8C00' }]} />
-                <Text style={styles.recNutrient}>{t('phosphorus')}</Text>
-                <StatusChip status={scanResult.p_severity} size="small" />
-              </View>
-              <Text style={styles.recText}>{getRecommendationText('p')}</Text>
-            </View>
-          )}
-          
-          {/* Potassium Recommendation */}
-          {scanResult.k_severity !== 'healthy' && (
-            <View style={styles.recItem}>
-              <View style={styles.recHeader}>
-                <View style={[styles.recDot, { backgroundColor: '#43A047' }]} />
-                <Text style={styles.recNutrient}>{t('potassium')}</Text>
-                <StatusChip status={scanResult.k_severity} size="small" />
-              </View>
-              <Text style={styles.recText}>{getRecommendationText('k')}</Text>
-            </View>
-          )}
-          
-          {/* Magnesium Recommendation */}
-          {scanResult.mg_severity && scanResult.mg_severity !== 'healthy' && (
-            <View style={styles.recItem}>
-              <View style={styles.recHeader}>
-                <View style={[styles.recDot, { backgroundColor: '#8E24AA' }]} />
-                <Text style={styles.recNutrient}>{t('magnesium')}</Text>
-                <StatusChip status={scanResult.mg_severity} size="small" />
-              </View>
-              <Text style={styles.recText}>{getRecommendationText('mg')}</Text>
-            </View>
-          )}
-          
-          {/* All Healthy */}
-          {scanResult.overall_status === 'healthy' && (
-            <View style={styles.healthyMessage}>
-              <Ionicons name="checkmark-circle" size={48} color={colors.healthy} />
-              <Text style={styles.healthyText}>{t('noActionNeeded')}</Text>
-            </View>
+              <ScoreBar
+                label={t('nitrogen')}
+                score={scanResult.n_score}
+                confidence={scanResult.n_confidence}
+                severity={scanResult.n_severity}
+              />
+              
+              <ScoreBar
+                label={t('phosphorus')}
+                score={scanResult.p_score}
+                confidence={scanResult.p_confidence}
+                severity={scanResult.p_severity}
+              />
+              
+              <ScoreBar
+                label={t('potassium')}
+                score={scanResult.k_score}
+                confidence={scanResult.k_confidence}
+                severity={scanResult.k_severity}
+              />
+              
+              {scanResult.mg_score !== undefined && scanResult.mg_severity !== undefined && (
+                <ScoreBar
+                  label={t('magnesium')}
+                  score={scanResult.mg_score as number}
+                  confidence={scanResult.mg_confidence as number}
+                  severity={scanResult.mg_severity as 'healthy' | 'attention' | 'critical'}
+                />
+              )}
+            </>
           )}
         </Card>
 
-        {/* Product Recommendations */}
-        {recommendedProducts.length > 0 && (
-          <Card style={styles.productsCard}>
-            <View style={styles.productHeader}>
-              <Ionicons name="cart" size={24} color={colors.primary} />
-              <Text style={styles.sectionTitle}>{t('recommendedProducts')}</Text>
-            </View>
-            <Text style={styles.productSubtitle}>{t('basedOnAnalysis')}</Text>
-            
-            {recommendedProducts.slice(0, 4).map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                isHindi={isHindi}
+        {/* Combined action + products */}
+        {(actionItems.length > 0 || recommendedProducts.length > 0) && (
+          <Card style={{ ...styles.shoppingCard, ...styles.softCard }}>
+            <TouchableOpacity
+              style={styles.sectionHeaderRow}
+              onPress={() => setShowAction((prev) => !prev)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.sectionHeaderLeft}>
+                <Ionicons name="hand-left" size={18} color={colors.primary} />
+                <Text style={styles.sectionTitle}>{isHindi ? 'क्या करें' : 'What to do'}</Text>
+              </View>
+              <Ionicons
+                name={showAction ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
               />
-            ))}
+            </TouchableOpacity>
+
+            {showAction && primaryAction && (
+              <>
+                <View style={styles.tipCard}>
+                  <View style={styles.tipHeader}>
+                    <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.tipTitle}>
+                        {isHindi
+                          ? `${getNutrientName(primaryAction.nutrient)} • ${primaryAction.dose || 'खुराक देखें'}`
+                          : `Recommended: ${getNutrientName(primaryAction.nutrient)} • ${primaryAction.dose || 'Check dose'}`}
+                      </Text>
+                      <Text style={styles.tipLine}>{primaryAction.benefit}</Text>
+                      <Text style={styles.tipLine}>
+                        {isHindi ? 'इस चरण में खेत में समान रूप से डालें।' : 'Apply gently across the field this stage.'}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.whyRow}
+                    onPress={() => setShowWhy((prev) => !prev)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.whyText}>
+                      {isHindi ? 'क्यों मदद करता है' : 'Why this helps'}
+                    </Text>
+                    <Ionicons
+                      name={showWhy ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                  {showWhy && (
+                    <Text style={styles.tipBody}>
+                      {isHindi
+                        ? 'यह पोषक फल की गुणवत्ता और तने की मजबूती को सहारा देता है। समान मात्रा में छिड़कें या मिलाएं।'
+                        : 'This nutrient supports fruit quality and stem strength. Spread or mix evenly at the shown dose.'}
+                    </Text>
+                  )}
+                </View>
+
+                {actionItems.slice(1, 3).map((item) => (
+                  <View key={item.key} style={styles.actionItem}>
+                    <View style={styles.actionRow}>
+                      <View style={[styles.actionDot, { backgroundColor: `${colors.primary}40` }]} />
+                      <Text style={styles.actionNutrient}>{getNutrientName(item.nutrient)}</Text>
+                    </View>
+                    <Text style={styles.actionDose}>
+                      {item.dose || (isHindi ? 'खुराक देखें' : 'Check dose')}
+                    </Text>
+                    <Text style={styles.actionHint}>{item.benefit}</Text>
+                  </View>
+                ))}
+
+                {recommendedProducts.length > 0 && (
+                  <View style={styles.actionProducts}>
+                    <View style={styles.actionTitleRow}>
+                      <Ionicons name="cart" size={20} color={colors.primary} />
+                      <Text style={styles.productSubtitle}>{isHindi ? 'सुझावित खाद' : 'Suggested products'}</Text>
+                    </View>
+                    <View style={styles.productsGrid}>
+                      {recommendedProducts.slice(0, 4).map((product) => (
+                        <View key={product.id} style={styles.productGridItem}>
+                          <ProductCard
+                            product={product}
+                            isHindi={isHindi}
+                            recommended={product.nutrient === topNutrient}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
           </Card>
         )}
 
@@ -417,18 +573,39 @@ const ResultsScreen: React.FC = () => {
         )}
 
         {/* Action Buttons */}
-        <View style={styles.actions}>
-          <Button
-            title={t('startScan')}
-            onPress={handleNewScan}
-            icon={<Ionicons name="camera" size={24} color={colors.textWhite} />}
-          />
-          <Button
-            title={t('viewHistory')}
-            onPress={() => navigation.navigate('History')}
-            variant="outline"
-            icon={<Ionicons name="time" size={24} color={colors.primary} />}
-          />
+        <View style={styles.actionsContainer}>
+          <View style={styles.topActionsRow}>
+            <View style={styles.topActionButtonWrap}>
+              <Button
+                title={t('viewHistory')}
+                onPress={() => navigation.navigate('History')}
+                variant="outline"
+                icon={<Ionicons name="time" size={18} color={colors.primary} />}
+                size="small"
+                style={styles.fixedHeightButton}
+                textStyle={styles.buttonText}
+              />
+            </View>
+            <View style={styles.topActionButtonWrap}>
+              <Button
+                title={isHindi ? 'साझा करें' : 'Share'}
+                onPress={handleShare}
+                variant="outline"
+                icon={<Ionicons name="share-social" size={18} color={colors.primary} />}
+                size="small"
+                style={styles.fixedHeightButton}
+                textStyle={styles.buttonText}
+              />
+            </View>
+          </View>
+          <View style={styles.startScanButtonWrap}>
+            <Button
+              title={t('startScan')}
+              onPress={handleNewScan}
+              icon={<Ionicons name="camera" size={20} color={colors.textWhite} />}
+              size="medium"
+            />
+          </View>
         </View>
       </ScrollView>
       {/* Floating AI chat - icon-first, unobtrusive */}
@@ -481,9 +658,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  speakButton: {
-    padding: spacing.sm,
-  },
   statusCard: {
     marginBottom: spacing.md,
   },
@@ -509,6 +683,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
+  speakButton: {
+    padding: spacing.sm,
+  },
   overallStatus: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -522,6 +699,68 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.textSecondary,
   },
+  shoppingCard: {
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+  },
+  softCard: {
+    backgroundColor: colors.card,
+    borderColor: `${colors.primary}25`,
+  },
+  shoppingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  shoppingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  bagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.secondary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  bagText: {
+    color: colors.textWhite,
+    fontWeight: '700',
+  },
+  shoppingDetail: {
+    flex: 1,
+  },
+  shoppingProduct: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  shoppingHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  buyCta: {
+    marginTop: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  buyCtaText: {
+    color: colors.textWhite,
+    fontWeight: '700',
+  },
   heatmapCard: {
     marginBottom: spacing.md,
   },
@@ -529,7 +768,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+    lineHeight: 22,
+    marginBottom: 0,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  actionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   heatmapImage: {
     width: '100%',
@@ -556,39 +814,53 @@ const styles = StyleSheet.create({
   },
   warningCard: {
     marginBottom: spacing.md,
-    backgroundColor: '#FFF8E1',
-    borderLeftWidth: 4,
-    borderLeftColor: colors.warning,
+    backgroundColor: '#FFFBF0',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: `${colors.warning}30`,
+    padding: spacing.md,
+    ...shadows.sm,
   },
   warningContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.sm,
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  warningIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    backgroundColor: `${colors.warning}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   warningTextContainer: {
     flex: 1,
   },
   warningTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    color: colors.warning,
-    marginBottom: 4,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   warningText: {
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textSecondary,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   retakeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginTop: spacing.md,
+    gap: spacing.xs,
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
+    backgroundColor: `${colors.warning}10`,
     borderWidth: 1,
-    borderColor: colors.warning,
+    borderColor: `${colors.warning}40`,
   },
   retakeButtonText: {
     fontSize: 14,
@@ -625,7 +897,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 20,
-    marginLeft: spacing.md + 8,
+  },
+  recipeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  recipeStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: '#F5F7F8',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  recipeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  benefitPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    alignSelf: 'flex-start',
+    backgroundColor: `${colors.secondary}15`,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    marginTop: spacing.xs,
+  },
+  benefitText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.secondary,
   },
   healthyMessage: {
     alignItems: 'center',
@@ -638,8 +945,30 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     textAlign: 'center',
   },
-  actions: {
+  actionsContainer: {
     gap: spacing.md,
+  },
+  topActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  topActionButtonWrap: {
+    flex: 1,
+  },
+  startScanButtonWrap: {
+    width: '100%',
+  },
+  fixedHeightButton: {
+    height: 48,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    overflow: 'hidden',
+  },
+  buttonText: {
+    fontSize: 13,
+    flexShrink: 1,
   },
   productsCard: {
     marginBottom: spacing.lg,
@@ -651,9 +980,95 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   productSubtitle: {
-    fontSize: 14,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    lineHeight: 24,
+  },
+  actionItem: {
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  actionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  actionNutrient: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  actionDose: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  actionHint: {
+    fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
+    marginTop: 2,
+  },
+  tipCard: {
+    backgroundColor: `${colors.primary}08`,
+    borderRadius: borderRadius.md,
+    padding: spacing.sm,
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  tipHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  tipTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  tipLine: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 1,
+  },
+  tipBody: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  whyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+  },
+  whyText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  actionProducts: {
+    marginTop: spacing.md,
+  },
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
+  productGridItem: {
+    width: '48%',
+    marginBottom: spacing.sm,
   },
   noProductsCard: {
     marginBottom: spacing.lg,

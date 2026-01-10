@@ -8,6 +8,7 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
+  View,
   StyleSheet,
   ViewStyle,
   TextStyle,
@@ -71,8 +72,8 @@ const Button: React.FC<ButtonProps> = ({
         />
       ) : (
         <>
-          {icon}
-          <Text style={textStyles}>{title}</Text>
+          {icon && <View style={styles.iconContainer}>{icon}</View>}
+          <Text style={textStyles} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
         </>
       )}
     </TouchableOpacity>
@@ -158,6 +159,10 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     color: colors.textTertiary,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
