@@ -4,6 +4,7 @@
  */
 
 export { default as CameraScreen } from './CameraScreen';
+export { default as ChatHistoryScreen } from './ChatHistoryScreen';
 export { default as ChatScreen } from './ChatScreen';
 export { default as HistoryScreen } from './HistoryScreen';
 export { default as HomeScreen } from './HomeScreen';

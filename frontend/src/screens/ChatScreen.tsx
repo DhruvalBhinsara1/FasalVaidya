@@ -8,45 +8,91 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native';
 
 import {
-    ChatMessage,
-    checkChatStatus,
-    getScan,
-    getScans,
-    ScanHistoryItem,
-    ScanResult,
-    sendChatMessage
+  ChatMessage,
+  checkChatStatus,
+  getScan,
+  getScans,
+  ScanHistoryItem,
+  ScanResult,
+  sendChatMessage
 } from '../api';
 import { Card, StatusChip } from '../components';
 import { getCurrentLanguage } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
+import {
+  ChatSession,
+  generateSessionId,
+  getChatSession,
+  saveChatSession
+} from '../utils/chatStorage';
 
 interface RouteParams {
   scanId?: number;
   cropId?: number;
+  sessionId?: string;
 }
+
+// Base dimensions for scaling (based on standard phone width)
+const BASE_WIDTH = 375;
+const BASE_HEIGHT = 812;
+
+// Responsive scaling functions
+const scale = (size: number, width: number) => (width / BASE_WIDTH) * size;
+const verticalScale = (size: number, height: number) => (height / BASE_HEIGHT) * size;
+const moderateScale = (size: number, width: number, factor = 0.5) => 
+  size + (scale(size, width) - size) * factor;
 
 const ChatScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const params: RouteParams = route.params || {};
   const isHindi = getCurrentLanguage() === 'hi';
+  
+  // Responsive dimensions
+  const { width, height } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const isLandscape = width > height;
+  
+  // Responsive sizing utilities
+  const rs = (size: number) => moderateScale(size, width, 0.4);
+  const rsFont = (size: number) => moderateScale(size, width, 0.3);
+  
+  // Dynamic responsive values
+  const responsiveValues = {
+    headerIconSize: rs(24),
+    welcomeIconSize: rs(48),
+    welcomeIconContainer: rs(80),
+    assistantIconSize: rs(16),
+    assistantIconContainer: rs(24),
+    sendButtonSize: rs(44),
+    imageButtonSize: rs(44),
+    inputMinHeight: rs(44),
+    inputMaxHeight: rs(120),
+    previewImageSize: rs(100),
+    offlineIconSize: rs(64),
+    contextIconSize: rs(32),
+    messageBubbleMaxWidth: (isTablet ? (isLandscape ? '50%' : '70%') : '85%') as `${number}%`,
+    containerPadding: isTablet ? spacing.lg : spacing.md,
+  };
   
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -58,8 +104,74 @@ const ChatScreen: React.FC = () => {
   const [context, setContext] = useState<Partial<ScanResult> | null>(null);
   const [recentScans, setRecentScans] = useState<ScanHistoryItem[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<number | null>(null);
   
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Stop speaking when unmounting or leaving screen
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
+
+  const handleSpeak = async (text: string, index: number) => {
+    try {
+      if (isSpeaking && speakingMessageId === index) {
+        await Speech.stop();
+        setIsSpeaking(false);
+        setSpeakingMessageId(null);
+      } else {
+        if (isSpeaking) {
+          await Speech.stop();
+        }
+        setSpeakingMessageId(index);
+        setIsSpeaking(true);
+        Speech.speak(text, {
+          language: isHindi ? 'hi-IN' : 'en-US',
+          onDone: () => {
+            setIsSpeaking(false);
+            setSpeakingMessageId(null);
+          },
+          onStopped: () => {
+            setIsSpeaking(false);
+            setSpeakingMessageId(null);
+          },
+          onError: () => {
+             setIsSpeaking(false);
+             setSpeakingMessageId(null);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Speech error:', error);
+      setIsSpeaking(false);
+      setSpeakingMessageId(null);
+    }
+  };
+
+  // useSpeechRecognitionEvent removed here as it is handled in the hook safely
+  // handleVoiceInput removed as it is replaced by toggleRecording
+
+  // Initialize session on mount
+  useEffect(() => {
+    const initSession = async () => {
+      if (params.sessionId) {
+        // Load existing session
+        const session = await getChatSession(params.sessionId);
+        if (session) {
+          setMessages(session.messages);
+          setCurrentSessionId(session.id);
+          return;
+        }
+      }
+      // Create new session
+      setCurrentSessionId(generateSessionId());
+    };
+    initSession();
+  }, [params.sessionId]);
 
   // Check AI availability and load context on mount
   useEffect(() => {
@@ -73,6 +185,22 @@ const ChatScreen: React.FC = () => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }, [messages]);
+
+  // Save session when messages change
+  useEffect(() => {
+    if (messages.length > 0 && currentSessionId) {
+      const session: ChatSession = {
+        id: currentSessionId,
+        title: messages[0]?.content?.substring(0, 50) || 'Chat',
+        cropName: context?.crop_name,
+        cropIcon: context?.crop_icon,
+        messages: messages,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      saveChatSession(session);
+    }
+  }, [messages, currentSessionId]);
 
   const checkAvailability = async () => {
     setIsCheckingStatus(true);
@@ -186,7 +314,13 @@ const ChatScreen: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      const response = await sendChatMessage(text, messages, context, imageToSend || undefined);
+      const response = await sendChatMessage(
+        text, 
+        messages, 
+        context, 
+        imageToSend || undefined, 
+        isHindi ? 'hi' : 'en'
+      );
       
       if (response.success && response.response) {
         const assistantMessage: ChatMessage = {
@@ -241,9 +375,9 @@ const ChatScreen: React.FC = () => {
     return (
       <Card style={styles.contextCard}>
         <View style={styles.contextHeader}>
-          <Text style={styles.contextIcon}>{context.crop_icon}</Text>
+          <Text style={[styles.contextIcon, { fontSize: responsiveValues.contextIconSize }]}>{context.crop_icon}</Text>
           <View style={styles.contextInfo}>
-            <Text style={styles.contextTitle}>
+            <Text style={[styles.contextTitle, { fontSize: rsFont(16) }]}>
               {isHindi ? context.crop_name_hi : context.crop_name}
             </Text>
             <StatusChip status={context.overall_status as any} size="small" />
@@ -251,20 +385,20 @@ const ChatScreen: React.FC = () => {
         </View>
         <View style={styles.nutrientRow}>
           <View style={styles.nutrientItem}>
-            <Text style={styles.nutrientLabel}>N</Text>
-            <Text style={[styles.nutrientValue, { color: getSeverityColor(context.n_severity || '') }]}>
+            <Text style={[styles.nutrientLabel, { fontSize: rsFont(12) }]}>N</Text>
+            <Text style={[styles.nutrientValue, { fontSize: rsFont(18), color: getSeverityColor(context.n_severity || '') }]}>
               {context.n_score}%
             </Text>
           </View>
           <View style={styles.nutrientItem}>
-            <Text style={styles.nutrientLabel}>P</Text>
-            <Text style={[styles.nutrientValue, { color: getSeverityColor(context.p_severity || '') }]}>
+            <Text style={[styles.nutrientLabel, { fontSize: rsFont(12) }]}>P</Text>
+            <Text style={[styles.nutrientValue, { fontSize: rsFont(18), color: getSeverityColor(context.p_severity || '') }]}>
               {context.p_score}%
             </Text>
           </View>
           <View style={styles.nutrientItem}>
-            <Text style={styles.nutrientLabel}>K</Text>
-            <Text style={[styles.nutrientValue, { color: getSeverityColor(context.k_severity || '') }]}>
+            <Text style={[styles.nutrientLabel, { fontSize: rsFont(12) }]}>K</Text>
+            <Text style={[styles.nutrientValue, { fontSize: rsFont(18), color: getSeverityColor(context.k_severity || '') }]}>
               {context.k_score}%
             </Text>
           </View>
@@ -274,19 +408,19 @@ const ChatScreen: React.FC = () => {
   };
 
   const renderOfflineMessage = () => (
-    <View style={styles.offlineContainer}>
-      <Ionicons name="cloud-offline" size={64} color={colors.textSecondary} />
-      <Text style={styles.offlineTitle}>
+    <View style={[styles.offlineContainer, { paddingHorizontal: responsiveValues.containerPadding }]}>
+      <Ionicons name="cloud-offline" size={responsiveValues.offlineIconSize} color={colors.textSecondary} />
+      <Text style={[styles.offlineTitle, { fontSize: rsFont(20) }]}>
         {isHindi ? 'AI सेवा उपलब्ध नहीं' : 'AI Service Unavailable'}
       </Text>
-      <Text style={styles.offlineText}>
+      <Text style={[styles.offlineText, { fontSize: rsFont(14) }]}>
         {isHindi 
           ? 'AI विश्लेषण का उपयोग करने के लिए एक सक्रिय इंटरनेट कनेक्शन की आवश्यकता है। कृपया सुनिश्चित करें कि Ollama आपके कंप्यूटर पर चल रहा है।'
           : 'Need an active internet connection to use AI analysis. Please ensure Ollama is running on your computer.'}
       </Text>
-      <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-        <Ionicons name="refresh" size={20} color={colors.textWhite} />
-        <Text style={styles.retryButtonText}>
+      <TouchableOpacity style={[styles.retryButton, { paddingHorizontal: rs(24), paddingVertical: rs(12) }]} onPress={handleRetry}>
+        <Ionicons name="refresh" size={rs(20)} color={colors.textWhite} />
+        <Text style={[styles.retryButtonText, { fontSize: rsFont(14) }]}>
           {isHindi ? 'पुनः प्रयास करें' : 'Retry'}
         </Text>
       </TouchableOpacity>
@@ -301,6 +435,7 @@ const ChatScreen: React.FC = () => {
         key={index}
         style={[
           styles.messageBubble,
+          { maxWidth: responsiveValues.messageBubbleMaxWidth },
           isUser ? styles.userBubble : styles.assistantBubble,
         ]}
       >
@@ -315,26 +450,41 @@ const ChatScreen: React.FC = () => {
           <Text style={[styles.messageText, isUser && styles.userMessageText]}>
             {msg.content}
           </Text>
+          {!isUser && (
+             <TouchableOpacity 
+               onPress={() => handleSpeak(msg.content, index)}
+               style={{ marginTop: 8, alignSelf: 'flex-start', padding: 4 }}
+             >
+               <Ionicons 
+                 name={isSpeaking && speakingMessageId === index ? "volume-high" : "volume-medium-outline"} 
+                 size={20} 
+                 color={isSpeaking && speakingMessageId === index ? colors.primary : colors.textSecondary} 
+               />
+             </TouchableOpacity>
+          )}
         </View>
       </View>
     );
   };
 
   const renderWelcomeMessage = () => (
-    <View style={styles.welcomeContainer}>
-      <View style={styles.welcomeIcon}>
-        <Ionicons name="chatbubbles" size={48} color={colors.primary} />
+    <View style={[styles.welcomeContainer, { paddingVertical: rs(32) }]}>
+      <View style={[
+        styles.welcomeIcon, 
+        { width: responsiveValues.welcomeIconContainer, height: responsiveValues.welcomeIconContainer, borderRadius: responsiveValues.welcomeIconContainer / 2 }
+      ]}>
+        <Ionicons name="chatbubbles" size={responsiveValues.welcomeIconSize} color={colors.primary} />
       </View>
-      <Text style={styles.welcomeTitle}>
+      <Text style={[styles.welcomeTitle, { fontSize: rsFont(24) }]}>
         {isHindi ? 'FasalVaidya AI' : 'FasalVaidya AI'}
       </Text>
-      <Text style={styles.welcomeText}>
+      <Text style={[styles.welcomeText, { fontSize: rsFont(14), paddingHorizontal: rs(24) }]}>
         {isHindi
           ? 'मैं आपकी फसल के पोषक तत्वों की कमी को समझने और समाधान सुझाने में मदद कर सकता हूं। कोई भी सवाल पूछें!'
           : 'I can help you understand your crop\'s nutrient deficiencies and suggest solutions. Ask me anything!'}
       </Text>
       <View style={styles.suggestionContainer}>
-        <Text style={styles.suggestionLabel}>
+        <Text style={[styles.suggestionLabel, { fontSize: rsFont(12), paddingHorizontal: rs(16) }]}>
           {isHindi ? 'सुझाए गए प्रश्न:' : 'Suggested questions:'}
         </Text>
         {[
@@ -344,10 +494,10 @@ const ChatScreen: React.FC = () => {
         ].map((suggestion, idx) => (
           <TouchableOpacity
             key={idx}
-            style={styles.suggestionChip}
+            style={[styles.suggestionChip, { paddingHorizontal: rs(16), paddingVertical: rs(12), marginHorizontal: rs(16) }]}
             onPress={() => setInputText(suggestion)}
           >
-            <Text style={styles.suggestionText}>{suggestion}</Text>
+            <Text style={[styles.suggestionText, { fontSize: rsFont(14) }]}>{suggestion}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -357,29 +507,45 @@ const ChatScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingHorizontal: responsiveValues.containerPadding }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+          <Ionicons name="arrow-back" size={responsiveValues.headerIconSize} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { fontSize: rsFont(18) }]}>
             {isHindi ? 'AI विश्लेषण' : 'AI Analysis'}
           </Text>
           {isAvailable && (
             <View style={styles.onlineIndicator}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.onlineText}>Online</Text>
+              <View style={[styles.onlineDot, { width: rs(8), height: rs(8), borderRadius: rs(4) }]} />
+              <Text style={[styles.onlineText, { fontSize: rsFont(12) }]}>Online</Text>
             </View>
           )}
         </View>
-        <View style={{ width: 40 }} />
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ChatHistory' as never)} 
+            style={styles.headerButton}
+          >
+            <Ionicons name="time-outline" size={rs(22)} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => {
+              setMessages([]);
+              setCurrentSessionId(generateSessionId());
+            }} 
+            style={styles.headerButton}
+          >
+            <Ionicons name="add-circle-outline" size={rs(22)} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Loading state */}
       {isCheckingStatus ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>
+          <Text style={[styles.loadingText, { fontSize: rsFont(16) }]}>
             {isHindi ? 'AI सेवा जांच रहे हैं...' : 'Checking AI service...'}
           </Text>
         </View>
@@ -408,7 +574,7 @@ const ChatScreen: React.FC = () => {
             )}
             
             {isLoading && (
-              <View style={[styles.messageBubble, styles.assistantBubble]}>
+              <View style={[styles.messageBubble, styles.assistantBubble, { maxWidth: responsiveValues.messageBubbleMaxWidth }]}>
                 <View style={styles.assistantIconWrapper}>
                   <ActivityIndicator size="small" color={colors.primary} />
                 </View>
@@ -422,46 +588,46 @@ const ChatScreen: React.FC = () => {
           </ScrollView>
 
           {/* Input Area */}
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { padding: responsiveValues.containerPadding }]}>
             {selectedImage && (
               <View style={styles.imagePreview}>
                 <Image
                   source={{ uri: `data:image/jpeg;base64,${selectedImage}` }}
-                  style={styles.previewImage}
+                  style={[styles.previewImage, { width: responsiveValues.previewImageSize, height: responsiveValues.previewImageSize }]}
                 />
                 <TouchableOpacity
                   style={styles.removeImageButton}
                   onPress={() => setSelectedImage(null)}
                 >
-                  <Ionicons name="close-circle" size={24} color={colors.error} />
+                  <Ionicons name="close-circle" size={rs(24)} color={colors.error} />
                 </TouchableOpacity>
               </View>
             )}
             <View style={styles.inputRow}>
               <TouchableOpacity
-                style={styles.imageButton}
+                style={[styles.imageButton, { width: responsiveValues.imageButtonSize, height: responsiveValues.imageButtonSize }]}
                 onPress={takePhoto}
                 disabled={isLoading}
               >
                 <Ionicons
                   name="camera"
-                  size={24}
+                  size={rs(24)}
                   color={isLoading ? colors.textSecondary : colors.primary}
                 />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.imageButton}
+                style={[styles.imageButton, { width: responsiveValues.imageButtonSize, height: responsiveValues.imageButtonSize }]}
                 onPress={pickImage}
                 disabled={isLoading}
               >
                 <Ionicons
                   name="image"
-                  size={24}
+                  size={rs(24)}
                   color={isLoading ? colors.textSecondary : colors.primary}
                 />
               </TouchableOpacity>
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { minHeight: responsiveValues.inputMinHeight, maxHeight: responsiveValues.inputMaxHeight, fontSize: rsFont(16) }]}
                 placeholder={isHindi ? 'अपना सवाल पूछें...' : 'Ask your question...'}
                 placeholderTextColor={colors.textSecondary}
                 value={inputText}
@@ -473,6 +639,7 @@ const ChatScreen: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.sendButton,
+                  { width: responsiveValues.sendButtonSize, height: responsiveValues.sendButtonSize, borderRadius: responsiveValues.sendButtonSize / 2 },
                   (!inputText.trim() || isLoading) && styles.sendButtonDisabled,
                 ]}
                 onPress={handleSend}
@@ -480,7 +647,7 @@ const ChatScreen: React.FC = () => {
               >
                 <Ionicons
                   name="send"
-                  size={20}
+                  size={rs(20)}
                   color={inputText.trim() && !isLoading ? colors.textWhite : colors.textSecondary}
                 />
               </TouchableOpacity>
@@ -534,6 +701,14 @@ const styles = StyleSheet.create({
   onlineText: {
     fontSize: 12,
     color: colors.healthy,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.xs,
   },
   loadingContainer: {
     flex: 1,
@@ -686,6 +861,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   userBubble: {
     alignSelf: 'flex-end',
@@ -711,11 +888,13 @@ const styles = StyleSheet.create({
   },
   messageContent: {
     flex: 1,
+    flexShrink: 1,
   },
   messageText: {
     fontSize: 15,
     color: colors.textPrimary,
     lineHeight: 22,
+    flexWrap: 'wrap',
   },
   userMessageText: {
     color: colors.textWhite,

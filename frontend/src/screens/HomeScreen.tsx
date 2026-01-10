@@ -5,35 +5,47 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { Crop, getCrops, healthCheck } from '../api';
 import { Card, CropSelector } from '../components';
-import { getCropName, getCurrentLanguage, t } from '../i18n';
+import { getCropName, getSeasonName, t } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
+import { getUserProfile } from '../utils/userStorage';
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [crops, setCrops] = useState<Crop[]>([]);
   const [selectedCropId, setSelectedCropId] = useState<number>(1);
   const [isConnected, setIsConnected] = useState<boolean>(true);
-  const isHindi = getCurrentLanguage() === 'hi';
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadCrops();
     checkConnection();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [])
+  );
+
+  const loadProfile = async () => {
+    const profile = await getUserProfile();
+    setProfileImage(profile.profileImage);
+  };
 
   const loadCrops = async () => {
     try {
@@ -45,8 +57,8 @@ const HomeScreen: React.FC = () => {
       setCrops([
         { id: 1, name: 'Wheat', name_hi: 'गेहूँ', season: 'Rabi', icon: '🌾' },
         { id: 2, name: 'Rice', name_hi: 'चावल', season: 'Kharif', icon: '🌾' },
-        { id: 3, name: 'Maize', name_hi: 'मक्का', season: 'Kharif/Rabi', icon: '🌽' },
-        { id: 4, name: 'Cotton', name_hi: 'कपास', season: 'Kharif', icon: '🌿' },
+        { id: 5, name: 'Maize', name_hi: 'मक्का', season: 'Kharif/Rabi', icon: '🌽' },
+        // Removed unsupported crops
       ]);
     }
   };
@@ -95,10 +107,14 @@ const HomeScreen: React.FC = () => {
             <Text style={styles.greetingSub}>{t('tagline')}</Text>
           </View>
           <TouchableOpacity onPress={handleOpenSettings} style={styles.avatarWrapper}>
-            <Image
-              source={{ uri: 'https://i.pravatar.cc/80?img=68' }}
-              style={styles.avatar}
-            />
+            {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.avatar} />
+            ) : (
+                <Image
+                    source={{ uri: 'https://i.pravatar.cc/80?img=68' }}
+                    style={styles.avatar}
+                />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -133,7 +149,7 @@ const HomeScreen: React.FC = () => {
           />
           {selectedCrop && (
             <Text style={styles.selectedCropInfo}>
-              {getCropName(selectedCrop.name)} • {selectedCrop.season}
+              {getCropName(selectedCrop.name)} • {selectedCrop.season ? getSeasonName(selectedCrop.season) : ''}
             </Text>
           )}
         </View>
@@ -314,7 +330,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-  },
+    },
   warningText: {
     color: colors.warning,
     fontWeight: '600',

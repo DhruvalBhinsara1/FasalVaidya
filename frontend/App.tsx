@@ -14,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { loadLanguage } from './src/i18n';
 import {
     CameraScreen,
+    ChatHistoryScreen,
     ChatScreen,
     HistoryScreen,
     HomeScreen,
@@ -29,7 +30,8 @@ export type RootStackParamList = {
   Results: { scanResult: any };
   History: undefined;
   Settings: undefined;
-  Chat: { scanId?: number; cropId?: number };
+  Chat: { scanId?: number; cropId?: number; sessionId?: string };
+  ChatHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -97,6 +99,13 @@ export default function App() {
             component={ChatScreen}
             options={{
               animation: 'slide_from_bottom',
+            }}
+          />
+          <Stack.Screen 
+            name="ChatHistory" 
+            component={ChatHistoryScreen}
+            options={{
+              animation: 'slide_from_right',
             }}
           />
         </Stack.Navigator>

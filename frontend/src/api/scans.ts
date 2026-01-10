@@ -249,12 +249,21 @@ export const sendChatMessage = async (
   message: string,
   history: ChatMessage[] = [],
   context?: Partial<ScanResult> | null,
-  imageBase64?: string
+  imageBase64?: string,
+  language: 'hi' | 'en' = 'en'
 ): Promise<ChatResponse> => {
   try {
+    // Optimization: Limit history to last 6 messages to reduce token usage and latency
+    const recentHistory = history.slice(-6);
+
+    // Enforce language and conciseness
+    const systemInstruction = language === 'hi' 
+      ? "\n\n(निर्देश: कृपया हिंदी में उत्तर दें और उत्तर संक्षिप्त रखें।)" 
+      : "\n\n(Instruction: Please respond in English and keep the answer concise.)";
+    
     const payload = {
-      message,
-      history: history.map(m => ({ role: m.role, content: m.content })),
+      message: message + systemInstruction,
+      history: recentHistory.map(m => ({ role: m.role, content: m.content })),
       context,
       image: imageBase64
     };

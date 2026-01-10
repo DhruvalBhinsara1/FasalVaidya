@@ -125,20 +125,6 @@ CROPS = {
         'icon': '🌾',
         'ml_crop_id': 'rice'
     },
-    3: {
-        'name': 'Maize',
-        'name_hi': 'मक्का',
-        'season': 'Kharif/Rabi',
-        'icon': '🌽',
-        'ml_crop_id': 'maize'
-    },
-    4: {
-        'name': 'Cotton',
-        'name_hi': 'कपास',
-        'season': 'Kharif (Apr-Nov)',
-        'icon': '🌿',
-        'ml_crop_id': None  # No model yet
-    },
     5: {
         'name': 'Maize',
         'name_hi': 'मक्का',
@@ -160,13 +146,6 @@ CROPS = {
         'icon': '☕',
         'ml_crop_id': 'coffee'
     },
-    8: {
-        'name': 'Cucumber',
-        'name_hi': 'खीरा',
-        'season': 'Summer',
-        'icon': '🥒',
-        'ml_crop_id': None  # Skipped in v2 (insufficient data)
-    },
     9: {
         'name': 'Eggplant',
         'name_hi': 'बैंगन',
@@ -187,13 +166,6 @@ CROPS = {
         'season': 'Summer',
         'icon': '🥬',
         'ml_crop_id': 'bittergourd'
-    },
-    12: {
-        'name': 'Ridge Gourd',
-        'name_hi': 'तुरई',
-        'season': 'Summer',
-        'icon': '🥬',
-        'ml_crop_id': None  # Skipped in v2 (borderline data)
     },
     13: {
         'name': 'Snake Gourd',
@@ -481,13 +453,21 @@ def init_db():
         )
     ''')
     
-    # Insert default crops
+    # Insert or update default crops
     for crop_id, crop_data in CROPS.items():
         cursor.execute('''
             INSERT OR IGNORE INTO crops (id, name, name_hi, season, icon)
             VALUES (?, ?, ?, ?, ?)
         ''', (crop_id, crop_data['name'], crop_data['name_hi'], 
               crop_data['season'], crop_data['icon']))
+        
+        # Force update to ensure consistency (fixes ID 3 Maize -> Tomato)
+        cursor.execute('''
+            UPDATE crops 
+            SET name=?, name_hi=?, season=?, icon=?
+            WHERE id=?
+        ''', (crop_data['name'], crop_data['name_hi'], 
+              crop_data['season'], crop_data['icon'], crop_id))
     
     conn.commit()
     conn.close()

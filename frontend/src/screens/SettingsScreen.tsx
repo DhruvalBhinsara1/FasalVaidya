@@ -6,30 +6,78 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
-    Modal,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 import { Card } from '../components';
 import { getCurrentLanguage, loadLanguage, setLanguage, SUPPORTED_LANGUAGES, t } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
+import { getUserProfile, saveUserProfile } from '../utils/userStorage';
 
 const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  
+  // Profile State
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  const isHindi = currentLang === 'hi';
 
   useEffect(() => {
     loadLanguage().then(setCurrentLang);
+    loadProfile();
   }, []);
+
+  const loadProfile = async () => {
+    const profile = await getUserProfile();
+    setName(profile.name);
+    setPhone(profile.phone);
+    setProfileImage(profile.profileImage);
+  };
+
+  const handleSaveProfile = async () => {
+    await saveUserProfile({ name, phone, profileImage });
+    setIsEditing(false);
+    // Optional: Show a toast or feedback
+  };
+
+  const handlePickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission Required", "Permission to access camera roll is required!");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri);
+      setIsEditing(true); // Auto-enable edit mode if image changes
+    }
+  };
 
   const handleLanguageChange = async (lang: string) => {
     await setLanguage(lang);
@@ -62,6 +110,60 @@ const SettingsScreen: React.FC = () => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Profile Section */}
+        <Card style={styles.section}>
+          <View style={styles.profileHeader}>
+            <TouchableOpacity onPress={handlePickImage} style={styles.profileImageContainer}>
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.profileImage} />
+              ) : (
+                <View style={styles.profilePlaceholder}>
+                  <Ionicons name="person" size={40} color={colors.textSecondary} />
+                </View>
+              )}
+              <View style={styles.editBadge}>
+                <Ionicons name="camera" size={14} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+            
+            <View style={styles.profileInfo}>
+              {isEditing ? (
+                <View style={styles.editForm}>
+                  <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder={t('enterName')}
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder={t('enterPhone')}
+                    keyboardType="phone-pad"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                  <TouchableOpacity style={styles.saveButton} onPress={handleSaveProfile}>
+                    <Text style={styles.saveButtonText}>{t('save')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View>
+                  <Text style={styles.profileName}>{name || t('guestUser')}</Text>
+                  <Text style={styles.profilePhone}>{phone || t('noPhone')}</Text>
+                  <TouchableOpacity 
+                    style={styles.editButton} 
+                    onPress={() => setIsEditing(true)}
+                  >
+                    <Text style={styles.editButtonText}>{t('editProfile')}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+        </Card>
+
         {/* Language Section */}
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>{t('language')}</Text>
@@ -80,6 +182,21 @@ const SettingsScreen: React.FC = () => {
               </View>
             </View>
             <Ionicons name="chevron-down" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </Card>
+
+        {/* Activity Section */}
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('activity')}</Text>
+          <TouchableOpacity
+            style={styles.optionItem}
+            onPress={() => navigation.navigate('ChatHistory')}
+          >
+            <View style={styles.optionContent}>
+              <Ionicons name="time-outline" size={24} color={colors.primary} />
+              <Text style={styles.optionLabel}>{t('chatHistory')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </Card>
         
@@ -137,8 +254,8 @@ const SettingsScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>{t('about')}</Text>
           
           <View style={styles.aboutItem}>
-            <Text style={styles.aboutLabel}>App Name</Text>
-            <Text style={styles.aboutValue}>FasalVaidya</Text>
+            <Text style={styles.aboutLabel}>{t('aboutApp')}</Text>
+            <Text style={styles.aboutValue}>{t('appName')}</Text>
           </View>
           
           <View style={styles.aboutItem}>
@@ -147,60 +264,46 @@ const SettingsScreen: React.FC = () => {
           </View>
           
           <View style={styles.aboutItem}>
-            <Text style={styles.aboutLabel}>Purpose</Text>
-            <Text style={styles.aboutValue}>AI-powered crop health diagnosis</Text>
+            <Text style={styles.aboutLabel}>{t('purpose')}</Text>
+            <Text style={styles.aboutValue}>AI Crop Health</Text>
           </View>
         </Card>
 
         {/* Features Section */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Features</Text>
+          <Text style={styles.sectionTitle}>{t('features')}</Text>
           
           <View style={styles.featureItem}>
             <Ionicons name="leaf" size={24} color={colors.primary} />
-            <Text style={styles.featureText}>NPK Deficiency Detection</Text>
+            <Text style={styles.featureText}>{t('npkDetection')}</Text>
           </View>
           
           <View style={styles.featureItem}>
             <Ionicons name="camera" size={24} color={colors.primary} />
-            <Text style={styles.featureText}>Instant Leaf Scanning</Text>
+            <Text style={styles.featureText}>{t('startScan')}</Text>
           </View>
           
           <View style={styles.featureItem}>
             <Ionicons name="bulb" size={24} color={colors.primary} />
-            <Text style={styles.featureText}>Fertilizer Recommendations</Text>
-          </View>
-          
-          <View style={styles.featureItem}>
-            <Ionicons name="language" size={24} color={colors.primary} />
-            <Text style={styles.featureText}>Multi-language Support</Text>
-          </View>
-          
-          <View style={styles.featureItem}>
-            <Ionicons name="volume-high" size={24} color={colors.primary} />
-            <Text style={styles.featureText}>Text-to-Speech</Text>
+            <Text style={styles.featureText}>{t('recommendations')}</Text>
           </View>
         </Card>
 
         {/* Supported Crops */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Supported Crops</Text>
+          <Text style={styles.sectionTitle}>{t('supportedCrops')}</Text>
           <View style={styles.cropsGrid}>
             <View style={styles.cropItem}>
               <Text style={styles.cropEmoji}>🌾</Text>
-              <Text style={styles.cropLabel}>Wheat</Text>
+              <Text style={styles.cropLabel}>{t('crop_wheat')}</Text>
             </View>
             <View style={styles.cropItem}>
               <Text style={styles.cropEmoji}>🌾</Text>
-              <Text style={styles.cropLabel}>Rice</Text>
+              <Text style={styles.cropLabel}>{t('crop_rice')}</Text>
             </View>
             <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>�</Text>
-              <Text style={styles.cropLabel}>Maize</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🌿</Text>
-              <Text style={styles.cropLabel}>Cotton</Text>
+              <Text style={styles.cropEmoji}>🌽</Text>
+              <Text style={styles.cropLabel}>{t('crop_maize')}</Text>
             </View>
           </View>
         </Card>
@@ -412,6 +515,85 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  // Profile Styles
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  profileImageContainer: {
+    position: 'relative',
+    marginRight: spacing.md,
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F0F0F0',
+  },
+  profilePlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F0F0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.primary,
+    padding: 6,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  profilePhone: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  editButton: {
+    paddingVertical: 4,
+  },
+  editButtonText: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  editForm: {
+    gap: 8,
+  },
+  input: {
+    backgroundColor: '#F5F5F5',
+    padding: 10,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+    padding: 8,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  saveButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 
