@@ -305,6 +305,30 @@ const SettingsScreen: React.FC = () => {
               <Text style={styles.cropEmoji}>🌽</Text>
               <Text style={styles.cropLabel}>{t('crop_maize')}</Text>
             </View>
+            <View style={styles.cropItem}>
+              <Text style={styles.cropEmoji}>🍌</Text>
+              <Text style={styles.cropLabel}>{t('crop_banana')}</Text>
+            </View>
+            <View style={styles.cropItem}>
+              <Text style={styles.cropEmoji}>☕</Text>
+              <Text style={styles.cropLabel}>{t('crop_coffee')}</Text>
+            </View>
+            <View style={styles.cropItem}>
+              <Text style={styles.cropEmoji}>🍆</Text>
+              <Text style={styles.cropLabel}>{t('crop_eggplant')}</Text>
+            </View>
+            <View style={styles.cropItem}>
+              <Text style={styles.cropEmoji}>🎃</Text>
+              <Text style={styles.cropLabel}>{t('crop_ashgourd')}</Text>
+            </View>
+            <View style={styles.cropItem}>
+              <Text style={styles.cropEmoji}>🥬</Text>
+              <Text style={styles.cropLabel}>{t('crop_bittergourd')}</Text>
+            </View>
+            <View style={styles.cropItem}>
+              <Text style={styles.cropEmoji}>🥬</Text>
+              <Text style={styles.cropLabel}>{t('crop_snakegourd')}</Text>
+            </View>
           </View>
         </Card>
       </ScrollView>
@@ -502,11 +526,15 @@ const styles = StyleSheet.create({
   cropsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
     gap: spacing.md,
   },
   cropItem: {
     alignItems: 'center',
-    width: '22%',
+    justifyContent: 'center',
+    width: '28%',
+    marginBottom: spacing.md,
   },
   cropEmoji: {
     fontSize: 32,
