@@ -8,14 +8,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { Crop, getCrops, healthCheck } from '../api';
@@ -157,20 +157,6 @@ const HomeScreen: React.FC = () => {
             </Text>
           )}
         </View>
-
-        {/* AI Analysis Chat Card */}
-        <TouchableOpacity onPress={handleOpenChat}>
-          <Card style={styles.reminderCard}>
-            <View style={styles.reminderIconWrap}>
-              <Ionicons name="chatbubbles" size={24} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.reminderTitle}>{t('aiAnalysis')}</Text>
-              <Text style={styles.reminderText}>{t('welcomeMessage')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color={colors.textSecondary} />
-          </Card>
-        </TouchableOpacity>
 
         {/* Connection Status */}
         {!isConnected && (
