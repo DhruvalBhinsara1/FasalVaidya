@@ -4,7 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 import React, { useContext, useState } from 'react';
 import { Animated, Easing, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LanguageContext, loadLanguage, setLanguage, setSeenOnboarding, SUPPORTED_LANGUAGES, t } from '../i18n';
+import { LanguageContext, loadLanguage, setLanguage, SUPPORTED_LANGUAGES, t, setSeenOnboarding } from '../i18n';
 import { colors } from '../theme';
 
 // Assign accent colors for each language (repeat or expand as needed)

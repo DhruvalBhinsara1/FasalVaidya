@@ -265,7 +265,9 @@ export const sendChatMessage = async (
       message: message + systemInstruction,
       history: recentHistory.map(m => ({ role: m.role, content: m.content })),
       context,
-      image: imageBase64
+      image: imageBase64,
+      // Tell backend the user's selected language code so the server can enforce it
+      language
     };
     
     // Debug logging

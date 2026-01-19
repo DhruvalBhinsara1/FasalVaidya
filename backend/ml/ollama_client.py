@@ -168,7 +168,8 @@ def chat_with_ollama(
     chat_history: Optional[List[Dict[str, str]]] = None,
     context: Optional[Dict] = None,
     image_base64: Optional[str] = None,
-    model: Optional[str] = None
+    model: Optional[str] = None,
+    language: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Send a chat message to Ollama and get a response.
@@ -197,6 +198,14 @@ def chat_with_ollama(
     try:
         # Build messages array
         messages = [{'role': 'system', 'content': SYSTEM_PROMPT}]
+
+        # For now, force English-only replies regardless of frontend language selection.
+        # This keeps the AI behavior predictable while multilingual UI is rolled out.
+        lang_instr = (
+            "STRICT INSTRUCTION: Always respond ONLY in English. Do not include any other language, transliteration, or bilingual content. "
+            "If you cannot answer in English, reply with a short failure message in English stating you cannot comply."
+        )
+        messages.append({'role': 'system', 'content': lang_instr})
         
         # Add context if available
         if context:
@@ -294,7 +303,8 @@ def chat_with_ollama(
 def analyze_leaf_image(
     image_path: str,
     crop_name: str = "Unknown",
-    additional_context: Optional[str] = None
+    additional_context: Optional[str] = None,
+    language: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Analyze a leaf image using Ollama vision model.
@@ -328,7 +338,8 @@ Please identify:
     
     return chat_with_ollama(
         message=prompt,
-        image_base64=image_base64
+        image_base64=image_base64,
+        language=language
     )
 
 

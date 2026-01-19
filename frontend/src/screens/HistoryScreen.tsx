@@ -204,6 +204,15 @@ const HistoryScreen: React.FC = () => {
         }
         showsVerticalScrollIndicator={false}
       />
+      {/* Floating AI chat button */}
+      <TouchableOpacity
+        style={styles.chatFab}
+        onPress={() => navigation.navigate('Chat' as any)}
+        activeOpacity={0.85}
+      >
+        <View style={styles.chatFabGlow} />
+        <Ionicons name="chatbubbles-outline" size={26} color={colors.textWhite} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -327,6 +336,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.sm,
     lineHeight: 20,
+  },
+  chatFab: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    right: spacing.lg,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...{
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+  },
+  chatFabGlow: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: `${colors.secondary}25`,
+    zIndex: -1,
   },
 });
 

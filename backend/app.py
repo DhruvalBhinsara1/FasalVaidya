@@ -1056,12 +1056,16 @@ def chat():
         logger.info("chat_request message_length=%d history_count=%d has_context=%s has_image=%s",
                    len(message), len(chat_history), bool(context), bool(image_base64))
         
+        # Extract optional language preference sent by frontend (e.g., 'hi', 'en')
+        language = data.get('language')
+
         # Call Ollama
         result = chat_with_ollama(
             message=message,
             chat_history=chat_history,
             context=context,
-            image_base64=image_base64
+            image_base64=image_base64,
+            language=language
         )
         
         if result.get('success'):
