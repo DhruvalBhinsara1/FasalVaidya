@@ -18,6 +18,7 @@ import {
     View,
 } from 'react-native';
 
+import { Image } from 'react-native';
 import { getCurrentLanguage } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
 import {
@@ -26,6 +27,7 @@ import {
     deleteChatSession,
     getChatSessions,
 } from '../utils/chatStorage';
+import { getCropIcon } from '../utils/cropIcons';
 
 type SessionListItem = Omit<ChatSession, 'messages'>;
 
@@ -122,7 +124,14 @@ const ChatHistoryScreen: React.FC = () => {
             activeOpacity={0.7}
         >
             <View style={styles.sessionIcon}>
-                <Text style={styles.sessionIconText}>{item.cropIcon || '🌾'}</Text>
+                {(() => {
+                    const src = getCropIcon(item.cropName || item.cropIcon);
+                    return src ? (
+                        <Image source={src} style={styles.sessionIconImage} resizeMode="cover" />
+                    ) : (
+                        <Text style={styles.sessionIconText}>{item.cropIcon || '🌾'}</Text>
+                    );
+                })()}
             </View>
             <View style={styles.sessionContent}>
                 <Text style={styles.sessionTitle} numberOfLines={1}>
@@ -255,6 +264,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: spacing.md,
+    },
+    sessionIconImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 8,
     },
     sessionIconText: {
         fontSize: 20,

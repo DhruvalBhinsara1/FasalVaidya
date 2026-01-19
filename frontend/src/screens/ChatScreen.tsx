@@ -11,39 +11,40 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
 
 import {
-  ChatMessage,
-  checkChatStatus,
-  getScan,
-  getScans,
-  ScanHistoryItem,
-  ScanResult,
-  sendChatMessage
+    ChatMessage,
+    checkChatStatus,
+    getScan,
+    getScans,
+    ScanHistoryItem,
+    ScanResult,
+    sendChatMessage
 } from '../api';
 import { Card, StatusChip } from '../components';
 import { getCurrentLanguage } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
 import {
-  ChatSession,
-  generateSessionId,
-  getChatSession,
-  saveChatSession
+    ChatSession,
+    generateSessionId,
+    getChatSession,
+    saveChatSession
 } from '../utils/chatStorage';
+import { getCropIcon } from '../utils/cropIcons';
 
 interface RouteParams {
   scanId?: number;
@@ -374,8 +375,15 @@ const ChatScreen: React.FC = () => {
 
     return (
       <Card style={styles.contextCard}>
-        <View style={styles.contextHeader}>
-          <Text style={[styles.contextIcon, { fontSize: responsiveValues.contextIconSize }]}>{context.crop_icon}</Text>
+          <View style={styles.contextHeader}>
+            {(() => {
+              const src = getCropIcon(context?.crop_name || context?.crop_icon);
+              return src ? (
+                <Image source={src} style={[styles.contextIconImage, { width: responsiveValues.contextIconSize, height: responsiveValues.contextIconSize, borderRadius: responsiveValues.contextIconSize / 2 }]} resizeMode="cover" />
+              ) : (
+                <Text style={[styles.contextIcon, { fontSize: responsiveValues.contextIconSize }]}>{context?.crop_icon}</Text>
+              );
+            })()}
           <View style={styles.contextInfo}>
             <Text style={[styles.contextTitle, { fontSize: rsFont(16) }]}>
               {isHindi ? context.crop_name_hi : context.crop_name}
@@ -767,6 +775,12 @@ const styles = StyleSheet.create({
   },
   contextIcon: {
     fontSize: 32,
+    marginRight: spacing.sm,
+  },
+  contextIconImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     marginRight: spacing.sm,
   },
   contextInfo: {

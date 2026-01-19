@@ -9,15 +9,15 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 import React, { useMemo, useState } from 'react';
 import {
-  Image,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 import { getImageUrl, ScanResult } from '../api';
@@ -25,6 +25,7 @@ import { Button, Card, HeatmapOverlay, ProductCard, ScoreBar, StatusChip } from 
 import { getProductsForDeficiencies } from '../data/productData';
 import { getCropName, getCurrentLanguage, getRecommendation, t } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
+import { getCropIcon } from '../utils/cropIcons';
 
 const ResultsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -304,7 +305,14 @@ const ResultsScreen: React.FC = () => {
         {/* Crop & Status Card (classic) */}
         <Card style={styles.statusCard}>
           <View style={styles.cropInfo}>
-            <Text style={styles.cropIcon}>{scanResult.crop_icon}</Text>
+            {(() => {
+              const src = getCropIcon(scanResult.crop_name || scanResult.crop_icon);
+              return src ? (
+                <Image source={src} style={styles.cropIconImage} resizeMode="cover" />
+              ) : (
+                <Text style={styles.cropIcon}>{scanResult.crop_icon}</Text>
+              );
+            })()}
             <View style={styles.cropDetails}>
               <Text style={styles.cropName}>
                 {getCropName(scanResult.crop_name)}
@@ -669,6 +677,11 @@ const styles = StyleSheet.create({
   },
   cropIcon: {
     fontSize: 48,
+  },
+  cropIconImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
   },
   cropDetails: {
     flex: 1,

@@ -7,6 +7,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
+    Image,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -15,6 +16,7 @@ import {
 import { Crop } from '../api/scans';
 import { getCropName } from '../i18n';
 import { colors, spacing } from '../theme';
+import { getCropIcon } from '../utils/cropIcons';
 
 interface CropSelectorProps {
   crops: Crop[];
@@ -43,7 +45,14 @@ const CropSelector: React.FC<CropSelectorProps> = ({
             activeOpacity={0.7}
           >
             <View style={[styles.iconContainer, isSelected && styles.selectedIconContainer]}>
-              <Text style={styles.cropIcon}>{crop.icon}</Text>
+              {(() => {
+                const src = getCropIcon(crop.name);
+                return src ? (
+                  <Image source={src} style={styles.cropIconImage} resizeMode="cover" />
+                ) : (
+                  <Text style={styles.cropIcon}>{crop.icon}</Text>
+                );
+              })()}
             </View>
             <Text
               style={[
@@ -102,6 +111,11 @@ const styles = StyleSheet.create({
   },
   cropIcon: {
     fontSize: 32,
+  },
+  cropIconImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   cropName: {
     fontSize: 13,

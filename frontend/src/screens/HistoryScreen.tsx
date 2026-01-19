@@ -4,25 +4,26 @@
  * Display scan history with filtering by crop
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-  Alert,
-  Image,
-} from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import {
+    Alert,
+    FlatList,
+    Image,
+    RefreshControl,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
-import { colors, spacing, borderRadius, shadows } from '../theme';
-import { Card, StatusChip, Button } from '../components';
-import { t, getCurrentLanguage, getCropName } from '../i18n';
-import { getScans, clearScans, getScan, ScanHistoryItem, getImageUrl } from '../api';
+import { clearScans, getScan, getScans, ScanHistoryItem } from '../api';
+import { Button, Card, StatusChip } from '../components';
+import { getCropName, getCurrentLanguage, t } from '../i18n';
+import { borderRadius, colors, spacing } from '../theme';
+import { getCropIcon } from '../utils/cropIcons';
 
 const HistoryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -91,7 +92,14 @@ const HistoryScreen: React.FC = () => {
       <Card style={styles.scanCard}>
         <View style={styles.scanHeader}>
           <View style={styles.cropBadge}>
-            <Text style={styles.cropIcon}>{item.crop_icon}</Text>
+            {(() => {
+              const src = getCropIcon(item.crop_name || item.crop_icon);
+              return src ? (
+                <Image source={src} style={styles.cropIconImage} resizeMode="cover" />
+              ) : (
+                <Text style={styles.cropIcon}>{item.crop_icon}</Text>
+              );
+            })()}
             <Text style={styles.cropName}>
               {getCropName(item.crop_name)}
             </Text>
@@ -252,6 +260,12 @@ const styles = StyleSheet.create({
   },
   cropIcon: {
     fontSize: 24,
+  },
+  cropIconImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    marginRight: spacing.sm,
   },
   cropName: {
     fontSize: 18,
