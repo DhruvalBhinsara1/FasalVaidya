@@ -180,6 +180,11 @@ const en = {
   aiAnalysis: 'AI Analysis',
   lessThan3Sec: '< 3 sec',
   npkDetection: 'NPK Detection',
+  clearCache: 'Clear Cache',
+  clearCacheConfirm: 'Are you sure you want to clear app cache? This will sign you out and remove local data.',
+  cacheCleared: 'Cache cleared',
+  cacheClearFailed: 'Failed to clear cache',
+  done: 'Done',
   
   // Errors
   networkError: 'Network error. Please check your connection.',
@@ -346,6 +351,11 @@ const hi = {
   aiAnalysis: 'AI विश्लेषण',
   lessThan3Sec: '< 3 सेकंड',
   npkDetection: 'NPK पहचान',
+  clearCache: 'कैश साफ़ करें',
+  clearCacheConfirm: 'क्या आप ऐप कैश साफ़ करना चाहते हैं? यह आपको साइन आउट कर देगा और स्थानीय डेटा हटा देगा।',
+  cacheCleared: 'कैश साफ़ कर दिया गया',
+  cacheClearFailed: 'कैश साफ़ करने में विफल',
+  done: 'हो गया',
   
   // Errors
   networkError: 'नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें।',

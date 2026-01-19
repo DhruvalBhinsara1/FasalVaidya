@@ -20,6 +20,7 @@ import {
   View
 } from 'react-native';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Card } from '../components';
 import { clearSeenOnboarding, getCurrentLanguage, loadLanguage, SUPPORTED_LANGUAGES, t } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
@@ -82,6 +83,33 @@ const SettingsScreen: React.FC = () => {
     return SUPPORTED_LANGUAGES.find(lang => lang.code === currentLang) || SUPPORTED_LANGUAGES[0];
   };
 
+  const handleClearCache = () => {
+    Alert.alert(
+      t('clearCache'),
+      t('clearCacheConfirm'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              Alert.alert(t('done'), t('cacheCleared'));
+              // reload language/profile after clearing
+              const lang = await loadLanguage();
+              setCurrentLang(lang);
+              loadProfile();
+            } catch (e) {
+              console.error('Clear cache failed', e);
+              Alert.alert(t('error'), t('cacheClearFailed'));
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -92,6 +120,8 @@ const SettingsScreen: React.FC = () => {
         <Text style={styles.headerTitle}>{t('settings')}</Text>
         <View style={{ width: 40 }} />
       </View>
+
+      {/* (branding removed to simplify layout) */}
 
       <ScrollView
         style={styles.scrollView}
@@ -146,30 +176,20 @@ const SettingsScreen: React.FC = () => {
                   >
                     <Text style={styles.editButtonText}>{t('editProfile')}</Text>
                   </TouchableOpacity>
+
+                  {/* compact language chip placed on a new line under profile info */}
+                  <TouchableOpacity style={styles.languageChip} onPress={() => navigation.navigate('LanguageSelection')}>
+                    <Text style={styles.chipFlag}>{getCurrentLanguageData().flag}</Text>
+                    <Text style={styles.chipText}>{t(getCurrentLanguageData().labelKey)} · {getCurrentLanguageData().nativeName}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
           </View>
         </Card>
 
-        {/* Language Section: opens the new LanguageSelection screen */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('language')}</Text>
-          <TouchableOpacity
-            style={styles.dropdownTrigger}
-            onPress={() => navigation.navigate('LanguageSelection')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.dropdownContent}>
-              <Text style={styles.dropdownFlag}>{getCurrentLanguageData().flag}</Text>
-              <View style={styles.dropdownTextContainer}>
-                <Text style={styles.dropdownLabel}>{t(getCurrentLanguageData().labelKey)}</Text>
-                <Text style={styles.dropdownSub}>{getCurrentLanguageData().nativeName}</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </Card>
+        {/* Language is now accessible from the profile header chip above */}
 
         {/* Activity Section */}
         <Card style={styles.section}>
@@ -208,6 +228,17 @@ const SettingsScreen: React.FC = () => {
           </View>
 
           <TouchableOpacity
+            style={[styles.optionItem, styles.dangerOption]}
+            onPress={handleClearCache}
+          >
+            <View style={styles.optionContent}>
+              <Ionicons name="trash" size={20} color={colors.error} />
+              <Text style={styles.dangerLabel}>{t('clearCache')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.error} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.optionItem, { marginTop: spacing.sm }]}
             onPress={async () => {
               await clearSeenOnboarding();
@@ -222,65 +253,24 @@ const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </Card>
 
-        {/* Features Section */}
+        {/* Features + Supported Crops (merged) */}
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>{t('features')}</Text>
-          
-          <View style={styles.featureItem}>
-            <Ionicons name="leaf" size={24} color={colors.primary} />
-            <Text style={styles.featureText}>{t('npkDetection')}</Text>
-          </View>
-          
-          <View style={styles.featureItem}>
-            <Ionicons name="camera" size={24} color={colors.primary} />
-            <Text style={styles.featureText}>{t('startScan')}</Text>
-          </View>
-          
-          <View style={styles.featureItem}>
-            <Ionicons name="bulb" size={24} color={colors.primary} />
-            <Text style={styles.featureText}>{t('recommendations')}</Text>
-          </View>
-        </Card>
 
-        {/* Supported Crops */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('supportedCrops')}</Text>
-          <View style={styles.cropsGrid}>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🌾</Text>
-              <Text style={styles.cropLabel}>{t('crop_wheat')}</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🌾</Text>
-              <Text style={styles.cropLabel}>{t('crop_rice')}</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🌽</Text>
-              <Text style={styles.cropLabel}>{t('crop_maize')}</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🍌</Text>
-              <Text style={styles.cropLabel}>{t('crop_banana')}</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>☕</Text>
-              <Text style={styles.cropLabel}>{t('crop_coffee')}</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🍆</Text>
-              <Text style={styles.cropLabel}>{t('crop_eggplant')}</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🎃</Text>
-              <Text style={styles.cropLabel}>{t('crop_ashgourd')}</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🥬</Text>
-              <Text style={styles.cropLabel}>{t('crop_bittergourd')}</Text>
-            </View>
-            <View style={styles.cropItem}>
-              <Text style={styles.cropEmoji}>🥬</Text>
-              <Text style={styles.cropLabel}>{t('crop_snakegourd')}</Text>
+          <View>
+            <View style={styles.featureList}>
+              <View style={styles.featureItem}>
+                <Ionicons name="leaf" size={20} color={colors.primary} />
+                <Text style={styles.featureText}>{t('npkDetection')}</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Ionicons name="camera" size={20} color={colors.primary} />
+                <Text style={styles.featureText}>{t('startScan')}</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Ionicons name="bulb" size={20} color={colors.primary} />
+                <Text style={styles.featureText}>{t('recommendations')}</Text>
+              </View>
             </View>
           </View>
         </Card>
@@ -430,6 +420,18 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     marginBottom: spacing.sm,
   },
+  dangerOption: {
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: `${colors.error}10`,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  dangerLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.error,
+  },
   selectedOption: {
     backgroundColor: `${colors.primary}10`,
   },
@@ -472,6 +474,60 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.sm,
   },
+  featureItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  featureList: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
+  cropPreviewWrap: {
+    minWidth: 100,
+    maxWidth: 140,
+    alignItems: 'flex-start',
+  },
+  smallTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  cropChipsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cropChipsContent: {
+    paddingVertical: spacing.xs,
+    alignItems: 'center',
+  },
+  cropChip: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.xs,
+    ...shadows.sm,
+  },
+  cropChipEmoji: {
+    fontSize: 16,
+  },
+  moreChip: {
+    paddingHorizontal: spacing.xs,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  moreText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
   featureText: {
     fontSize: 14,
     color: colors.textPrimary,
@@ -502,6 +558,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.sm,
+    padding: spacing.md,
   },
   profileImageContainer: {
     position: 'relative',
@@ -575,6 +632,27 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '600',
     fontSize: 14,
+  },
+  /* Compact language chip inside profile */
+  languageChip: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 999,
+    ...shadows.sm,
+  },
+  chipFlag: {
+    fontSize: 18,
+    marginRight: spacing.sm,
+  },
+  chipText: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    marginRight: spacing.sm,
   },
 });
 
