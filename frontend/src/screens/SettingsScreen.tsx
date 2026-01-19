@@ -11,8 +11,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
-  Modal,
-  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -23,14 +21,13 @@ import {
 } from 'react-native';
 
 import { Card } from '../components';
-import { getCurrentLanguage, loadLanguage, setLanguage, SUPPORTED_LANGUAGES, t } from '../i18n';
+import { clearSeenOnboarding, getCurrentLanguage, loadLanguage, SUPPORTED_LANGUAGES, t } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
 import { getUserProfile, saveUserProfile } from '../utils/userStorage';
 
 const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
-  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   
   // Profile State
   const [name, setName] = useState('');
@@ -79,16 +76,7 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  const handleLanguageChange = async (lang: string) => {
-    await setLanguage(lang);
-    setCurrentLang(lang);
-    setShowLanguagePicker(false);
-    // Force re-render by navigating
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Home' }],
-    });
-  };
+  // Language changes happen via the centralized LanguageSelection screen.
   
   const getCurrentLanguageData = () => {
     return SUPPORTED_LANGUAGES.find(lang => lang.code === currentLang) || SUPPORTED_LANGUAGES[0];
@@ -164,14 +152,12 @@ const SettingsScreen: React.FC = () => {
           </View>
         </Card>
 
-        {/* Language Section */}
+        {/* Language Section: opens the new LanguageSelection screen */}
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>{t('language')}</Text>
-          
-          {/* Language Dropdown Trigger */}
           <TouchableOpacity
             style={styles.dropdownTrigger}
-            onPress={() => setShowLanguagePicker(true)}
+            onPress={() => navigation.navigate('LanguageSelection')}
             activeOpacity={0.7}
           >
             <View style={styles.dropdownContent}>
@@ -181,7 +167,7 @@ const SettingsScreen: React.FC = () => {
                 <Text style={styles.dropdownSub}>{getCurrentLanguageData().nativeName}</Text>
               </View>
             </View>
-            <Ionicons name="chevron-down" size={24} color={colors.textSecondary} />
+            <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </Card>
 
@@ -200,54 +186,7 @@ const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </Card>
         
-        {/* Language Picker Modal */}
-        <Modal
-          visible={showLanguagePicker}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowLanguagePicker(false)}
-        >
-          <Pressable 
-            style={styles.modalOverlay}
-            onPress={() => setShowLanguagePicker(false)}
-          >
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{t('language')}</Text>
-                <TouchableOpacity
-                  onPress={() => setShowLanguagePicker(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <Ionicons name="close" size={24} color={colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
-              
-              <ScrollView style={styles.modalScroll}>
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <TouchableOpacity
-                    key={lang.code}
-                    style={[
-                      styles.modalOption,
-                      currentLang === lang.code && styles.modalOptionSelected,
-                    ]}
-                    onPress={() => handleLanguageChange(lang.code)}
-                  >
-                    <View style={styles.modalOptionContent}>
-                      <Text style={styles.modalOptionFlag}>{lang.flag}</Text>
-                      <View>
-                        <Text style={styles.modalOptionLabel}>{t(lang.labelKey)}</Text>
-                        <Text style={styles.modalOptionSub}>{lang.nativeName}</Text>
-                      </View>
-                    </View>
-                    {currentLang === lang.code && (
-                      <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </Pressable>
-        </Modal>
+        {/* Language modal removed in favor of LanguageSelection screen */}
 
         {/* About Section */}
         <Card style={styles.section}>
@@ -267,6 +206,20 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.aboutLabel}>{t('purpose')}</Text>
             <Text style={styles.aboutValue}>AI Crop Health</Text>
           </View>
+
+          <TouchableOpacity
+            style={[styles.optionItem, { marginTop: spacing.sm }]}
+            onPress={async () => {
+              await clearSeenOnboarding();
+              navigation.navigate('LanguageSelection', { onboarding: true });
+            }}
+          >
+            <View style={styles.optionContent}>
+              <Ionicons name="refresh" size={20} color={colors.primary} />
+              <Text style={styles.optionLabel}>Show Language Onboarding</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
         </Card>
 
         {/* Features Section */}

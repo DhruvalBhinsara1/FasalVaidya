@@ -6,9 +6,16 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { I18n } from 'i18n-js';
+import React from 'react';
+// Language Context for global language state
+export const LanguageContext = React.createContext({
+  language: 'en',
+  setLanguageContext: (lang: string) => {},
+});
 
 // English translations
 const en = {
+  selectLanguage: 'Select a language',
   // App
   appName: 'FasalVaidya',
   tagline: 'AI Crop Health Advisor',
@@ -146,6 +153,7 @@ const en = {
   clearHistoryConfirm: 'Are you sure you want to delete all scan history?',
   
   // Settings Screen
+  languageSelection: 'Language Selection',
   language: 'Language',
   english: 'English',
   hindi: 'Hindi',
@@ -206,6 +214,7 @@ const en = {
 
 // Hindi translations
 const hi = {
+  selectLanguage: 'भाषा चुनें',
   // App
   appName: 'फसलवैद्य',
   tagline: 'AI फसल स्वास्थ्य सलाहकार',
@@ -373,6 +382,7 @@ const hi = {
 
 // Tamil
 const ta = {
+  selectLanguage: 'மொழியைத் தேர்ந்தெடுக்கவும்',
   home: 'முகப்பு', scan: 'ஸ்கேன்', history: 'வரலாறு', settings: 'அமைப்புகள்',
   welcome: 'FasalVaidya-க்கு வரவேற்கிறோம்',
   tagline: 'AI பயிர் நல ஆலோசகர்',
@@ -408,6 +418,7 @@ const ta = {
 
 // Telugu
 const te = {
+  selectLanguage: 'భాషను ఎంచుకోండి',
   home: 'హోమ్', scan: 'స్కాన్', history: 'చరిత్ర', settings: 'సెట్టింగ్‌లు',
   welcome: 'FasalVaidya కు స్వాగతం',
   tagline: 'AI పంట ఆరోగ్య సలహాదారు',
@@ -443,6 +454,7 @@ const te = {
 
 // Bengali
 const bn = {
+  selectLanguage: 'একটি ভাষা নির্বাচন করুন',
   home: 'হোম', scan: 'স্ক্যান', history: 'ইতিহাস', settings: 'সেটিংস',
   welcome: 'FasalVaidya-তে স্বাগতম',
   tagline: 'AI ফসল স্বাস্থ্য উপদেষ্টা',
@@ -478,6 +490,7 @@ const bn = {
 
 // Marathi
 const mr = {
+  selectLanguage: 'भाषा निवडा',
   home: 'होम', scan: 'स्कॅन', history: 'इतिहास', settings: 'सेटिंग्ज',
   welcome: 'FasalVaidya मध्ये आपले स्वागत आहे',
   tagline: 'AI पीक आरोग्य सल्लागार',
@@ -513,6 +526,7 @@ const mr = {
 
 // Gujarati
 const gu = {
+  selectLanguage: 'ભાષા પસંદ કરો',
   home: 'હોમ', scan: 'સ્કેન', history: 'ઇતિહાસ', settings: 'સેટિંગ્સ',
   welcome: 'FasalVaidya માં સ્વાગત છે',
   tagline: 'AI પાક આરોગ્ય સલાહકાર',
@@ -548,6 +562,7 @@ const gu = {
 
 // Kannada
 const kn = {
+  selectLanguage: 'ಭಾಷೆ ಆಯ್ಕೆಮಾಡಿ',
   home: 'ಮುಖಪುಟ', scan: 'ಸ್ಕ್ಯಾನ್', history: 'ಇತಿಹಾಸ', settings: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
   welcome: 'FasalVaidya ಗೆ ಸುಸ್ವಾಗತ',
   tagline: 'AI ಬೆಳೆ ಆರೋಗ್ಯ ಸಲಹೆಗಾರ',
@@ -583,6 +598,7 @@ const kn = {
 
 // Malayalam
 const ml = {
+  selectLanguage: 'ഭാഷ തിരഞ്ഞെടുക്കുക',
   home: 'ഹോം', scan: 'സ്കാൻ', history: 'ചരിത്രം', settings: 'ക്രമീകരണങ്ങൾ',
   welcome: 'FasalVaidya-ലേക്ക് സ്വാഗതം',
   tagline: 'AI വിള ആരോഗ്യ ഉപദേഷ്ടാവ്',
@@ -618,6 +634,7 @@ const ml = {
 
 // Punjabi
 const pa = {
+  selectLanguage: 'ਭਾਸ਼ਾ ਚੁਣੋ',
   home: 'ਘਰ', scan: 'ਸਕੈਨ', history: 'ਇਤਿਹਾਸ', settings: 'ਸੈਟਿੰਗਜ਼',
   welcome: 'FasalVaidya ਵਿੱਚ ਜੀ ਆਇਆਂ ਨੂੰ',
   tagline: 'AI ਫਸਲ ਸਿਹਤ ਸਲਾਹਕਾਰ',
@@ -701,6 +718,7 @@ const SUPPORTED_LANGUAGE_CODES = new Set(SUPPORTED_LANGUAGES.map((l) => l.code))
 
 // Storage key for language preference
 const LANGUAGE_KEY = '@fasalvaidya_language';
+const ONBOARDING_KEY = '@fasalvaidya_onboarded';
 
 /**
  * Load saved language preference
@@ -716,6 +734,54 @@ export const loadLanguage = async (): Promise<string> => {
     console.error('Error loading language:', error);
   }
   return i18n.locale;
+};
+
+/**
+ * Check if a saved language exists in storage
+ */
+export const hasSavedLanguage = async (): Promise<boolean> => {
+  try {
+    const saved = await AsyncStorage.getItem(LANGUAGE_KEY);
+    return saved !== null;
+  } catch (error) {
+    console.error('Error checking saved language:', error);
+    return false;
+  }
+};
+
+/**
+ * Check whether onboarding has already been completed
+ */
+export const hasSeenOnboarding = async (): Promise<boolean> => {
+  try {
+    const v = await AsyncStorage.getItem(ONBOARDING_KEY);
+    return v === '1';
+  } catch (error) {
+    console.error('Error checking onboarding flag:', error);
+    return false;
+  }
+};
+
+/**
+ * Mark onboarding as completed
+ */
+export const setSeenOnboarding = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(ONBOARDING_KEY, '1');
+  } catch (error) {
+    console.error('Error setting onboarding flag:', error);
+  }
+};
+
+/**
+ * Clear the onboarding flag (dev / reset helper)
+ */
+export const clearSeenOnboarding = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(ONBOARDING_KEY);
+  } catch (error) {
+    console.error('Error clearing onboarding flag:', error);
+  }
 };
 
 /**

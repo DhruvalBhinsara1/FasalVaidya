@@ -11,16 +11,17 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { loadLanguage } from './src/i18n';
+import { hasSeenOnboarding, LanguageContext, loadLanguage } from './src/i18n';
 import {
-    CameraScreen,
-    ChatHistoryScreen,
-    ChatScreen,
-    HistoryScreen,
-    HomeScreen,
-    ResultsScreen,
-    SettingsScreen,
+  CameraScreen,
+  ChatHistoryScreen,
+  ChatScreen,
+  HistoryScreen,
+  HomeScreen,
+  ResultsScreen,
+  SettingsScreen,
 } from './src/screens';
+import LanguageSelectionScreen from './src/screens/LanguageSelectionScreen';
 import { colors } from './src/theme';
 
 // Navigation types
@@ -32,6 +33,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Chat: { scanId?: number; cropId?: number; sessionId?: string };
   ChatHistory: undefined;
+  LanguageSelection: { onboarding?: boolean } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -47,18 +49,19 @@ const LoadingScreen = () => (
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
+  const [language, setLanguageContext] = useState('en');
+  const [initialRoute, setInitialRoute] = useState<'Home' | 'LanguageSelection'>('Home');
 
   useEffect(() => {
     const initialize = async () => {
-      // Load saved language preference
-      await loadLanguage();
-      
-      // Simulate brief loading for smoother UX
+      const lang = await loadLanguage();
+      setLanguageContext(lang);
+      const seen = await hasSeenOnboarding();
+      if (!seen) setInitialRoute('LanguageSelection');
       setTimeout(() => {
         setIsReady(true);
       }, 500);
     };
-
     initialize();
   }, []);
 
@@ -67,51 +70,54 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Home"
-          screenOptions={{
-            headerShown: false,
-            animation: 'slide_from_right',
-            contentStyle: { backgroundColor: colors.background },
-          }}
-        >
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen 
-            name="Camera" 
-            component={CameraScreen}
-            options={{
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen 
-            name="Results" 
-            component={ResultsScreen}
-            options={{
-              animation: 'fade',
-            }}
-          />
-          <Stack.Screen name="History" component={HistoryScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen 
-            name="Chat" 
-            component={ChatScreen}
-            options={{
-              animation: 'slide_from_bottom',
-            }}
-          />
-          <Stack.Screen 
-            name="ChatHistory" 
-            component={ChatHistoryScreen}
-            options={{
+    <LanguageContext.Provider value={{ language, setLanguageContext }}>
+      <SafeAreaProvider>
+        <NavigationContainer key={language}>
+          <Stack.Navigator
+            initialRouteName={initialRoute}
+            screenOptions={{
+              headerShown: false,
               animation: 'slide_from_right',
+              contentStyle: { backgroundColor: colors.background },
             }}
-          />
-        </Stack.Navigator>
-        <StatusBar style="auto" />
-      </NavigationContainer>
-    </SafeAreaProvider>
+          >
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen 
+              name="Camera" 
+              component={CameraScreen}
+              options={{
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen 
+              name="Results" 
+              component={ResultsScreen}
+              options={{
+                animation: 'fade',
+              }}
+            />
+            <Stack.Screen name="History" component={HistoryScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen 
+              name="Chat" 
+              component={ChatScreen}
+              options={{
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen 
+              name="ChatHistory" 
+              component={ChatHistoryScreen}
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} initialParams={{ onboarding: initialRoute === 'LanguageSelection' }} />
+          </Stack.Navigator>
+          <StatusBar style="auto" />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </LanguageContext.Provider>
   );
 }
 
