@@ -870,6 +870,12 @@ def get_scans():
     
     scans = []
     for row in rows:
+        # Convert deficiency scores (0-1) to health scores (0-100)
+        # Health score = 100 - (deficiency * 100)
+        n_health = round(100 - (row['n_score'] * 100), 1) if row['n_score'] is not None else None
+        p_health = round(100 - (row['p_score'] * 100), 1) if row['p_score'] is not None else None
+        k_health = round(100 - (row['k_score'] * 100), 1) if row['k_score'] is not None else None
+        
         scan = {
             'scan_id': row['id'],
             'scan_uuid': row['scan_uuid'],
@@ -879,9 +885,9 @@ def get_scans():
             'crop_icon': row['crop_icon'],
             'image_url': f"/api/images/{row['image_filename']}" if row['image_filename'] else None,
             'status': row['status'],
-            'n_score': round(row['n_score'] * 100, 1) if row['n_score'] else None,
-            'p_score': round(row['p_score'] * 100, 1) if row['p_score'] else None,
-            'k_score': round(row['k_score'] * 100, 1) if row['k_score'] else None,
+            'n_score': n_health,
+            'p_score': p_health,
+            'k_score': k_health,
             'n_severity': row['n_severity'],
             'p_severity': row['p_severity'],
             'k_severity': row['k_severity'],
@@ -923,6 +929,11 @@ def get_scan(scan_id):
     if not row:
         return jsonify({'error': 'Scan not found'}), 404
     
+    # Convert deficiency scores (0-1) to health scores (0-100)
+    n_health = round(100 - (row['n_score'] * 100), 1) if row['n_score'] is not None else None
+    p_health = round(100 - (row['p_score'] * 100), 1) if row['p_score'] is not None else None
+    k_health = round(100 - (row['k_score'] * 100), 1) if row['k_score'] is not None else None
+    
     scan = {
         'scan_id': row['id'],
         'scan_uuid': row['scan_uuid'],
@@ -932,9 +943,9 @@ def get_scan(scan_id):
         'crop_icon': row['crop_icon'],
         'image_url': f"/api/images/{row['image_filename']}" if row['image_filename'] else None,
         'status': row['status'],
-        'n_score': round(row['n_score'] * 100, 1) if row['n_score'] else None,
-        'p_score': round(row['p_score'] * 100, 1) if row['p_score'] else None,
-        'k_score': round(row['k_score'] * 100, 1) if row['k_score'] else None,
+        'n_score': n_health,
+        'p_score': p_health,
+        'k_score': k_health,
         'n_confidence': round(row['n_confidence'] * 100, 1) if row['n_confidence'] else None,
         'p_confidence': round(row['p_confidence'] * 100, 1) if row['p_confidence'] else None,
         'k_confidence': round(row['k_confidence'] * 100, 1) if row['k_confidence'] else None,
@@ -984,6 +995,270 @@ def clear_scans():
             file.unlink()
     
     return jsonify({'message': 'All scans cleared successfully'}), 200
+
+
+@app.route('/api/scans/<scan_id>', methods=['DELETE'])
+def delete_scan(scan_id):
+    """Delete a specific scan by ID."""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        
+        # First get the scan to find the image file
+        cursor.execute('SELECT image_path FROM leaf_scans WHERE id = ?', (scan_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return jsonify({'error': 'Scan not found'}), 404
+        
+        # Delete associated data
+        cursor.execute('DELETE FROM recommendations WHERE diagnosis_id IN (SELECT id FROM diagnoses WHERE scan_id = ?)', (scan_id,))
+        cursor.execute('DELETE FROM diagnoses WHERE scan_id = ?', (scan_id,))
+        cursor.execute('DELETE FROM leaf_scans WHERE id = ?', (scan_id,))
+        db.commit()
+        
+        # Delete the image file if it exists
+        if row['image_path']:
+            image_file = UPLOAD_FOLDER / Path(row['image_path']).name
+            if image_file.exists():
+                image_file.unlink()
+        
+        logger.info(f"Deleted scan: {scan_id}")
+        return jsonify({'message': 'Scan deleted successfully', 'scan_id': scan_id}), 200
+        
+    except Exception as e:
+        logger.exception(f"Error deleting scan {scan_id}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/scans/<scan_id>', methods=['PATCH'])
+def update_scan(scan_id):
+    """Update a scan's metadata (e.g., rename crop)."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No update data provided'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        # Check if scan exists
+        cursor.execute('SELECT * FROM leaf_scans WHERE id = ?', (scan_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return jsonify({'error': 'Scan not found'}), 404
+        
+        # Build update query dynamically for allowed fields
+        allowed_fields = ['crop_id', 'overall_status', 'confidence']
+        update_parts = []
+        values = []
+        
+        for field in allowed_fields:
+            if field in data:
+                update_parts.append(f'{field} = ?')
+                values.append(data[field])
+        
+        if not update_parts:
+            return jsonify({'error': 'No valid fields to update'}), 400
+        
+        values.append(scan_id)
+        query = f"UPDATE leaf_scans SET {', '.join(update_parts)} WHERE id = ?"
+        cursor.execute(query, values)
+        db.commit()
+        
+        # Fetch and return updated scan
+        cursor.execute('''
+            SELECT ls.*, d.n_score, d.p_score, d.k_score, d.mg_score,
+                   d.n_severity, d.p_severity, d.k_severity, d.mg_severity
+            FROM leaf_scans ls
+            LEFT JOIN diagnoses d ON ls.id = d.scan_id
+            WHERE ls.id = ?
+        ''', (scan_id,))
+        updated_row = cursor.fetchone()
+        
+        # Get crop info
+        crop_id = updated_row['crop_id']
+        crop = CROPS.get(crop_id, CROPS.get(1))
+        
+        scan_result = {
+            'scan_id': updated_row['id'],
+            'crop_id': crop_id,
+            'crop_name': crop['ml_crop_id'],
+            'overall_status': updated_row['overall_status'],
+            'confidence': updated_row['confidence'],
+            'n_score': updated_row['n_score'],
+            'p_score': updated_row['p_score'],
+            'k_score': updated_row['k_score'],
+            'mg_score': updated_row['mg_score'],
+            'n_severity': updated_row['n_severity'],
+            'p_severity': updated_row['p_severity'],
+            'k_severity': updated_row['k_severity'],
+            'mg_severity': updated_row['mg_severity'],
+            'image_url': updated_row['image_path'],
+            'created_at': updated_row['created_at'],
+        }
+        
+        logger.info(f"Updated scan: {scan_id}, fields: {list(data.keys())}")
+        return jsonify(scan_result), 200
+        
+    except Exception as e:
+        logger.exception(f"Error updating scan {scan_id}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================
+# RESULTS API (Crop-Specific Scan Comparison)
+# ============================================
+
+@app.route('/api/results/latest', methods=['GET'])
+def get_latest_scan():
+    """
+    Get latest scan for a specific crop.
+    Query params: crop_id (required)
+    """
+    try:
+        crop_id = request.args.get('crop_id', type=int)
+        if not crop_id:
+            return jsonify({'error': 'crop_id is required'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        # Get latest scan for this crop
+        cursor.execute('''
+            SELECT ls.*, d.n_score, d.p_score, d.k_score, d.mg_score,
+                   d.n_severity, d.p_severity, d.k_severity, d.mg_severity
+            FROM leaf_scans ls
+            LEFT JOIN diagnoses d ON ls.id = d.scan_id
+            WHERE ls.crop_id = ?
+            ORDER BY ls.created_at DESC
+            LIMIT 1
+        ''', (crop_id,))
+        
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'error': 'No scans found for this crop'}), 404
+        
+        crop = CROPS.get(crop_id, CROPS.get(1))
+        
+        result = {
+            'scan_id': row['id'],
+            'crop_id': crop_id,
+            'crop_name': crop['ml_crop_id'],
+            'scan_date': row['created_at'],
+            'nutrients': {
+                'nitrogen': {
+                    'value': row['n_score'],
+                    'unit': '%',
+                    'severity': row['n_severity']
+                },
+                'phosphorus': {
+                    'value': row['p_score'],
+                    'unit': '%',
+                    'severity': row['p_severity']
+                },
+                'potassium': {
+                    'value': row['k_score'],
+                    'unit': '%',
+                    'severity': row['k_severity']
+                }
+            },
+            'overall_status': row['overall_status'],
+            'confidence': row['confidence'],
+            'image_url': row['image_path']
+        }
+        
+        if row['mg_score'] is not None:
+            result['nutrients']['magnesium'] = {
+                'value': row['mg_score'],
+                'unit': '%',
+                'severity': row['mg_severity']
+            }
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.exception("Error fetching latest scan")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/results/history', methods=['GET'])
+def get_scan_history_for_results():
+    """
+    Get scan history for a specific crop (for comparison).
+    Query params: 
+      - crop_id (required)
+      - limit (optional, default=2) - number of scans to return
+    Returns scans in descending chronological order (latest first)
+    """
+    try:
+        crop_id = request.args.get('crop_id', type=int)
+        limit = request.args.get('limit', type=int, default=2)
+        
+        if not crop_id:
+            return jsonify({'error': 'crop_id is required'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        # Get recent scans for this crop
+        cursor.execute('''
+            SELECT ls.*, d.n_score, d.p_score, d.k_score, d.mg_score,
+                   d.n_severity, d.p_severity, d.k_severity, d.mg_severity
+            FROM leaf_scans ls
+            LEFT JOIN diagnoses d ON ls.id = d.scan_id
+            WHERE ls.crop_id = ?
+            ORDER BY ls.created_at DESC
+            LIMIT ?
+        ''', (crop_id, limit))
+        
+        rows = cursor.fetchall()
+        crop = CROPS.get(crop_id, CROPS.get(1))
+        
+        scans = []
+        for row in rows:
+            scan = {
+                'scan_id': row['id'],
+                'crop_id': crop_id,
+                'crop_name': crop['ml_crop_id'],
+                'scan_date': row['created_at'],
+                'nutrients': {
+                    'nitrogen': {
+                        'value': row['n_score'],
+                        'unit': '%',
+                        'severity': row['n_severity']
+                    },
+                    'phosphorus': {
+                        'value': row['p_score'],
+                        'unit': '%',
+                        'severity': row['p_severity']
+                    },
+                    'potassium': {
+                        'value': row['k_score'],
+                        'unit': '%',
+                        'severity': row['k_severity']
+                    }
+                },
+                'overall_status': row['overall_status'],
+                'confidence': row['confidence'],
+                'image_url': row['image_path']
+            }
+            
+            if row['mg_score'] is not None:
+                scan['nutrients']['magnesium'] = {
+                    'value': row['mg_score'],
+                    'unit': '%',
+                    'severity': row['mg_severity']
+                }
+            
+            scans.append(scan)
+        
+        return jsonify({'scans': scans, 'total': len(scans)}), 200
+        
+    except Exception as e:
+        logger.exception("Error fetching scan history")
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/images/<filename>')
@@ -1155,6 +1430,544 @@ def internal_error(error):
 
 
 # ============================================
+# REPORT & EXPORT ENDPOINTS
+# ============================================
+
+@app.route('/api/reports/preview', methods=['GET'])
+def preview_report():
+    """
+    Generate report preview for a scan.
+    
+    Query Params:
+        - scan_id: The scan ID to generate report for
+        
+    Returns:
+        - Complete report data with health classification, comparisons, and recommendations
+    """
+    scan_id = request.args.get('scan_id', type=int)
+    
+    if not scan_id:
+        return jsonify({'error': 'scan_id is required'}), 400
+    
+    try:
+        from ml.health_engine import generate_report_data, get_config
+        
+        db = get_db()
+        
+        # Get current scan
+        current = db.execute('''
+            SELECT 
+                ls.id as scan_id, ls.scan_uuid, ls.crop_id, ls.created_at,
+                d.n_score, d.p_score, d.k_score, 
+                d.n_confidence, d.p_confidence, d.k_confidence,
+                d.n_severity, d.p_severity, d.k_severity,
+                d.overall_status, d.detected_class
+            FROM leaf_scans ls
+            JOIN diagnoses d ON d.scan_id = ls.id
+            WHERE ls.id = ?
+        ''', (scan_id,)).fetchone()
+        
+        if not current:
+            return jsonify({'error': 'Scan not found'}), 404
+        
+        scan_data = dict(current)
+        crop_id = scan_data['crop_id']
+        crop_data = CROPS.get(crop_id, CROPS[1])
+        
+        logger.info(
+            "report_preview_db_data scan_id=%s raw_db=(n=%.4f,p=%.4f,k=%.4f) crop_id=%s",
+            scan_id,
+            scan_data.get('n_score', 0),
+            scan_data.get('p_score', 0),
+            scan_data.get('k_score', 0),
+            crop_id
+        )
+        
+        # Get previous scan for comparison
+        previous = db.execute('''
+            SELECT 
+                ls.id as scan_id, ls.scan_uuid, ls.crop_id, ls.created_at,
+                d.n_score, d.p_score, d.k_score,
+                d.n_severity, d.p_severity, d.k_severity,
+                d.overall_status
+            FROM leaf_scans ls
+            JOIN diagnoses d ON d.scan_id = ls.id
+            WHERE ls.crop_id = ? AND ls.id < ?
+            ORDER BY ls.id DESC
+            LIMIT 1
+        ''', (crop_id, scan_id)).fetchone()
+        
+        # Get baseline (first) scan
+        baseline = db.execute('''
+            SELECT 
+                ls.id as scan_id, ls.scan_uuid, ls.crop_id, ls.created_at,
+                d.n_score, d.p_score, d.k_score,
+                d.n_severity, d.p_severity, d.k_severity,
+                d.overall_status
+            FROM leaf_scans ls
+            JOIN diagnoses d ON d.scan_id = ls.id
+            WHERE ls.crop_id = ?
+            ORDER BY ls.id ASC
+            LIMIT 1
+        ''', (crop_id,)).fetchone()
+        
+        previous_data = dict(previous) if previous and previous['scan_id'] != scan_id else None
+        baseline_data = dict(baseline) if baseline and baseline['scan_id'] != scan_id else None
+        
+        logger.info(
+            "report_preview_comparison scan_id=%s has_previous=%s has_baseline=%s",
+            scan_id,
+            previous_data is not None,
+            baseline_data is not None
+        )
+        
+        logger.info(
+            "report_preview_generating scan_id=%s crop_id=%s scan_data=%s",
+            scan_id, crop_id, 
+            {k: v for k, v in scan_data.items() if k not in ['image_path', 'image_filename']}
+        )
+        
+        # Generate report
+        report = generate_report_data(
+            scan_data=scan_data,
+            crop_data={'id': crop_id, **crop_data},
+            previous_scan=previous_data,
+            baseline_scan=baseline_data
+        )
+        
+        # Flatten for frontend compatibility
+        flattened_report = {
+            **report,
+            # Flatten top-level scan fields for easy access
+            'scan_id': report['current_scan']['scan_id'],
+            'scan_date': report['current_scan']['scan_date'],
+            'scan_uuid': report['current_scan']['scan_uuid'],
+            'crop_name': report['field_info']['crop_name'],
+            'crop_name_hi': report['field_info']['crop_name_hi'],
+            'crop_icon': report['field_info']['crop_icon'],
+            # Flatten NPK scores (convert to 0-100 percentages)
+            'n_score': round(report['current_scan']['nutrients']['nitrogen']['health_score'], 1),
+            'p_score': round(report['current_scan']['nutrients']['phosphorus']['health_score'], 1),
+            'k_score': round(report['current_scan']['nutrients']['potassium']['health_score'], 1),
+            'n_severity': report['current_scan']['nutrients']['nitrogen']['severity'],
+            'p_severity': report['current_scan']['nutrients']['phosphorus']['severity'],
+            'k_severity': report['current_scan']['nutrients']['potassium']['severity'],
+            'overall_score': report['health_classification']['overall_score'],
+        }
+        
+        # Add rescan_date to health_classification for compatibility
+        if 'recommended_next_scan' in report['health_classification']:
+            flattened_report['health_classification']['rescan_date'] = report['health_classification']['recommended_next_scan']
+        
+        # Build comparison object for frontend (only if there's actual historical data)
+        hist = report.get('historical_comparison', {})
+        has_real_history = hist.get('has_history', False) and previous_data is not None
+        has_real_baseline = hist.get('has_baseline', False) and baseline_data is not None
+        
+        logger.info(
+            "report_preview_history has_real_history=%s has_real_baseline=%s",
+            has_real_history, has_real_baseline
+        )
+        
+        if has_real_history or has_real_baseline:
+            comparisons = hist.get('comparisons', {})
+            
+            # Determine overall trend
+            overall_trend = hist.get('overall_trend', {})
+            trend_direction = overall_trend.get('direction', 'stable')
+            trend_label = {
+                'increase': 'Improving' if overall_trend.get('delta', 0) > 0 else 'Needs Attention',
+                'decrease': 'Declining',
+                'stable': 'Stable'
+            }.get(trend_direction, 'Stable')
+            
+            # Calculate changes (convert from deficiency delta to health delta)
+            n_comp = comparisons.get('n', {}).get('vs_previous') or comparisons.get('n', {}).get('vs_baseline')
+            p_comp = comparisons.get('p', {}).get('vs_previous') or comparisons.get('p', {}).get('vs_baseline')
+            k_comp = comparisons.get('k', {}).get('vs_previous') or comparisons.get('k', {}).get('vs_baseline')
+            
+            # Since lower deficiency = improvement, negate the delta for health display
+            n_change = round(-n_comp.get('delta', 0) * 100, 1) if n_comp else 0
+            p_change = round(-p_comp.get('delta', 0) * 100, 1) if p_comp else 0
+            k_change = round(-k_comp.get('delta', 0) * 100, 1) if k_comp else 0
+            
+            # Get baseline date from first nutrient that has it
+            baseline_date = None
+            for nutrient in ['n', 'p', 'k']:
+                comp = comparisons.get(nutrient, {})
+                if comp.get('baseline_date'):
+                    baseline_date = comp['baseline_date']
+                    break
+                if comp.get('previous_date'):
+                    baseline_date = comp['previous_date']
+                    break
+            
+            flattened_report['comparison'] = {
+                'trend': trend_direction,
+                'trend_label': trend_label,
+                'changes': {
+                    'n_change': n_change,
+                    'p_change': p_change,
+                    'k_change': k_change
+                },
+                'baseline_date': baseline_date or report['current_scan']['scan_date']
+            }
+        
+        # Flatten recommendations array for frontend compatibility
+        fertilizer_recs = report.get('recommendations', {}).get('fertilizer', [])
+        flattened_report['recommendations'] = fertilizer_recs
+        
+        # Generate graph data for frontend charts
+        from ml.health_engine import generate_graph_data
+        
+        # Build list of scans for graph generation (previous + current)
+        scans_for_graph = []
+        if previous_data:
+            scans_for_graph.append(previous_data)
+        scans_for_graph.append(scan_data)
+        
+        # Generate bar chart data (current vs previous comparison)
+        if len(scans_for_graph) >= 2:
+            bar_chart = generate_graph_data(scans_for_graph, "bar")
+        else:
+            bar_chart = {"type": "bar", "error": "Need previous scan for comparison"}
+        
+        # Generate radar chart data
+        radar_chart = generate_graph_data(scans_for_graph, "radar")
+        
+        flattened_report['graph_data'] = {
+            'bar_chart': bar_chart,
+            'radar_chart': radar_chart,
+            'has_comparison': len(scans_for_graph) >= 2
+        }
+        
+        logger.info(
+            "report_preview_response scan_id=%s flattened_scores=(n=%.1f,p=%.1f,k=%.1f) overall=%.1f status=%s has_comparison=%s has_graph=%s",
+            scan_id,
+            flattened_report.get('n_score', 0),
+            flattened_report.get('p_score', 0),
+            flattened_report.get('k_score', 0),
+            flattened_report.get('overall_score', 0),
+            flattened_report.get('health_classification', {}).get('status'),
+            'comparison' in flattened_report,
+            flattened_report.get('graph_data', {}).get('has_comparison', False)
+        )
+        
+        return jsonify(flattened_report), 200
+        
+    except Exception as e:
+        logger.exception("report_preview_error")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/reports/export', methods=['POST'])
+def export_reports():
+    """
+    Export reports in specified format.
+    
+    JSON Body:
+        - scan_ids: List of scan IDs to export (optional, exports all if not provided)
+        - format: 'pdf', 'xlsx', or 'csv'
+        
+    Returns:
+        - File download
+    """
+    data = request.get_json() or {}
+    scan_ids = data.get('scan_ids', [])
+    export_format = data.get('format', 'csv').lower()
+    
+    if export_format not in ['pdf', 'xlsx', 'csv']:
+        return jsonify({'error': 'Invalid format. Supported: pdf, xlsx, csv'}), 400
+    
+    try:
+        from ml.health_engine import generate_report_data
+        from ml.report_export import export_to_csv, export_to_excel, export_to_pdf, export_bulk_to_pdf
+        
+        db = get_db()
+        
+        # Build query
+        if scan_ids:
+            placeholders = ','.join('?' * len(scan_ids))
+            query = f'''
+                SELECT 
+                    ls.id as scan_id, ls.scan_uuid, ls.crop_id, ls.created_at,
+                    d.n_score, d.p_score, d.k_score, 
+                    d.n_confidence, d.p_confidence, d.k_confidence,
+                    d.n_severity, d.p_severity, d.k_severity,
+                    d.overall_status, d.detected_class
+                FROM leaf_scans ls
+                JOIN diagnoses d ON d.scan_id = ls.id
+                WHERE ls.id IN ({placeholders})
+                ORDER BY ls.created_at DESC
+            '''
+            scans = db.execute(query, scan_ids).fetchall()
+        else:
+            scans = db.execute('''
+                SELECT 
+                    ls.id as scan_id, ls.scan_uuid, ls.crop_id, ls.created_at,
+                    d.n_score, d.p_score, d.k_score, 
+                    d.n_confidence, d.p_confidence, d.k_confidence,
+                    d.n_severity, d.p_severity, d.k_severity,
+                    d.overall_status, d.detected_class
+                FROM leaf_scans ls
+                JOIN diagnoses d ON d.scan_id = ls.id
+                ORDER BY ls.created_at DESC
+                LIMIT 100
+            ''').fetchall()
+        
+        if not scans:
+            return jsonify({'error': 'No scans found'}), 404
+        
+        # Generate reports
+        reports = []
+        for scan in scans:
+            scan_data = dict(scan)
+            crop_id = scan_data['crop_id']
+            crop_data = CROPS.get(crop_id, CROPS[1])
+            
+            report = generate_report_data(
+                scan_data=scan_data,
+                crop_data={'id': crop_id, **crop_data}
+            )
+            reports.append(report)
+        
+        # Export based on format
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        if export_format == 'csv':
+            content = export_to_csv(reports)
+            return app.response_class(
+                response=content,
+                status=200,
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment; filename=fasalvaidya_report_{timestamp}.csv'}
+            )
+        
+        elif export_format == 'xlsx':
+            content = export_to_excel(reports)
+            return app.response_class(
+                response=content,
+                status=200,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                headers={'Content-Disposition': f'attachment; filename=fasalvaidya_report_{timestamp}.xlsx'}
+            )
+        
+        elif export_format == 'pdf':
+            if len(reports) == 1:
+                content = export_to_pdf(reports[0])
+            else:
+                content = export_bulk_to_pdf(reports)
+            
+            return app.response_class(
+                response=content,
+                status=200,
+                mimetype='application/pdf',
+                headers={'Content-Disposition': f'attachment; filename=fasalvaidya_report_{timestamp}.pdf'}
+            )
+        
+    except ImportError as e:
+        logger.error("export_missing_dependency: %s", str(e))
+        return jsonify({'error': f'Missing dependency: {str(e)}'}), 500
+    except Exception as e:
+        logger.exception("export_error")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/scans/history', methods=['GET'])
+def get_scan_history_detailed():
+    """
+    Get detailed scan history with trend analysis.
+    
+    Query Params:
+        - crop_id: Filter by crop (optional)
+        - limit: Maximum records (default 50)
+        
+    Returns:
+        - List of scans with health classification and trends
+    """
+    crop_id = request.args.get('crop_id', type=int)
+    limit = request.args.get('limit', 50, type=int)
+    
+    try:
+        from ml.health_engine import classify_health, calculate_overall_score, compare_scans
+        
+        db = get_db()
+        
+        if crop_id:
+            scans = db.execute('''
+                SELECT 
+                    ls.id as scan_id, ls.scan_uuid, ls.crop_id, ls.created_at,
+                    d.n_score, d.p_score, d.k_score,
+                    d.n_severity, d.p_severity, d.k_severity,
+                    d.overall_status
+                FROM leaf_scans ls
+                JOIN diagnoses d ON d.scan_id = ls.id
+                WHERE ls.crop_id = ?
+                ORDER BY ls.created_at DESC
+                LIMIT ?
+            ''', (crop_id, limit)).fetchall()
+        else:
+            scans = db.execute('''
+                SELECT 
+                    ls.id as scan_id, ls.scan_uuid, ls.crop_id, ls.created_at,
+                    d.n_score, d.p_score, d.k_score,
+                    d.n_severity, d.p_severity, d.k_severity,
+                    d.overall_status
+                FROM leaf_scans ls
+                JOIN diagnoses d ON d.scan_id = ls.id
+                ORDER BY ls.created_at DESC
+                LIMIT ?
+            ''', (limit,)).fetchall()
+        
+        result = []
+        prev_scan = None
+        
+        for scan in reversed(scans):  # Process in chronological order for trends
+            scan_data = dict(scan)
+            overall_score = calculate_overall_score(scan_data)
+            health = classify_health(overall_score)
+            
+            item = {
+                'scan_id': scan_data['scan_id'],
+                'scan_uuid': scan_data['scan_uuid'],
+                'crop_id': scan_data['crop_id'],
+                'crop_name': CROPS.get(scan_data['crop_id'], {}).get('name', 'Unknown'),
+                'created_at': scan_data['created_at'],
+                'n_score': scan_data['n_score'],
+                'p_score': scan_data['p_score'],
+                'k_score': scan_data['k_score'],
+                'overall_score': round(overall_score, 1),
+                'health_status': health['status'],
+                'health_label': health['label'],
+                'health_color': health['color']
+            }
+            
+            # Add trend if we have previous scan
+            if prev_scan:
+                comparison = compare_scans(scan_data, prev_scan)
+                if 'overall_trend' in comparison:
+                    item['trend'] = comparison['overall_trend']
+            
+            result.append(item)
+            prev_scan = scan_data
+        
+        # Reverse back to newest first
+        result.reverse()
+        
+        return jsonify({
+            'scans': result,
+            'total': len(result)
+        }), 200
+        
+    except Exception as e:
+        logger.exception("scan_history_error")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/recommendations', methods=['GET'])
+def get_recommendations():
+    """
+    Get recommendations for a scan or latest scan.
+    
+    Query Params:
+        - scan_id: Specific scan ID (optional, uses latest if not provided)
+        - crop_id: Filter by crop when getting latest (optional)
+        
+    Returns:
+        - Rescan and fertilizer recommendations
+    """
+    scan_id = request.args.get('scan_id', type=int)
+    crop_id = request.args.get('crop_id', type=int)
+    
+    try:
+        from ml.health_engine import (
+            generate_rescan_recommendation, 
+            generate_fertilizer_recommendations,
+            classify_health,
+            calculate_overall_score
+        )
+        
+        db = get_db()
+        
+        if scan_id:
+            scan = db.execute('''
+                SELECT 
+                    ls.id as scan_id, ls.crop_id, ls.created_at,
+                    d.n_score, d.p_score, d.k_score,
+                    d.n_severity, d.p_severity, d.k_severity,
+                    d.overall_status
+                FROM leaf_scans ls
+                JOIN diagnoses d ON d.scan_id = ls.id
+                WHERE ls.id = ?
+            ''', (scan_id,)).fetchone()
+        else:
+            # Get latest scan
+            query = '''
+                SELECT 
+                    ls.id as scan_id, ls.crop_id, ls.created_at,
+                    d.n_score, d.p_score, d.k_score,
+                    d.n_severity, d.p_severity, d.k_severity,
+                    d.overall_status
+                FROM leaf_scans ls
+                JOIN diagnoses d ON d.scan_id = ls.id
+            '''
+            if crop_id:
+                query += ' WHERE ls.crop_id = ?'
+                query += ' ORDER BY ls.created_at DESC LIMIT 1'
+                scan = db.execute(query, (crop_id,)).fetchone()
+            else:
+                query += ' ORDER BY ls.created_at DESC LIMIT 1'
+                scan = db.execute(query).fetchone()
+        
+        if not scan:
+            return jsonify({'error': 'No scans found'}), 404
+        
+        scan_data = dict(scan)
+        overall_score = calculate_overall_score(scan_data)
+        health = classify_health(overall_score)
+        
+        # Parse created_at date
+        try:
+            scan_date = datetime.fromisoformat(scan_data['created_at'].replace('Z', '+00:00'))
+        except:
+            scan_date = None
+        
+        rescan_rec = generate_rescan_recommendation(health['status'], scan_date)
+        fertilizer_recs = generate_fertilizer_recommendations(scan_data, scan_data['crop_id'])
+        
+        return jsonify({
+            'scan_id': scan_data['scan_id'],
+            'crop_id': scan_data['crop_id'],
+            'crop_name': CROPS.get(scan_data['crop_id'], {}).get('name', 'Unknown'),
+            'overall_score': round(overall_score, 1),
+            'health_status': health['status'],
+            'health_label': health['label'],
+            'rescan': rescan_rec,
+            'fertilizer': fertilizer_recs,
+            'summary': {
+                'needs_action': len([r for r in fertilizer_recs if r['action'] == 'apply_fertilizer']) > 0,
+                'critical_count': len([r for r in fertilizer_recs if r['priority'] == 'high']),
+                'attention_count': len([r for r in fertilizer_recs if r['priority'] == 'medium'])
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.exception("recommendations_error")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/config/thresholds', methods=['GET'])
+def get_health_thresholds():
+    """Get current health classification thresholds."""
+    try:
+        from ml.health_engine import get_config
+        config = get_config()
+        return jsonify(config), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================
 # MAIN ENTRY POINT
 # ============================================
 
@@ -1168,15 +1981,28 @@ if __name__ == '__main__':
     
     # Print available routes
     print("\n📡 Available Endpoints:")
-    print("  GET  /api/health       - Health check")
-    print("  GET  /api/crops        - List supported crops")
-    print("  POST /api/scans        - Upload leaf photo & diagnose")
-    print("  GET  /api/scans        - Get scan history")
-    print("  GET  /api/scans/<id>   - Get single scan details")
-    print("  DELETE /api/scans      - Clear all history")
-    print("  GET  /api/model/info   - Get model information")
-    print("  POST /api/chat         - AI chat with Ollama (vision)")
-    print("  GET  /api/chat/status  - Check AI service status")
+    print("  GET  /api/health            - Health check")
+    print("  GET  /api/crops             - List supported crops")
+    print("  POST /api/scans             - Upload leaf photo & diagnose")
+    print("  GET  /api/scans             - Get scan history")
+    print("  GET  /api/scans/<id>        - Get single scan details")
+    print("  DELETE /api/scans           - Clear all history")
+    print("  DELETE /api/scans/<id>      - Delete specific scan")
+    print("  PATCH /api/scans/<id>       - Update scan metadata")
+    print("  GET  /api/model/info        - Get model information")
+    print("  POST /api/chat              - AI chat with Ollama (vision)")
+    print("  GET  /api/chat/status       - Check AI service status")
+    print("")
+    print("📊 Results & Comparison Endpoints:")
+    print("  GET  /api/results/latest    - Get latest scan for crop (crop_id)")
+    print("  GET  /api/results/history   - Get scan history for comparison")
+    print("")
+    print("📊 Report & Export Endpoints:")
+    print("  GET  /api/reports/preview   - Preview report for a scan")
+    print("  POST /api/reports/export    - Export reports (PDF/Excel/CSV)")
+    print("  GET  /api/scans/history     - Detailed history with trends")
+    print("  GET  /api/recommendations   - Get recommendations for scan")
+    print("  GET  /api/config/thresholds - Get health thresholds config")
     print("")
     
     # Start server

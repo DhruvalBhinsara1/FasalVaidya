@@ -145,12 +145,34 @@ const en = {
   attention: 'Attention Needed',
   critical: 'Critical',
   
+  // Dashboard Summary
+  all: 'All',
+  totalCrops: 'Total Crops',
+  unhealthy: 'Unhealthy',
+  
   // History Screen
   scanHistory: 'Scan History',
   noScansYet: 'No scans yet',
   noScansMessage: 'Scan a leaf to get your first diagnosis',
   clearHistory: 'Clear History',
   clearHistoryConfirm: 'Are you sure you want to delete all scan history?',
+  viewReport: 'View Report',
+  deleteConfirm: 'Are you sure you want to delete this scan?',
+  deleted: 'Deleted',
+  
+  // Report Screen
+  healthReport: 'Health Report',
+  nutrientLevels: 'Nutrient Levels',
+  trendAnalysis: 'Trend Analysis',
+  exportReport: 'Export Report',
+  nextScan: 'Next scan',
+  baseline: 'Baseline',
+  improving: 'Improving',
+  declining: 'Declining',
+  stable: 'Stable',
+  exporting: 'Exporting...',
+  exportSuccess: 'Report saved successfully',
+  exportFailed: 'Failed to export report',
   
   // Settings Screen
   languageSelection: 'Language Selection',
@@ -317,12 +339,34 @@ const hi = {
   attention: 'ध्यान दें',
   critical: 'गंभीर',
   
+  // Dashboard Summary
+  all: 'सभी',
+  totalCrops: 'कुल फसलें',
+  unhealthy: 'अस्वस्थ',
+  
   // History Screen
   scanHistory: 'स्कैन इतिहास',
   noScansYet: 'अभी तक कोई स्कैन नहीं',
   noScansMessage: 'अपना पहला निदान पाने के लिए पत्ती स्कैन करें',
   clearHistory: 'इतिहास साफ़ करें',
   clearHistoryConfirm: 'क्या आप सभी स्कैन इतिहास हटाना चाहते हैं?',
+  viewReport: 'रिपोर्ट देखें',
+  deleteConfirm: 'क्या आप इस स्कैन को हटाना चाहते हैं?',
+  deleted: 'हटा दिया गया',
+  
+  // Report Screen
+  healthReport: 'स्वास्थ्य रिपोर्ट',
+  nutrientLevels: 'पोषक तत्व स्तर',
+  trendAnalysis: 'रुझान विश्लेषण',
+  exportReport: 'रिपोर्ट निर्यात करें',
+  nextScan: 'अगला स्कैन',
+  baseline: 'आधार रेखा',
+  improving: 'सुधार हो रहा है',
+  declining: 'गिरावट हो रही है',
+  stable: 'स्थिर',
+  exporting: 'निर्यात हो रहा है...',
+  exportSuccess: 'रिपोर्ट सहेजी गई',
+  exportFailed: 'रिपोर्ट निर्यात में विफल',
   
   // Settings Screen
   language: 'भाषा',
@@ -825,7 +869,8 @@ export const t = (key: string, options?: object): string => {
  * Get translated crop name from crop name string
  * Maps backend crop names to i18n keys
  */
-export const getCropName = (cropName: string): string => {
+export const getCropName = (cropName?: string): string => {
+  if (!cropName) return '';
   // Convert crop name to i18n key format (lowercase, remove spaces)
   const key = `crop_${cropName.toLowerCase().replace(/\s+/g, '')}`;
   const translated = i18n.t(key);
@@ -838,7 +883,8 @@ export const getCropName = (cropName: string): string => {
  * @param cropName - The crop name (e.g., 'Wheat', 'Rice')  
  * @param nutrient - The nutrient type ('n', 'p', 'k', or 'mg')
  */
-export const getRecommendation = (cropName: string, nutrient: 'n' | 'p' | 'k' | 'mg'): string => {
+export const getRecommendation = (cropName?: string, nutrient: 'n' | 'p' | 'k' | 'mg' = 'n'): string => {
+  if (!cropName) return '';
   const cropKey = cropName.toLowerCase().replace(/\s+/g, '');
   // Try specific crop recommendation first
   let key = `rec_${cropKey}_${nutrient}`;

@@ -1,0 +1,101 @@
+{
+  "_comment": "Crop Health Classification Thresholds - All modules must reference this config",
+  "_version": "1.0.0",
+  "_updated": "2026-01-22",
+  
+  "health_classification": {
+    "thresholds": {
+      "critical": {
+        "max_score": 49,
+        "label": "Critical",
+        "label_hi": "गंभीर",
+        "color": "#FF6363",
+        "severity": "critical"
+      },
+      "attention": {
+        "min_score": 50,
+        "max_score": 79,
+        "label": "Needs Attention",
+        "label_hi": "ध्यान चाहिए",
+        "color": "#FA8112",
+        "severity": "attention"
+      },
+      "healthy": {
+        "min_score": 80,
+        "label": "Healthy",
+        "label_hi": "स्वस्थ",
+        "color": "#4C763B",
+        "severity": "healthy"
+      }
+    }
+  },
+  
+  "rescan_intervals": {
+    "_comment": "Recommended days until next scan based on health status",
+    "critical": {
+      "min_days": 7,
+      "max_days": 10,
+      "label": "7-10 days",
+      "label_hi": "7-10 दिन"
+    },
+    "attention": {
+      "min_days": 15,
+      "max_days": 20,
+      "label": "15-20 days",
+      "label_hi": "15-20 दिन"
+    },
+    "healthy": {
+      "min_days": 25,
+      "max_days": 30,
+      "label": "25-30 days",
+      "label_hi": "25-30 दिन"
+    }
+  },
+  
+  "nutrient_thresholds": {
+    "_comment": "Per-nutrient deficiency classification",
+    "deficient": {
+      "max_score": 40,
+      "action": "recommend_fertilizer",
+      "label": "Deficient",
+      "label_hi": "कमी"
+    },
+    "optimal": {
+      "min_score": 41,
+      "max_score": 80,
+      "action": "no_action",
+      "label": "Optimal",
+      "label_hi": "उचित"
+    },
+    "excess": {
+      "min_score": 81,
+      "action": "avoid_fertilization",
+      "label": "Excess",
+      "label_hi": "अधिक"
+    }
+  },
+  
+  "trend_analysis": {
+    "_comment": "Threshold for determining significant change",
+    "epsilon": 5,
+    "significant_increase": 10,
+    "significant_decrease": -10
+  },
+  
+  "graph_colors": {
+    "nitrogen": "#E53935",
+    "phosphorus": "#FB8C00",
+    "potassium": "#43A047",
+    "magnesium": "#8E24AA",
+    "healthy_zone": "#4C763B",
+    "attention_zone": "#FA8112",
+    "critical_zone": "#FF6363"
+  },
+  
+  "export_settings": {
+    "max_reports_fast": 100,
+    "fast_timeout_seconds": 3,
+    "bulk_timeout_seconds": 10,
+    "supported_formats": ["pdf", "xlsx", "csv"]
+  }
+}

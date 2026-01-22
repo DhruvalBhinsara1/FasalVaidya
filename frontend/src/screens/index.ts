@@ -8,6 +8,7 @@ export { default as ChatHistoryScreen } from './ChatHistoryScreen';
 export { default as ChatScreen } from './ChatScreen';
 export { default as HistoryScreen } from './HistoryScreen';
 export { default as HomeScreen } from './HomeScreen';
+export { default as ReportScreen } from './ReportScreen';
 export { default as ResultsScreen } from './ResultsScreen';
 export { default as SettingsScreen } from './SettingsScreen';
 

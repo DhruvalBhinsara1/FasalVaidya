@@ -166,6 +166,232 @@ export const clearScans = async (): Promise<void> => {
   await apiClient.delete('/api/scans');
 };
 
+// ============================================
+// REPORT & EXPORT TYPES AND FUNCTIONS
+// ============================================
+
+export interface HealthClassification {
+  status: 'healthy' | 'attention' | 'critical';
+  label: string;
+  color: string;
+  background_color: string;
+  rescan_date: string;
+  rescan_interval_days: number;
+}
+
+export interface NutrientRecommendation {
+  nutrient: string;
+  status: string;
+  value: number;
+  recommendation: string;
+  action: 'increase' | 'decrease' | 'maintain';
+  priority: 'high' | 'medium' | 'low';
+}
+
+export interface ScanComparison {
+  baseline_scan_id: string;
+  baseline_date: string;
+  changes: {
+    n_change: number;
+    p_change: number;
+    k_change: number;
+    overall_change: number;
+  };
+  trend: 'improving' | 'declining' | 'stable';
+  trend_label: string;
+}
+
+export interface ChartDataset {
+  label: string;
+  data: number[];
+  color: string;
+}
+
+export interface BarChartData {
+  type: string;
+  labels: string[];
+  datasets: ChartDataset[];
+  error?: string;
+}
+
+export interface RadarChartData {
+  type: string;
+  labels: string[];
+  datasets: ChartDataset[];
+  zones?: {
+    healthy: { min: number; color: string };
+    attention: { min: number; max: number; color: string };
+    critical: { max: number; color: string };
+  };
+  error?: string;
+}
+
+export interface GraphData {
+  bar_chart: BarChartData;
+  radar_chart: RadarChartData;
+  has_comparison: boolean;
+}
+
+export interface ReportData {
+  scan_id: string;
+  crop_name: string;
+  scan_date: string;
+  image_url: string;
+  n_score: number;
+  p_score: number;
+  k_score: number;
+  overall_score: number;
+  health_classification: HealthClassification;
+  comparison?: ScanComparison;
+  recommendations: NutrientRecommendation[];
+  graph_data?: GraphData;
+}
+
+export interface ExportResponse {
+  success: boolean;
+  download_url?: string;
+  filename?: string;
+  error?: string;
+}
+
+/**
+ * Get report preview for a scan
+ */
+export const getReportPreview = async (scanId: string, includeGraphs: boolean = true): Promise<ReportData> => {
+  const response = await apiClient.get(`/api/reports/preview`, {
+    params: { scan_id: scanId, include_graphs: includeGraphs }
+  });
+  return response.data;
+};
+
+/**
+ * Export reports in specified format
+ */
+export const exportReports = async (
+  scanIds: string[],
+  format: 'pdf' | 'excel' | 'csv'
+): Promise<Blob> => {
+  const response = await apiClient.post('/api/reports/export', {
+    scan_ids: scanIds,
+    format: format
+  }, {
+    responseType: 'blob'
+  });
+  return response.data;
+};
+
+/**
+ * Get scan history with trend analysis
+ */
+export const getScanHistory = async (
+  cropName?: string,
+  limit: number = 50
+): Promise<{
+  scans: ScanResult[];
+  trend_analysis: {
+    overall_trend: 'improving' | 'declining' | 'stable';
+    average_improvement: number;
+    scans_analyzed: number;
+  };
+}> => {
+  const response = await apiClient.get('/api/scans/history', {
+    params: { crop_name: cropName, limit }
+  });
+  return response.data;
+};
+
+/**
+ * Get rescan and fertilizer recommendations
+ */
+export const getRecommendations = async (scanId: string): Promise<{
+  rescan: {
+    recommended_date: string;
+    interval_days: number;
+    reason: string;
+  };
+  fertilizer: NutrientRecommendation[];
+}> => {
+  const response = await apiClient.get('/api/recommendations', {
+    params: { scan_id: scanId }
+  });
+  return response.data;
+};
+
+/**
+ * Get health threshold configuration
+ */
+export const getHealthThresholds = async (): Promise<{
+  health_classification: Record<string, { min: number; max: number }>;
+  nutrient_thresholds: Record<string, { optimal: { min: number; max: number } }>;
+}> => {
+  const response = await apiClient.get('/api/config/thresholds');
+  return response.data;
+};
+
+/**
+ * Delete a specific scan
+ */
+export const deleteScan = async (scanId: string): Promise<void> => {
+  await apiClient.delete(`/api/scans/${scanId}`);
+};
+
+/**
+ * Update a scan (rename crop, etc.)
+ */
+export const updateScan = async (scanId: string, updates: Partial<ScanResult>): Promise<ScanResult> => {
+  const response = await apiClient.patch(`/api/scans/${scanId}`, updates);
+  return response.data;
+};
+
+// ============================================
+// RESULTS API (Crop-Specific Comparison)
+// ============================================
+
+export interface NutrientData {
+  value: number;
+  unit: string;
+  severity?: string;
+}
+
+export interface ResultsScanData {
+  scan_id: string;
+  crop_id: number;
+  crop_name: string;
+  scan_date: string;
+  nutrients: {
+    nitrogen: NutrientData;
+    phosphorus: NutrientData;
+    potassium: NutrientData;
+    magnesium?: NutrientData;
+  };
+  overall_status: string;
+  confidence: number;
+  image_url: string;
+}
+
+/**
+ * Get latest scan for a specific crop (for Results page)
+ */
+export const getLatestScan = async (cropId: number): Promise<ResultsScanData> => {
+  const response = await apiClient.get('/api/results/latest', {
+    params: { crop_id: cropId }
+  });
+  return response.data;
+};
+
+/**
+ * Get scan history for a specific crop (for comparison)
+ */
+export const getScanHistoryForResults = async (
+  cropId: number, 
+  limit: number = 2
+): Promise<{ scans: ResultsScanData[]; total: number }> => {
+  const response = await apiClient.get('/api/results/history', {
+    params: { crop_id: cropId, limit }
+  });
+  return response.data;
+};
+
 /**
  * Health check
  */
