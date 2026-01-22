@@ -30,6 +30,7 @@ const en = {
   welcome: 'Welcome to FasalVaidya',
   welcomeMessage: 'Get instant NPK diagnosis for your crops',
   selectCrop: 'Select Your Crop',
+  selectModel: 'Select AI Model',
   startScan: 'Start Leaf Scan',
   viewHistory: 'View Scan History',
   
@@ -256,6 +257,7 @@ const hi = {
   welcome: 'फसलवैद्य में आपका स्वागत है',
   welcomeMessage: 'अपनी फसलों के लिए तुरंत NPK निदान पाएं',
   selectCrop: 'अपनी फसल चुनें',
+  selectModel: 'AI मॉडल चुनें',
   startScan: 'पत्ती स्कैन शुरू करें',
   viewHistory: 'स्कैन इतिहास देखें',
   

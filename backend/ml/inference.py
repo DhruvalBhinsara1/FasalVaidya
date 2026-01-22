@@ -4,6 +4,9 @@ FasalVaidya ML Inference Service
 Handles image preprocessing, model loading, and NPK deficiency prediction.
 Provides Grad-CAM heatmap generation for explainability.
 Supports crop-specific models from train_crop_model.py
+
+NOTE: This module now supports V2 Enhanced models. If EnhancedModel3 is available,
+it will use the new architecture with leaf validation and multi-class classification.
 """
 
 import os
@@ -24,6 +27,14 @@ try:
     import cv2  # Optional: used for Grad-CAM heatmaps and blending
 except Exception:
     cv2 = None
+
+# Try to import V2 inference module
+try:
+    from . import inference_v2
+    V2_AVAILABLE = inference_v2.is_v2_available()
+except ImportError:
+    inference_v2 = None
+    V2_AVAILABLE = False
 
 
 # ============================================
@@ -349,7 +360,7 @@ def get_severity_color(severity):
     return colors.get(severity, '#6B7280')
 
 
-def predict_npk(image_input, use_tflite=False, crop_id=None):
+def predict_npk(image_input, use_tflite=False, crop_id=None, use_v2=None):
     """
     Run NPK+Mg deficiency prediction on an image.
     
@@ -357,10 +368,32 @@ def predict_npk(image_input, use_tflite=False, crop_id=None):
         image_input: Image to analyze (path, PIL Image, numpy array, or file object)
         use_tflite: Use TFLite model for faster inference (optional)
         crop_id: Optional crop identifier for crop-specific model
+        use_v2: Force V2 inference (None = auto-detect, True = force V2, False = force legacy)
     
     Returns:
         dict with predictions, confidence scores, severity, and metadata
     """
+    # Check if V2 should be used
+    if use_v2 is None:
+        use_v2 = V2_AVAILABLE
+    
+    if use_v2 and inference_v2 is not None:
+        logger.info("ml_inference_using_v2 crop_id=%s", crop_id)
+        try:
+            result = inference_v2.predict_v2(
+                image_input, 
+                validate_leaf_first=True, 
+                crop_hint=crop_id
+            )
+            # Ensure backward compatibility with legacy fields
+            result['model_path_used'] = 'EnhancedModel3'
+            result['outputs'] = ['N', 'P', 'K', 'Mg']
+            return result
+        except Exception as e:
+            logger.error("ml_v2_inference_failed error=%s, falling back to legacy", str(e))
+            # Fall through to legacy inference
+    
+    # Legacy inference code
     model = None
     model_path_used = None
     outputs = ['N', 'P', 'K', 'Mg']  # Default outputs include Mg now
@@ -536,7 +569,7 @@ def determine_detected_class(n_score, p_score, k_score, mg_score=0.0):
         return 'healthy'
 
 
-def generate_gradcam_heatmap(image_input, target_class=None, crop_id=None):
+def generate_gradcam_heatmap(image_input, target_class=None, crop_id=None, use_v2=None):
     """
     Generate Grad-CAM heatmap for visual explanation.
     
@@ -544,10 +577,21 @@ def generate_gradcam_heatmap(image_input, target_class=None, crop_id=None):
         image_input: Image to analyze
         target_class: Class index to explain (0=N, 1=P, 2=K, 3=Mg, None=highest)
         crop_id: Optional crop identifier for crop-specific model
+        use_v2: Force V2 inference (None = auto-detect)
     
     Returns:
         Base64 encoded heatmap overlay image
     """
+    # Check if V2 should be used
+    if use_v2 is None:
+        use_v2 = V2_AVAILABLE
+    
+    if use_v2 and inference_v2 is not None:
+        logger.info("ml_gradcam_using_v2")
+        try:
+            return inference_v2.generate_gradcam_v2(image_input, target_class)
+        except Exception as e:
+            logger.error("ml_v2_gradcam_failed error=%s, falling back to legacy", str(e))
     model = None
     model_path_used = None
     outputs = ['N', 'P', 'K', 'Mg']
@@ -698,6 +742,11 @@ def create_simple_overlay(original_img, predictions):
 
 def get_model_info():
     """Get model information and metadata."""
+    # Check for V2 first
+    if V2_AVAILABLE and inference_v2 is not None:
+        return inference_v2.get_model_info_v2()
+    
+    # Fall back to legacy
     metadata_path = MODEL_CONFIG['metadata_path']
     
     if os.path.exists(metadata_path):
@@ -713,9 +762,15 @@ def get_model_info():
     }
 
 
+def is_v2_model_available():
+    """Check if V2 Enhanced model is available."""
+    return V2_AVAILABLE
+
+
 # Test function
 if __name__ == '__main__':
     print("🧪 Testing ML Inference Service...")
+    print(f"   V2 Model Available: {'✅' if V2_AVAILABLE else '❌'}")
     
     # Create a test image
     test_img = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)

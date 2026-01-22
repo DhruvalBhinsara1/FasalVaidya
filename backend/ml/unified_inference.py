@@ -31,7 +31,19 @@ except ImportError:
 
 # Paths
 MODELS_DIR = Path(__file__).parent / 'models'
-# V2 Model (9 crops, 43 classes)
+BASE_DIR = Path(__file__).resolve().parents[2]
+ENHANCED_MODEL_DIR = BASE_DIR / 'EnhancedModel3'
+
+# V2 Model (9 crops, 43 classes) - Check EnhancedModel3 first, then models/
+# EnhancedModel3 paths (from Colab training)
+ENHANCED_KERAS_PATH = ENHANCED_MODEL_DIR / 'disease_final.keras'
+ENHANCED_TFLITE_PATH = ENHANCED_MODEL_DIR / 'fasalvaidya_enhanced.tflite'
+ENHANCED_METADATA_PATH = ENHANCED_MODEL_DIR / 'metadata.json'
+ENHANCED_LABELS_PATH = ENHANCED_MODEL_DIR / 'labels.txt'
+ENHANCED_LEAF_VALIDATOR_KERAS = ENHANCED_MODEL_DIR / 'leaf_validator.keras'
+ENHANCED_LEAF_VALIDATOR_TFLITE = ENHANCED_MODEL_DIR / 'leaf_validator.tflite'
+
+# Legacy V2 paths in models/
 UNIFIED_KERAS_PATH_V2 = MODELS_DIR / 'unified_v2_nutrient_best.keras'
 UNIFIED_TFLITE_PATH_V2 = MODELS_DIR / 'fasalvaidya_unified_v2.tflite'
 UNIFIED_METADATA_PATH_V2 = MODELS_DIR / 'unified_v2_model_metadata.json'
@@ -119,6 +131,37 @@ CLASS_TO_NPK = {
     'bittergourd_ls': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Leaf spot
     'bittergourd_jas': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Jassid attack
     
+    # EnhancedModel3 classes (from Colab training with double underscore format)
+    # ASHGOURD
+    'ashgourd_ash_gourd__healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'ashgourd_ash_gourd__n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'ashgourd_ash_gourd__k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'ashgourd_ash_gourd__n_k': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    'ashgourd_ash_gourd__n_mg': {'N': 0.75, 'P': 0.1, 'K': 0.1, 'Mg': 0.75},
+    'ashgourd_ash_gourd__k_mg': {'N': 0.1, 'P': 0.1, 'K': 0.75, 'Mg': 0.75},
+    'ashgourd_ash_gourd__pm': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},  # Powdery mildew
+    # BITTERGOURD (double underscore format)
+    'bittergourd_bitter_gourd__healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'bittergourd_bitter_gourd__n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'bittergourd_bitter_gourd__k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'bittergourd_bitter_gourd__n_k': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    'bittergourd_bitter_gourd__n_mg': {'N': 0.75, 'P': 0.1, 'K': 0.1, 'Mg': 0.75},
+    'bittergourd_bitter_gourd__k_mg': {'N': 0.1, 'P': 0.1, 'K': 0.75, 'Mg': 0.75},
+    'bittergourd_bitter_gourd__dm': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'bittergourd_bitter_gourd__ls': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'bittergourd_bitter_gourd__jas': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    # EGGPLANT (double underscore format)
+    'eggplant_eggplant__healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'eggplant_eggplant__n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'eggplant_eggplant__k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'eggplant_eggplant__n_k': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    # SNAKEGOURD (double underscore format)
+    'snakegourd_snake_gourd__healthy': {'N': 0.0, 'P': 0.0, 'K': 0.0, 'Mg': 0.0},
+    'snakegourd_snake_gourd__n': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    'snakegourd_snake_gourd__k': {'N': 0.1, 'P': 0.1, 'K': 0.85, 'Mg': 0.0},
+    'snakegourd_snake_gourd__n_k': {'N': 0.75, 'P': 0.1, 'K': 0.75, 'Mg': 0.0},
+    'snakegourd_snake_gourd__ls': {'N': 0.1, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
+    
     # Legacy V1 classes (for backward compatibility)
     'rice_Nitrogen(N)': {'N': 0.85, 'P': 0.1, 'K': 0.1, 'Mg': 0.0},
     'rice_Phosphorus(P)': {'N': 0.1, 'P': 0.85, 'K': 0.1, 'Mg': 0.0},
@@ -149,8 +192,15 @@ def load_unified_model():
     if _unified_interpreter is not None:
         return _unified_interpreter, 'tflite'
     
-    # Load metadata first (try v2, fallback to v1)
-    if UNIFIED_METADATA_PATH_V2.exists():
+    # Load metadata first (try EnhancedModel3, then v2, fallback to v1)
+    if ENHANCED_METADATA_PATH.exists():
+        with open(ENHANCED_METADATA_PATH) as f:
+            _unified_metadata = json.load(f)
+            # EnhancedModel3 uses different field names
+            logger.info("loaded_enhanced_metadata crops=%d classes=%d", 
+                       len(_unified_metadata.get('crops', [])), 
+                       _unified_metadata.get('classes', 0))
+    elif UNIFIED_METADATA_PATH_V2.exists():
         with open(UNIFIED_METADATA_PATH_V2) as f:
             _unified_metadata = json.load(f)
             logger.info("loaded_v2_metadata crops=%d classes=%d", 
@@ -161,8 +211,12 @@ def load_unified_model():
             _unified_metadata = json.load(f)
             logger.info("loaded_v1_metadata (fallback)")
     
-    # Load labels (try v2, fallback to v1)
-    if UNIFIED_LABELS_PATH_V2.exists():
+    # Load labels (try EnhancedModel3, then v2, fallback to v1)
+    if ENHANCED_LABELS_PATH.exists():
+        with open(ENHANCED_LABELS_PATH) as f:
+            _unified_labels = [line.strip() for line in f.readlines()]
+            logger.info("loaded_enhanced_labels count=%d", len(_unified_labels))
+    elif UNIFIED_LABELS_PATH_V2.exists():
         with open(UNIFIED_LABELS_PATH_V2) as f:
             _unified_labels = [line.strip() for line in f.readlines()]
             logger.info("loaded_v2_labels count=%d", len(_unified_labels))
@@ -171,7 +225,39 @@ def load_unified_model():
             _unified_labels = [line.strip() for line in f.readlines()]
             logger.info("loaded_v1_labels (fallback) count=%d", len(_unified_labels))
     
-    # Try Keras model v2 FIRST (simpler, more reliable)
+    # Try EnhancedModel3 TFLite FIRST (from Colab training)
+    if ENHANCED_TFLITE_PATH.exists() and HAS_TF:
+        try:
+            import tensorflow as tf
+            _unified_interpreter = tf.lite.Interpreter(model_path=str(ENHANCED_TFLITE_PATH))
+            _unified_interpreter.allocate_tensors()
+            logger.info("enhanced_tflite_loaded path=%s", ENHANCED_TFLITE_PATH)
+            return _unified_interpreter, 'tflite'
+        except Exception as e:
+            logger.warning("enhanced_tflite_load_failed error=%s fallback=keras", str(e))
+    
+    # Try EnhancedModel3 Keras model (may have Keras 3.x compatibility issues)
+    if ENHANCED_KERAS_PATH.exists():
+        try:
+            import tensorflow as tf
+            
+            tf.keras.backend.clear_session()
+            tf.keras.mixed_precision.set_global_policy('float32')
+            
+            _unified_model = tf.keras.models.load_model(
+                str(ENHANCED_KERAS_PATH), 
+                compile=False
+            )
+            
+            logger.info("enhanced_keras_loaded path=%s layers=%d classes=%d", 
+                       ENHANCED_KERAS_PATH, len(_unified_model.layers),
+                       _unified_model.output_shape[-1])
+            return _unified_model, 'keras'
+        except Exception as e:
+            logger.debug("enhanced_keras_skipped reason=keras3_compat error=%s", str(e))
+            _unified_model = None
+    
+    # Try Keras model v2 (simpler, more reliable)
     if UNIFIED_KERAS_PATH_V2.exists():
         try:
             import tensorflow as tf

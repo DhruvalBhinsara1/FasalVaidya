@@ -564,113 +564,142 @@ def get_crops():
     return jsonify({'crops': crops_list}), 200
 
 
+@app.route('/api/models', methods=['GET'])
+def get_models():
+    """Return list of available ML models from config."""
+    try:
+        models_path = BASE_DIR / 'config' / 'models.json'
+        if not models_path.exists():
+            logger.error("api_get_models_error reason=file_not_found path=%s", models_path)
+            return jsonify(error="Model configuration not found on server."), 500
+        
+        with open(models_path, 'r') as f:
+            models = json.load(f)
+        return jsonify(models)
+    except Exception as e:
+        logger.error("api_get_models_error reason=read_error error=%s", str(e))
+        return jsonify(error="Failed to load model configuration."), 500
+
+
 @app.route('/api/scans', methods=['POST'])
-def create_scan():
-    """
-    Upload leaf photo and get NPK diagnosis.
-    
-    Form Data:
-        - image: The leaf image file
-        - crop_id: Crop type ID (1=Wheat, 2=Rice, 3=Tomato, 4=Cotton)
-    
-    Returns:
-        - Scan ID, NPK scores, severity levels, and recommendations
-    """
-    # Validate image file
+def upload_scan():
+    """Handle leaf photo upload and trigger diagnosis."""
     if 'image' not in request.files:
-        return jsonify({'error': 'No image file provided'}), 400
-    
+        return jsonify(error='No image file provided'), 400
+
     file = request.files['image']
-    
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'}), 400
-    
-    if not allowed_file(file.filename):
-        return jsonify({'error': 'Invalid file type. Allowed: jpg, jpeg, png, webp'}), 400
-    
-    # Get crop_id from form data
     crop_id = int(request.form.get('crop_id', 1))
-    if crop_id not in CROPS:
-        crop_id = 1
-    
+    model_id = request.form.get('model_id', 'unified_v2')  # Default to unified v2 model
+
+    if file.filename == '':
+        return jsonify(error='No selected file'), 400
+
+    if not allowed_file(file.filename):
+        return jsonify(error='Invalid file type. Allowed: jpg, jpeg, png, webp'), 400
+
     # Get ML crop_id for model selection
-    ml_crop_id = CROPS[crop_id].get('ml_crop_id')
-    
+    ml_crop_id = CROPS.get(crop_id, {}).get('ml_crop_id')
+
     # Generate unique filename
     scan_uuid = str(uuid.uuid4())
     ext = file.filename.rsplit('.', 1)[1].lower()
     filename = f"{scan_uuid}.{ext}"
     filepath = UPLOAD_FOLDER / filename
-    
+
     # Save file
     file.save(str(filepath))
 
     fp = file_fingerprint(filepath)
     logger.info(
-        "scan_upload_saved scan_uuid=%s crop_id=%s ml_crop_id=%s filename=%s size=%s sha256_1mb=%s",
+        "scan_upload_saved scan_uuid=%s crop_id=%s ml_crop_id=%s model_id=%s filename=%s size=%s sha256_1mb=%s",
         scan_uuid,
         crop_id,
         ml_crop_id,
+        model_id,
         filename,
         fp.get('size'),
         fp.get('sha256_1mb'),
     )
-    
-    # Run ML inference using unified model
+
+    # Initialize variables
+    prediction = None
+    heatmap_url = None
+    heatmap_filename = None
+
     try:
-        # Try unified model first (supports rice, wheat, tomato, maize)
-        from ml.unified_inference import predict_npk_unified, get_unified_metadata
-        
-        unified_meta = get_unified_metadata()
-        supported_crops = unified_meta.get('supported_crops', [])
-        
-        if ml_crop_id and ml_crop_id.lower() in supported_crops:
-            # Use unified model for supported crops
-            prediction = predict_npk_unified(str(filepath), crop_id=ml_crop_id, generate_heatmap=True)
-            heatmap_base64 = prediction.pop('heatmap', None)
+        # Run ML inference based on selected model
+        if model_id in ('unified_v2', 'v2_enhanced', 'efficientnet_b0', 'yolov8_cls'):
+            # Try unified model first for supported crops
+            from ml.unified_inference import predict_npk_unified, get_unified_metadata
+            unified_meta = get_unified_metadata()
+            # Check both 'supported_crops' (v2 format) and 'crops' (EnhancedModel3 format)
+            supported_crops = unified_meta.get('supported_crops', unified_meta.get('crops', []))
             
-            # Save heatmap to disk if generated
-            heatmap_filename = None
-            heatmap_url = None
-            if heatmap_base64 and heatmap_base64.startswith('data:image'):
-                try:
-                    # Extract base64 data and decode
-                    import base64
-                    base64_data = heatmap_base64.split(',', 1)[1]
-                    heatmap_bytes = base64.b64decode(base64_data)
-                    
-                    # Save to uploads folder
-                    heatmap_filename = f"heatmap_{scan_uuid}.jpg"
-                    heatmap_path = UPLOAD_FOLDER / heatmap_filename
-                    with open(heatmap_path, 'wb') as f:
-                        f.write(heatmap_bytes)
-                    
-                    heatmap_url = f"/api/images/{heatmap_filename}"
-                    logger.info("heatmap_saved filename=%s", heatmap_filename)
-                except Exception as e:
-                    logger.warning("heatmap_save_failed error=%s", str(e))
-                    heatmap_url = heatmap_base64  # Fallback to base64
-            
-            logger.info(
-                "scan_inference_unified scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s overall=%s",
-                scan_uuid,
-                ml_crop_id,
-                prediction.get('inference_method'),
-                float(prediction.get('n_score', 0.0)),
-                float(prediction.get('p_score', 0.0)),
-                float(prediction.get('k_score', 0.0)),
-                prediction.get('detected_class'),
-                prediction.get('overall_status'),
-            )
+            if ml_crop_id and ml_crop_id.lower() in [c.lower() for c in supported_crops]:
+                prediction = predict_npk_unified(str(filepath), crop_id=ml_crop_id, generate_heatmap=True)
+                heatmap_base64 = prediction.pop('heatmap', None)
+                
+                # Save heatmap to disk if generated
+                if heatmap_base64 and heatmap_base64.startswith('data:image'):
+                    try:
+                        import base64
+                        base64_data = heatmap_base64.split(',', 1)[1]
+                        heatmap_bytes = base64.b64decode(base64_data)
+                        
+                        heatmap_filename = f"heatmap_{scan_uuid}.jpg"
+                        heatmap_path = UPLOAD_FOLDER / heatmap_filename
+                        with open(heatmap_path, 'wb') as f:
+                            f.write(heatmap_bytes)
+                        
+                        heatmap_url = f"/api/images/{heatmap_filename}"
+                        logger.info("heatmap_saved filename=%s", heatmap_filename)
+                    except Exception as e:
+                        logger.warning("heatmap_save_failed error=%s", str(e))
+                        heatmap_url = heatmap_base64
+                
+                logger.info(
+                    "scan_inference_unified scan_uuid=%s model_id=%s ml_crop=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s",
+                    scan_uuid, model_id, ml_crop_id,
+                    float(prediction.get('n_score', 0.0)),
+                    float(prediction.get('p_score', 0.0)),
+                    float(prediction.get('k_score', 0.0)),
+                    prediction.get('detected_class'),
+                )
+            else:
+                # Fallback to legacy inference
+                from ml.inference import predict_npk, generate_gradcam_heatmap
+                prediction = predict_npk(str(filepath), crop_id=ml_crop_id)
+                heatmap_base64 = generate_gradcam_heatmap(str(filepath), crop_id=ml_crop_id)
+                
+                if heatmap_base64 and isinstance(heatmap_base64, str) and heatmap_base64.startswith('data:image'):
+                    try:
+                        import base64
+                        base64_data = heatmap_base64.split(',', 1)[1]
+                        heatmap_bytes = base64.b64decode(base64_data)
+                        
+                        heatmap_filename = f"heatmap_{scan_uuid}.jpg"
+                        heatmap_path_file = UPLOAD_FOLDER / heatmap_filename
+                        with open(heatmap_path_file, 'wb') as f:
+                            f.write(heatmap_bytes)
+                        
+                        heatmap_url = f"/api/images/{heatmap_filename}"
+                    except Exception as e:
+                        logger.warning("heatmap_save_failed error=%s", str(e))
+                        heatmap_url = heatmap_base64
+                
+                logger.info(
+                    "scan_inference_legacy scan_uuid=%s model_id=%s ml_crop=%s scores=(n=%.4f,p=%.4f,k=%.4f)",
+                    scan_uuid, model_id, ml_crop_id,
+                    float(prediction.get('n_score', 0.0)),
+                    float(prediction.get('p_score', 0.0)),
+                    float(prediction.get('k_score', 0.0)),
+                )
         else:
-            # Fallback to old crop-specific model for other crops
+            # Legacy model
             from ml.inference import predict_npk, generate_gradcam_heatmap
             prediction = predict_npk(str(filepath), crop_id=ml_crop_id)
             heatmap_base64 = generate_gradcam_heatmap(str(filepath), crop_id=ml_crop_id)
             
-            # Save heatmap to disk if generated
-            heatmap_filename = None
-            heatmap_url = None
             if heatmap_base64 and isinstance(heatmap_base64, str) and heatmap_base64.startswith('data:image'):
                 try:
                     import base64
@@ -683,25 +712,19 @@ def create_scan():
                         f.write(heatmap_bytes)
                     
                     heatmap_url = f"/api/images/{heatmap_filename}"
-                    logger.info("heatmap_saved filename=%s", heatmap_filename)
                 except Exception as e:
                     logger.warning("heatmap_save_failed error=%s", str(e))
-                    heatmap_url = heatmap_base64
             
             logger.info(
-                "scan_inference_legacy scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f) detected=%s overall=%s",
-                scan_uuid,
-                ml_crop_id,
-                prediction.get('inference_method'),
+                "scan_inference_legacy scan_uuid=%s model_id=%s scores=(n=%.4f,p=%.4f,k=%.4f)",
+                scan_uuid, model_id,
                 float(prediction.get('n_score', 0.0)),
                 float(prediction.get('p_score', 0.0)),
                 float(prediction.get('k_score', 0.0)),
-                prediction.get('detected_class'),
-                prediction.get('overall_status'),
             )
-    
+
     except Exception as e:
-        logger.exception("scan_inference_error scan_uuid=%s filename=%s", scan_uuid, filename)
+        logger.exception("scan_inference_error scan_uuid=%s filename=%s error=%s", scan_uuid, filename, str(e))
         # Fallback to mock predictions
         import random
         prediction = {
@@ -722,15 +745,15 @@ def create_scan():
         heatmap_filename = None
 
         logger.warning(
-            "scan_inference_fallback scan_uuid=%s ml_crop=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f)",
+            "scan_inference_fallback scan_uuid=%s model_id=%s method=%s scores=(n=%.4f,p=%.4f,k=%.4f)",
             scan_uuid,
-            ml_crop_id,
+            model_id,
             prediction.get('inference_method'),
             float(prediction.get('n_score', 0.0)),
             float(prediction.get('p_score', 0.0)),
             float(prediction.get('k_score', 0.0)),
         )
-    
+
     # Get recommendations
     recommendations, priority = generate_recommendations(
         crop_id,
@@ -738,19 +761,19 @@ def create_scan():
         prediction['p_score'],
         prediction['k_score']
     )
-    
+
     # Save to database
     db = get_db()
     cursor = db.cursor()
-    
+
     # Insert scan record
     cursor.execute('''
         INSERT INTO leaf_scans (scan_uuid, crop_id, image_path, image_filename, status)
         VALUES (?, ?, ?, ?, ?)
     ''', (scan_uuid, crop_id, str(filepath), filename, 'completed'))
-    
+
     scan_id = cursor.lastrowid
-    
+
     # Insert diagnosis record (include heatmap_path)
     cursor.execute('''
         INSERT INTO diagnoses (
@@ -761,12 +784,20 @@ def create_scan():
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         scan_id,
-        prediction['n_score'], prediction['p_score'], prediction['k_score'],
-        prediction['n_confidence'], prediction['p_confidence'], prediction['k_confidence'],
-        prediction['n_severity'], prediction['p_severity'], prediction['k_severity'],
-        prediction['overall_status'], prediction['detected_class'], heatmap_filename
+        prediction['n_score'],
+        prediction['p_score'],
+        prediction['k_score'],
+        prediction.get('n_confidence', 0.8),
+        prediction.get('p_confidence', 0.8),
+        prediction.get('k_confidence', 0.8),
+        prediction['n_severity'],
+        prediction['p_severity'],
+        prediction['k_severity'],
+        prediction['overall_status'],
+        prediction['detected_class'],
+        heatmap_filename
     ))
-    
+
     # Insert recommendations
     cursor.execute('''
         INSERT INTO recommendations (
@@ -783,54 +814,54 @@ def create_scan():
         recommendations['k'].get('hi', ''),
         priority
     ))
-    
+
     db.commit()
-    
+
     # Build response
     crop = CROPS[crop_id]
     response = {
         'scan_id': scan_id,
         'scan_uuid': scan_uuid,
         'status': 'completed',
-        
+
         # Crop info
         'crop_id': crop_id,
         'crop_name': crop['name'],
         'crop_name_hi': crop['name_hi'],
         'crop_icon': crop['icon'],
-        
+
         # NPK Scores (0-100%)
         'n_score': round(prediction['n_score'] * 100, 1),
         'p_score': round(prediction['p_score'] * 100, 1),
         'k_score': round(prediction['k_score'] * 100, 1),
-        
+
         # Confidence (0-100%)
-        'n_confidence': round(prediction['n_confidence'] * 100, 1),
-        'p_confidence': round(prediction['p_confidence'] * 100, 1),
-        'k_confidence': round(prediction['k_confidence'] * 100, 1),
-        
+        'n_confidence': round(prediction.get('n_confidence', 0.8) * 100, 1),
+        'p_confidence': round(prediction.get('p_confidence', 0.8) * 100, 1),
+        'k_confidence': round(prediction.get('k_confidence', 0.8) * 100, 1),
+
         # Severity levels
         'n_severity': prediction['n_severity'],
         'p_severity': prediction['p_severity'],
         'k_severity': prediction['k_severity'],
         'overall_status': prediction['overall_status'],
-        
+
         # Detected class
         'detected_class': prediction['detected_class'],
-        
+
         # Recommendations
         'recommendations': recommendations,
         'priority': priority,
-        
+
         # Image URLs
         'image_url': f"/api/images/{filename}",
         'original_image_url': f"/api/images/{filename}",
         'heatmap': heatmap_url,
-        
+
         # Timestamp
         'created_at': datetime.now().isoformat()
     }
-    
+
     return jsonify(response), 201
 
 
@@ -870,11 +901,11 @@ def get_scans():
     
     scans = []
     for row in rows:
-        # Convert deficiency scores (0-1) to health scores (0-100)
-        # Health score = 100 - (deficiency * 100)
-        n_health = round(100 - (row['n_score'] * 100), 1) if row['n_score'] is not None else None
-        p_health = round(100 - (row['p_score'] * 100), 1) if row['p_score'] is not None else None
-        k_health = round(100 - (row['k_score'] * 100), 1) if row['k_score'] is not None else None
+        # Database stores health scores (0-1 range, where 1 = healthy)
+        # Convert to percentage (0-100%) directly, no inversion needed
+        n_health = round(row['n_score'] * 100, 1) if row['n_score'] is not None else None
+        p_health = round(row['p_score'] * 100, 1) if row['p_score'] is not None else None
+        k_health = round(row['k_score'] * 100, 1) if row['k_score'] is not None else None
         
         scan = {
             'scan_id': row['id'],
@@ -929,10 +960,11 @@ def get_scan(scan_id):
     if not row:
         return jsonify({'error': 'Scan not found'}), 404
     
-    # Convert deficiency scores (0-1) to health scores (0-100)
-    n_health = round(100 - (row['n_score'] * 100), 1) if row['n_score'] is not None else None
-    p_health = round(100 - (row['p_score'] * 100), 1) if row['p_score'] is not None else None
-    k_health = round(100 - (row['k_score'] * 100), 1) if row['k_score'] is not None else None
+    # Database stores health scores (0-1 range, where 1 = healthy)
+    # Convert to percentage (0-100%) directly, no inversion needed
+    n_health = round(row['n_score'] * 100, 1) if row['n_score'] is not None else None
+    p_health = round(row['p_score'] * 100, 1) if row['p_score'] is not None else None
+    k_health = round(row['k_score'] * 100, 1) if row['k_score'] is not None else None
     
     scan = {
         'scan_id': row['id'],

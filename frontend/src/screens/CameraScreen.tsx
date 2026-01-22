@@ -20,8 +20,9 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 
-import { uploadScan } from '../api';
+import { uploadScan, getModels, Model } from '../api';
 import { AnalysisLoadingOverlay, Button } from '../components';
 import { t } from '../i18n';
 import { borderRadius, colors, spacing } from '../theme';
@@ -30,18 +31,44 @@ const CameraScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const cropId = route.params?.cropId || 1;
+  const initialModelId = route.params?.modelId || '';
 
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showTutorial, setShowTutorial] = useState(true);
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>(initialModelId);
   const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
     if (!permission?.granted) {
       requestPermission();
     }
+    
+    // Fetch available models
+    const fetchModels = async () => {
+      try {
+        const availableModels = await getModels();
+        setModels(availableModels);
+        // Use initialModelId if provided, otherwise use default
+        if (!initialModelId) {
+          const defaultModel = availableModels.find(m => m.default) || availableModels[0];
+          if (defaultModel) {
+            setSelectedModel(defaultModel.id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+        // Fallback to a default model ID
+        if (!selectedModel) {
+          setSelectedModel('v2_enhanced');
+        }
+      }
+    };
+
+    fetchModels();
   }, []);
 
   const handleCapture = async () => {
@@ -102,7 +129,7 @@ const CameraScreen: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const result = await uploadScan(capturedImage, cropId);
+      const result = await uploadScan(capturedImage, cropId, selectedModel);
       
       // Navigate to results screen
       navigation.replace('Results', { scanResult: result });
@@ -163,6 +190,22 @@ const CameraScreen: React.FC = () => {
         <View style={styles.previewContainer}>
           <Image source={{ uri: capturedImage }} style={styles.previewImage} />
         </View>
+
+        {/* Model Selector */}
+        {models.length > 0 && (
+          <View style={styles.modelSelectorContainer}>
+            <Picker
+              selectedValue={selectedModel}
+              style={styles.modelPicker}
+              onValueChange={(itemValue) => setSelectedModel(itemValue)}
+              dropdownIconColor={colors.textWhite}
+            >
+              {models.map((model) => (
+                <Picker.Item key={model.id} label={model.name} value={model.id} />
+              ))}
+            </Picker>
+          </View>
+        )}
 
         {/* Action buttons */}
         <View style={styles.previewActions}>
@@ -378,6 +421,20 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'contain',
+  },
+  modelSelectorContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 120 : 80,
+    left: '10%',
+    right: '10%',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  modelPicker: {
+    height: 50,
+    width: '100%',
+    color: colors.textWhite,
   },
   previewActions: {
     position: 'absolute',

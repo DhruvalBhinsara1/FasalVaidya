@@ -18,7 +18,7 @@ import {
     View,
 } from 'react-native';
 
-import { Crop, getCrops, healthCheck } from '../api';
+import { Crop, getCrops, getModels, healthCheck, Model } from '../api';
 import { Card, CropSelector } from '../components';
 import { getCropName, getSeasonName, t } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
@@ -30,9 +30,12 @@ const HomeScreen: React.FC = () => {
   const [selectedCropId, setSelectedCropId] = useState<number>(1);
   const [isConnected, setIsConnected] = useState<boolean>(true);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>('unified_v2');
 
   useEffect(() => {
     loadCrops();
+    loadModels();
     checkConnection();
   }, []);
 
@@ -45,6 +48,20 @@ const HomeScreen: React.FC = () => {
   const loadProfile = async () => {
     const profile = await getUserProfile();
     setProfileImage(profile.profileImage);
+  };
+
+  const loadModels = async () => {
+    try {
+      const modelsData = await getModels();
+      setModels(modelsData);
+      const defaultModel = modelsData.find(m => m.default);
+      if (defaultModel) {
+        setSelectedModelId(defaultModel.id);
+      }
+    } catch (error) {
+      console.log('Failed to load models, using default');
+      setModels([{ id: 'v2_enhanced', name: 'V2 Enhanced', description: 'Default model', default: true }]);
+    }
   };
 
   const loadCrops = async () => {
@@ -80,7 +97,7 @@ const HomeScreen: React.FC = () => {
       );
       return;
     }
-    navigation.navigate('Camera', { cropId: selectedCropId });
+    navigation.navigate('Camera', { cropId: selectedCropId, modelId: selectedModelId });
   };
 
   const handleViewHistory = () => {
@@ -96,6 +113,7 @@ const HomeScreen: React.FC = () => {
   };
 
   const selectedCrop = crops.find((c) => c.id === selectedCropId);
+  const selectedModel = models.find((m) => m.id === selectedModelId);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -157,6 +175,56 @@ const HomeScreen: React.FC = () => {
             </Text>
           )}
         </View>
+
+        {/* Model Selection */}
+        {models.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('selectModel') || 'Select Model'}</Text>
+              <Text style={styles.sectionMeta}>{t('aiPowered') || 'AI Powered'}</Text>
+            </View>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.modelList}
+            >
+              {models.map((model) => (
+                <TouchableOpacity
+                  key={model.id}
+                  style={[
+                    styles.modelCard,
+                    selectedModelId === model.id && styles.modelCardSelected,
+                  ]}
+                  onPress={() => setSelectedModelId(model.id)}
+                >
+                  <View style={styles.modelIconWrap}>
+                    <Ionicons 
+                      name={model.id.includes('yolo') ? 'flash' : model.id.includes('efficient') ? 'speedometer' : 'cube'} 
+                      size={24} 
+                      color={selectedModelId === model.id ? colors.textWhite : colors.primary} 
+                    />
+                  </View>
+                  <Text style={[
+                    styles.modelName,
+                    selectedModelId === model.id && styles.modelNameSelected,
+                  ]}>
+                    {model.name}
+                  </Text>
+                  {model.default && (
+                    <View style={styles.defaultBadge}>
+                      <Text style={styles.defaultBadgeText}>★</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {selectedModel && (
+              <Text style={styles.modelDescription}>
+                {selectedModel.description}
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Connection Status */}
         {!isConnected && (
@@ -335,6 +403,66 @@ const styles = StyleSheet.create({
     color: colors.warning,
     fontWeight: '600',
     flex: 1,
+  },
+  // Model Selection Styles
+  modelList: {
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  modelCard: {
+    width: 110,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
+  modelCardSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  modelIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: `${colors.primary}15`,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  modelName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  modelNameSelected: {
+    color: colors.textWhite,
+  },
+  defaultBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.warning,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    color: colors.textWhite,
+    fontWeight: '700',
+  },
+  modelDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   chatFab: {
     position: 'absolute',

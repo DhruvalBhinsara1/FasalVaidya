@@ -15,6 +15,13 @@ export interface Crop {
   icon: string;
 }
 
+export interface Model {
+  id: string;
+  name: string;
+  description: string;
+  default: boolean;
+}
+
 export interface Recommendation {
   en: string;
   hi: string;
@@ -107,11 +114,20 @@ export const getCrops = async (): Promise<Crop[]> => {
 };
 
 /**
+ * Get list of available ML models
+ */
+export const getModels = async (): Promise<Model[]> => {
+  const response = await apiClient.get('/api/models');
+  return response.data;
+};
+
+/**
  * Upload leaf image and get diagnosis
  */
 export const uploadScan = async (
   imageUri: string,
-  cropId: number
+  cropId: number,
+  modelId: string
 ): Promise<ScanResult> => {
   const formData = new FormData();
   
@@ -127,8 +143,9 @@ export const uploadScan = async (
     type,
   } as any);
   
-  // Append crop_id
+  // Append crop_id and model_id
   formData.append('crop_id', cropId.toString());
+  formData.append('model_id', modelId);
   
   const response = await apiClient.post('/api/scans', formData, {
     headers: {

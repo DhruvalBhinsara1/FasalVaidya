@@ -1,0 +1,100 @@
+{
+  "task": "Create a deep learning training notebook",
+  "model": {
+    "architecture": "EfficientNet-B0",
+    "pretrained_weights": "ImageNet",
+    "fine_tuning_strategy": {
+      "initial_state": "freeze_base_model",
+      "optional": "unfreeze_top_layers_if_needed"
+    }
+  },
+  "dataset": {
+    "type": "image_classification",
+    "domain": "crop_disease_and_health",
+    "class_balance": {
+      "requirement": "approximately_balanced",
+      "notes": "Some classes have many images while others have fewer than ~200. Exact equality is not required, but large imbalance must be avoided.",
+      "strategy": [
+        "downsample_classes_with_excess_images",
+        "avoid_aggressive_oversampling",
+        "keep_similar_image_counts_per_class"
+      ]
+    },
+    "images_per_class": {
+      "min_preferred": 150,
+      "max_preferred": 400,
+      "flexible": true
+    },
+    "image_preprocessing": {
+      "resize": "EfficientNet-B0 default input size",
+      "normalization": "model_specific"
+    },
+    "augmentation": {
+      "enabled": true,
+      "intensity": "light_to_moderate",
+      "techniques": [
+        "horizontal_flip",
+        "random_rotation",
+        "brightness_adjustment",
+        "zoom"
+      ]
+    }
+  },
+  "training": {
+    "time_constraint": {
+      "max_duration_hours": 2
+    },
+    "batch_size": {
+      "strategy": "memory_aware",
+      "adjustable": true
+    },
+    "epochs": {
+      "max": 30,
+      "early_stopping": true
+    },
+    "optimization": {
+      "optimizer": "Adam",
+      "learning_rate_schedule": "reduce_on_plateau"
+    }
+  },
+  "performance_constraints": {
+    "memory_usage": {
+      "requirement": "RAM_safe",
+      "guidelines": [
+        "use_data_generators",
+        "do_not_load_entire_dataset_into_memory",
+        "avoid_duplicate_tensors"
+      ]
+    }
+  },
+  "evaluation": {
+    "metrics": [
+      "accuracy",
+      "precision",
+      "recall",
+      "f1_score"
+    ],
+    "validation_strategy": "train_validation_split"
+  },
+  "reproducibility": {
+    "set_random_seed": true,
+    "log_training_time": true,
+    "log_metrics": true
+  },
+  "deliverables": {
+    "notebook": {
+      "format": "Jupyter Notebook",
+      "requirements": [
+        "clear_dataset_balancing_logic",
+        "training_and_validation_plots",
+        "model_saving_and_loading"
+      ]
+    }
+  },
+  "success_criteria": [
+    "balanced_class_distribution",
+    "training_completes_within_2_hours",
+    "no_memory_overflow",
+    "stable_training_convergence"
+  ]
+}
