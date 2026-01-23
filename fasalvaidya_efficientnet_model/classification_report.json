@@ -1,0 +1,81 @@
+{
+  "ashgourd_n_k": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 0.0
+  },
+  "rice_nitrogen": {
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1-score": 0.0,
+    "support": 0.0
+  },
+  "rice_phosphorus": {
+    "precision": 0.8846153846153846,
+    "recall": 1.0,
+    "f1-score": 0.9387755102040817,
+    "support": 69.0
+  },
+  "rice_potassium": {
+    "precision": 1.0,
+    "recall": 0.9137931034482759,
+    "f1-score": 0.954954954954955,
+    "support": 116.0
+  },
+  "snakegourd_healthy": {
+    "precision": 0.84375,
+    "recall": 0.9310344827586207,
+    "f1-score": 0.8852459016393442,
+    "support": 116.0
+  },
+  "snakegourd_k": {
+    "precision": 0.9642857142857143,
+    "recall": 0.9310344827586207,
+    "f1-score": 0.9473684210526315,
+    "support": 116.0
+  },
+  "snakegourd_ls": {
+    "precision": 0.9586776859504132,
+    "recall": 1.0,
+    "f1-score": 0.9789029535864979,
+    "support": 116.0
+  },
+  "snakegourd_n": {
+    "precision": 0.8151260504201681,
+    "recall": 0.8362068965517241,
+    "f1-score": 0.825531914893617,
+    "support": 116.0
+  },
+  "snakegourd_n_k": {
+    "precision": 0.8469387755102041,
+    "recall": 0.7155172413793104,
+    "f1-score": 0.7757009345794392,
+    "support": 116.0
+  },
+  "wheat_control": {
+    "precision": 0.9396551724137931,
+    "recall": 0.9396551724137931,
+    "f1-score": 0.9396551724137931,
+    "support": 116.0
+  },
+  "wheat_deficiency": {
+    "precision": 0.9396551724137931,
+    "recall": 0.9396551724137931,
+    "f1-score": 0.9396551724137931,
+    "support": 116.0
+  },
+  "accuracy": 0.9077231695085256,
+  "macro avg": {
+    "precision": 0.74479126869177,
+    "recall": 0.7460815047021945,
+    "f1-score": 0.7441628123398321,
+    "support": 997.0
+  },
+  "weighted avg": {
+    "precision": 0.911511269582523,
+    "recall": 0.9077231695085256,
+    "f1-score": 0.9081537608485797,
+    "support": 997.0
+  }
+}

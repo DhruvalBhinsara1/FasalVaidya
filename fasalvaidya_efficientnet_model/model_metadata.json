@@ -1,0 +1,182 @@
+{
+  "model_type": "efficientnet_b0_multi_crop",
+  "model_version": "1.0",
+  "training_date": "2026-01-23T10:38:48.845330",
+  "architecture": "EfficientNet-B0",
+  "pretrained_weights": "ImageNet",
+  "fine_tuning_strategy": "freeze_base_model",
+  "supported_crops": [
+    "rice",
+    "wheat",
+    "maize",
+    "banana",
+    "coffee",
+    "ashgourd",
+    "eggplant",
+    "snakegourd",
+    "bittergourd"
+  ],
+  "skipped_crops": [
+    "tomato",
+    "ridgegourd",
+    "cucumber"
+  ],
+  "skip_reasons": {
+    "tomato": "Class imbalance: 3 classes with only 9-11 samples",
+    "ridgegourd": "Borderline dataset: 72 images per class",
+    "cucumber": "Insufficient data: 62 images per class"
+  },
+  "input_shape": [
+    224,
+    224,
+    3
+  ],
+  "num_classes": 43,
+  "class_names": [
+    "ashgourd_healthy",
+    "ashgourd_k",
+    "ashgourd_k_mg",
+    "ashgourd_n",
+    "ashgourd_n_k",
+    "ashgourd_n_mg",
+    "ashgourd_pm",
+    "banana_healthy",
+    "banana_magnesium",
+    "banana_potassium",
+    "bittergourd_dm",
+    "bittergourd_healthy",
+    "bittergourd_jas",
+    "bittergourd_k",
+    "bittergourd_k_mg",
+    "bittergourd_ls",
+    "bittergourd_n",
+    "bittergourd_n_k",
+    "bittergourd_n_mg",
+    "coffee_healthy",
+    "coffee_nitrogen_n",
+    "coffee_phosphorus_p",
+    "coffee_potassium_k",
+    "eggplant_healthy",
+    "eggplant_k",
+    "eggplant_n",
+    "eggplant_n_k",
+    "maize_all_present",
+    "maize_allab",
+    "maize_kab",
+    "maize_nab",
+    "maize_pab",
+    "maize_znab",
+    "rice_nitrogen",
+    "rice_phosphorus",
+    "rice_potassium",
+    "snakegourd_healthy",
+    "snakegourd_k",
+    "snakegourd_ls",
+    "snakegourd_n",
+    "snakegourd_n_k",
+    "wheat_control",
+    "wheat_deficiency"
+  ],
+  "crop_class_mapping": {
+    "rice": [
+      "rice_nitrogen",
+      "rice_phosphorus",
+      "rice_potassium"
+    ],
+    "wheat": [
+      "wheat_control",
+      "wheat_deficiency"
+    ],
+    "maize": [
+      "maize_all_present",
+      "maize_allab",
+      "maize_kab",
+      "maize_nab",
+      "maize_pab",
+      "maize_znab"
+    ],
+    "banana": [
+      "banana_healthy",
+      "banana_magnesium",
+      "banana_potassium"
+    ],
+    "coffee": [
+      "coffee_healthy",
+      "coffee_nitrogen_n",
+      "coffee_phosphorus_p",
+      "coffee_potassium_k"
+    ],
+    "ashgourd": [
+      "ashgourd_healthy",
+      "ashgourd_k",
+      "ashgourd_k_mg",
+      "ashgourd_n",
+      "ashgourd_n_k",
+      "ashgourd_n_mg",
+      "ashgourd_pm"
+    ],
+    "eggplant": [
+      "eggplant_healthy",
+      "eggplant_k",
+      "eggplant_n",
+      "eggplant_n_k"
+    ],
+    "snakegourd": [
+      "snakegourd_healthy",
+      "snakegourd_k",
+      "snakegourd_ls",
+      "snakegourd_n",
+      "snakegourd_n_k"
+    ],
+    "bittergourd": [
+      "bittergourd_dm",
+      "bittergourd_healthy",
+      "bittergourd_jas",
+      "bittergourd_k",
+      "bittergourd_k_mg",
+      "bittergourd_ls",
+      "bittergourd_n",
+      "bittergourd_n_k",
+      "bittergourd_n_mg"
+    ]
+  },
+  "metrics": {
+    "accuracy": 0.9107322096824646,
+    "top3_accuracy": 0.996990978717804,
+    "loss": 0.361963152885437
+  },
+  "preprocessing": {
+    "method": "EfficientNet",
+    "normalization": "[0, 1] range via tf.keras.applications.efficientnet.preprocess_input"
+  },
+  "training_config": {
+    "batch_size": 32,
+    "max_epochs": 30,
+    "epochs_trained": 30,
+    "learning_rate": 0.0005,
+    "dropout_rate": 0.3,
+    "validation_split": 0.2,
+    "early_stop_patience": 10,
+    "balancing_strategy": "dynamic_median",
+    "balancing_description": "Target size determined by dataset median, ensuring all classes are represented",
+    "optimizations": [
+      "float32_precision",
+      "xla_jit_compile",
+      "autotune_prefetch",
+      "class_weighting",
+      "data_augmentation"
+    ],
+    "augmentation_techniques": [
+      "horizontal_flip",
+      "random_brightness_0.2",
+      "random_contrast_0.8_1.2",
+      "random_saturation_0.8_1.2",
+      "random_hue_0.05"
+    ]
+  },
+  "expected_performance": {
+    "overall_accuracy": "85-92%",
+    "top3_accuracy": "95-98%",
+    "inference_time_mobile": "<100ms"
+  }
+}

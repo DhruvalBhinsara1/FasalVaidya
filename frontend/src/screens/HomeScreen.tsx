@@ -65,18 +65,27 @@ const HomeScreen: React.FC = () => {
   };
 
   const loadCrops = async () => {
+    console.log('🏠 [HomeScreen] loadCrops() called');
     try {
       const cropsData = await getCrops();
+      console.log('🏠 [HomeScreen] Crops received:', {
+        count: cropsData.length,
+        crops: cropsData.map(c => ({ id: c.id, name: c.name, icon: c.icon }))
+      });
       setCrops(cropsData);
-    } catch (error) {
-      console.log('Failed to load crops, using defaults');
+      console.log('🏠 [HomeScreen] State updated with crops');
+    } catch (error: any) {
+      console.error('🏠 [HomeScreen] Failed to load crops:', error.message);
+      console.log('🏠 [HomeScreen] Using fallback crops');
       // Fallback crops
-      setCrops([
+      const fallbackCrops = [
         { id: 1, name: 'Wheat', name_hi: 'गेहूँ', season: 'Rabi', icon: '🌾' },
         { id: 2, name: 'Rice', name_hi: 'चावल', season: 'Kharif', icon: '🌾' },
         { id: 5, name: 'Maize', name_hi: 'मक्का', season: 'Kharif/Rabi', icon: '🌽' },
         // Removed unsupported crops
-      ]);
+      ];
+      console.log('🏠 [HomeScreen] Setting fallback crops:', fallbackCrops);
+      setCrops(fallbackCrops);
     }
   };
 

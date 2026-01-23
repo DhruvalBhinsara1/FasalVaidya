@@ -4,6 +4,7 @@
  * API functions for leaf scan operations
  */
 
+import { saveScanResultLocally } from '../sync/localSync';
 import apiClient, { API_BASE_URL } from './client';
 
 // Types
@@ -109,8 +110,32 @@ export interface ScanHistoryItem {
  * Get list of supported crops
  */
 export const getCrops = async (): Promise<Crop[]> => {
-  const response = await apiClient.get('/api/crops');
-  return response.data.crops;
+  console.log('🌾 [getCrops] Starting request...');
+  try {
+    const response = await apiClient.get('/api/crops');
+    console.log('🌾 [getCrops] Response received:', {
+      status: response.status,
+      dataKeys: Object.keys(response.data),
+      cropsCount: response.data.crops?.length,
+      crops: response.data.crops
+    });
+    
+    if (!response.data.crops) {
+      console.error('🌾 [getCrops] ERROR: No crops array in response:', response.data);
+      throw new Error('No crops data in response');
+    }
+    
+    console.log('🌾 [getCrops] SUCCESS: Returning', response.data.crops.length, 'crops');
+    return response.data.crops;
+  } catch (error: any) {
+    console.error('🌾 [getCrops] FAILED:', {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    throw error;
+  }
 };
 
 /**
@@ -153,7 +178,18 @@ export const uploadScan = async (
     },
   });
   
-  return response.data;
+  const scanResult = response.data;
+  
+  // Save scan result to local database for syncing to Supabase
+  try {
+    await saveScanResultLocally(scanResult);
+    console.log('📦 Scan saved locally for sync');
+  } catch (error) {
+    console.warn('⚠️ Failed to save scan locally (sync may not work):', error);
+    // Don't fail the upload if local save fails
+  }
+  
+  return scanResult;
 };
 
 /**

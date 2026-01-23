@@ -48,6 +48,7 @@ FasalVaidya is an intelligent mobile application that uses deep learning to diag
 -   **🌡️ Health Trends**: Track nutrient levels over time with visual charts
 -   **🎨 Multiple Model Support**: Switch between different ML models (Unified v2, EfficientNet-B0, YOLOv8)
 -   **🔐 Data Privacy**: Local storage with SQLite, no cloud dependencies
+-   **🔄 Offline-First Sync**: 🆕 Bidirectional sync with Supabase for multi-device support
 
 ---
 
@@ -84,9 +85,10 @@ FasalVaidya/
 │   ├── uploads/                     # User-uploaded images
 │   ├── logs/                        # Application logs
 │   ├── scripts/                     # Utility scripts
-│   └── tests/                       # API & integration tests
-│       ├── test_api.py
-│       └── batch_test_scans.py
+│   ├── tests/                       # API & integration tests
+│   │   ├── test_api.py
+│   │   └── batch_test_scans.py
+│   └── sync/                        # 🆕 Backend sync helpers (future)
 │
 ├── frontend/                        # React Native Expo App
 │   ├── App.tsx                      # Main entry point with navigation
@@ -107,12 +109,21 @@ FasalVaidya/
 │   │   ├── api/                     # API client layer
 │   │   │   ├── client.ts            # Axios instance
 │   │   │   └── scans.ts             # API functions
+│   │   ├── sync/                    # 🆕 Offline-Sync Engine
+│   │   │   ├── index.ts             # Main sync API
+│   │   │   ├── supabaseSync.ts      # Remote Supabase sync
+│   │   │   └── localSync.ts         # Local SQLite operations
 │   │   ├── i18n/                    # Internationalization
 │   │   │   └── index.ts             # 10+ language support
 │   │   ├── theme/                   # Design system
 │   │   │   └── index.ts
 │   │   └── utils/                   # Utility functions
 │   └── assets/                      # Images & icons
+│
+├── supabase_schema/                 # 🆕 Database Schemas for Sync
+│   ├── 01_remote_schema.sql         # PostgreSQL + Row Level Security
+│   ├── 02_rpc_functions.sql         # Batch sync RPC functions
+│   └── 03_local_sqlite_schema.sql   # Local SQLite migration
 │
 ├── EnhancedModel3/                  # Enhanced Model v3 files
 │   ├── disease_final.keras
@@ -767,7 +778,65 @@ The project includes VS Code configuration:
 
 ---
 
-## 📄 License
+## � Offline-First Sync (NEW!)
+
+FasalVaidya now includes a **production-ready offline-first sync engine** that enables:
+
+-   ✅ **Full Offline Operation**: App works completely without internet
+-   🔄 **Bidirectional Sync**: Push local changes, pull remote updates
+-   🔐 **Secure by Design**: Row Level Security (RLS) ensures data privacy
+-   ⚡ **Atomic Operations**: Batch sync via PostgreSQL RPC functions
+-   🔀 **Conflict Resolution**: Automatic detection with manual override
+-   🗑️ **Soft Deletes**: Proper deletion tracking across devices
+-   🆔 **UUID Keys**: No ID collisions between offline devices
+
+### 🚀 Quick Start
+
+```bash
+# 1. Install dependencies
+cd frontend
+npm install @supabase/supabase-js expo-sqlite
+
+# 2. Configure environment (see frontend/.env.template)
+EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-key-here
+
+# 3. Run Supabase migrations (in Supabase SQL Editor)
+#    - supabase_schema/01_remote_schema.sql
+#    - supabase_schema/02_rpc_functions.sql
+
+# 4. Initialize sync in your app
+import { initializeSync } from './src/sync';
+await initializeSync({ autoSyncEnabled: true });
+```
+
+### 📚 Documentation
+
+-   **Quick Start** (5 min): [QUICK_START_OFFLINE_SYNC.md](QUICK_START_OFFLINE_SYNC.md)
+-   **Full Guide**: [OFFLINE_SYNC_IMPLEMENTATION_GUIDE.md](OFFLINE_SYNC_IMPLEMENTATION_GUIDE.md)
+-   **Architecture**: [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md)
+-   **Summary**: [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
+-   **Index**: [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
+
+### 💡 Usage
+
+```typescript
+// Manual sync
+import { performSync } from './src/sync';
+const result = await performSync();
+
+// Get status
+import { getSyncStatus } from './src/sync';
+const status = await getSyncStatus();
+
+// Enable/disable
+import { toggleSync } from './src/sync';
+await toggleSync(true);
+```
+
+---
+
+## �📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 

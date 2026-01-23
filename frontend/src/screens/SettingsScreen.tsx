@@ -9,20 +9,21 @@ import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    Alert,
+    Image,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Card } from '../components';
 import { clearSeenOnboarding, getCurrentLanguage, loadLanguage, SUPPORTED_LANGUAGES, t } from '../i18n';
+import { getSyncStatus, performSync, toggleSync } from '../sync';
 import { borderRadius, colors, shadows, spacing } from '../theme';
 import { getUserProfile, saveUserProfile } from '../utils/userStorage';
 
@@ -36,11 +37,18 @@ const SettingsScreen: React.FC = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   
+  // Sync State
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const [syncAvailable, setSyncAvailable] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
   const isHindi = currentLang === 'hi';
 
   useEffect(() => {
     loadLanguage().then(setCurrentLang);
     loadProfile();
+    loadSyncStatus();
   }, []);
 
   const loadProfile = async () => {
@@ -48,6 +56,65 @@ const SettingsScreen: React.FC = () => {
     setName(profile.name);
     setPhone(profile.phone);
     setProfileImage(profile.profileImage);
+  };
+
+  const loadSyncStatus = async () => {
+    try {
+      const status = await getSyncStatus();
+      setSyncAvailable(status.isAvailable);
+      setSyncEnabled(status.isEnabled);
+      setIsSyncing(status.isSyncing);
+      if (status.lastSync.lastSyncAt) {
+        setLastSyncTime(new Date(status.lastSync.lastSyncAt));
+      }
+    } catch (error) {
+      console.error('Failed to load sync status:', error);
+    }
+  };
+
+  const handleToggleSync = async () => {
+    try {
+      const newState = !syncEnabled;
+      await toggleSync(newState);
+      setSyncEnabled(newState);
+      
+      if (newState) {
+        Alert.alert(
+          '🌐 Online Mode Enabled',
+          'Your data will now sync with the cloud automatically.'
+        );
+      } else {
+        Alert.alert(
+          '📱 Offline Mode Enabled',
+          'You can continue using the app without internet. Data will be saved locally.'
+        );
+      }
+    } catch (error) {
+      console.error('Toggle sync failed:', error);
+      Alert.alert('Error', 'Failed to toggle sync mode');
+    }
+  };
+
+  const handleManualSync = async () => {
+    if (!syncAvailable) {
+      Alert.alert('Sync Unavailable', 'Please check your internet connection');
+      return;
+    }
+    
+    setIsSyncing(true);
+    try {
+      const result = await performSync();
+      setLastSyncTime(new Date());
+      Alert.alert(
+        '✅ Sync Complete',
+        `Pushed: ${result.pushResult?.totalRecords || 0} records\nPulled: ${result.pullResult?.totalRecords || 0} records`
+      );
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+      Alert.alert('Sync Failed', 'Please try again later');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -204,6 +271,93 @@ const SettingsScreen: React.FC = () => {
             </View>
             <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
+        </Card>
+
+        {/* Sync Settings Section */}
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>🌐 Sync Settings</Text>
+          
+          {/* Sync Status Indicator */}
+          <View style={styles.syncStatusContainer}>
+            <View style={styles.syncStatusRow}>
+              <Ionicons 
+                name={syncEnabled ? "cloud-done" : "cloud-offline"} 
+                size={28} 
+                color={syncEnabled ? colors.success : colors.textSecondary} 
+              />
+              <View style={styles.syncStatusText}>
+                <Text style={styles.syncStatusTitle}>
+                  {syncEnabled ? '🌐 Online Mode' : '📱 Offline Mode'}
+                </Text>
+                <Text style={styles.syncStatusSubtitle}>
+                  {syncEnabled 
+                    ? 'Data syncs automatically' 
+                    : 'Data saved locally only'}
+                </Text>
+                {lastSyncTime && syncEnabled && (
+                  <Text style={styles.lastSyncText}>
+                    Last sync: {lastSyncTime.toLocaleTimeString()}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {/* Toggle Sync Button */}
+          <TouchableOpacity
+            style={[styles.syncToggleButton, syncEnabled && styles.syncToggleButtonActive]}
+            onPress={handleToggleSync}
+          >
+            <View style={styles.optionContent}>
+              <Ionicons 
+                name={syncEnabled ? "toggle" : "toggle-outline"} 
+                size={24} 
+                color={syncEnabled ? colors.success : colors.textSecondary} 
+              />
+              <Text style={[styles.syncToggleText, syncEnabled && styles.syncToggleTextActive]}>
+                {syncEnabled ? 'Switch to Offline Mode' : 'Switch to Online Mode'}
+              </Text>
+            </View>
+            <Ionicons 
+              name="chevron-forward" 
+              size={24} 
+              color={syncEnabled ? colors.success : colors.textSecondary} 
+            />
+          </TouchableOpacity>
+
+          {/* Manual Sync Button (only show when online) */}
+          {syncEnabled && (
+            <TouchableOpacity
+              style={[styles.manualSyncButton, isSyncing && styles.manualSyncButtonDisabled]}
+              onPress={handleManualSync}
+              disabled={isSyncing || !syncAvailable}
+            >
+              <View style={styles.optionContent}>
+                <Ionicons 
+                  name={isSyncing ? "sync" : "cloud-upload"} 
+                  size={20} 
+                  color={colors.primary} 
+                />
+                <Text style={styles.manualSyncText}>
+                  {isSyncing ? 'Syncing...' : 'Sync Now'}
+                </Text>
+              </View>
+              {!syncAvailable && (
+                <View style={styles.offlineBadge}>
+                  <Text style={styles.offlineBadgeText}>No Internet</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* Sync Info */}
+          <View style={styles.syncInfo}>
+            <Text style={styles.syncInfoText}>
+              {syncEnabled 
+                ? '💡 Online mode syncs your data to the cloud for backup and cross-device access.' 
+                : '💡 Offline mode keeps your data local. You can switch to online mode anytime.'}
+            </Text>
+          </View>
         </Card>
         
         {/* Language modal removed in favor of LanguageSelection screen */}
@@ -653,6 +807,98 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textPrimary,
     marginRight: spacing.sm,
+  },
+  // Sync Settings Styles
+  syncStatusContainer: {
+    backgroundColor: `${colors.primary}08`,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+  },
+  syncStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  syncStatusText: {
+    flex: 1,
+  },
+  syncStatusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  syncStatusSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  lastSyncText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  syncToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  syncToggleButtonActive: {
+    borderColor: colors.success,
+    backgroundColor: `${colors.success}10`,
+  },
+  syncToggleText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  syncToggleTextActive: {
+    color: colors.success,
+  },
+  manualSyncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: `${colors.primary}10`,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+  },
+  manualSyncButtonDisabled: {
+    opacity: 0.5,
+  },
+  manualSyncText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  offlineBadge: {
+    backgroundColor: colors.warning,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+  },
+  offlineBadgeText: {
+    fontSize: 11,
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  syncInfo: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  syncInfoText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });
 

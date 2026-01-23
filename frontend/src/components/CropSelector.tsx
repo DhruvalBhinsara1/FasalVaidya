@@ -29,10 +29,27 @@ const CropSelector: React.FC<CropSelectorProps> = ({
   selectedCropId,
   onSelectCrop,
 }) => {
+  console.log('🌾 [CropSelector] Rendering with:', {
+    cropsCount: crops.length,
+    selectedCropId,
+    crops: crops.map(c => ({ id: c.id, name: c.name, icon: c.icon }))
+  });
+  
+  if (!crops || crops.length === 0) {
+    console.warn('🌾 [CropSelector] WARNING: No crops to display!');
+    return (
+      <View style={styles.container}>
+        <Text style={{ color: colors.error }}>No crops available</Text>
+      </View>
+    );
+  }
+  
   return (
     <View style={styles.container}>
       {crops.map((crop) => {
         const isSelected = crop.id === selectedCropId;
+        
+        console.log('🌾 [CropSelector] Rendering crop:', crop.name, 'selected:', isSelected);
         
         return (
           <TouchableOpacity
@@ -41,7 +58,10 @@ const CropSelector: React.FC<CropSelectorProps> = ({
               styles.cropItem,
               isSelected && styles.selectedItem,
             ]}
-            onPress={() => onSelectCrop(crop.id)}
+            onPress={() => {
+              console.log('🌾 [CropSelector] Crop selected:', crop.name, 'id:', crop.id);
+              onSelectCrop(crop.id);
+            }}
             activeOpacity={0.7}
           >
             <View style={[styles.iconContainer, isSelected && styles.selectedIconContainer]}>

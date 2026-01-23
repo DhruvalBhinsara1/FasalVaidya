@@ -651,6 +651,10 @@ def health_check():
 @app.route('/api/crops', methods=['GET'])
 def get_crops():
     """Get list of supported crops."""
+    logger.info("🌾 [GET /api/crops] Request received")
+    logger.info(f"🌾 Headers: {dict(request.headers)}")
+    logger.info(f"🌾 CROPS dict has {len(CROPS)} items")
+    
     crops_list = [
         {
             'id': crop_id,
@@ -661,7 +665,14 @@ def get_crops():
         }
         for crop_id, crop_data in CROPS.items()
     ]
-    return jsonify({'crops': crops_list}), 200
+    
+    logger.info(f"🌾 Generated {len(crops_list)} crops:")
+    for crop in crops_list:
+        logger.info(f"  - {crop['id']}: {crop['name']} {crop['icon']}")
+    
+    response = {'crops': crops_list}
+    logger.info(f"🌾 Returning response: {response}")
+    return jsonify(response), 200
 
 
 @app.route('/api/models', methods=['GET'])

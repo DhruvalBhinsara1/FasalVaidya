@@ -23,6 +23,7 @@ import {
     SettingsScreen,
 } from './src/screens';
 import LanguageSelectionScreen from './src/screens/LanguageSelectionScreen';
+import { initializeSync } from './src/sync';
 import { colors } from './src/theme';
 import { initializeDeviceId } from './src/utils/deviceId';
 
@@ -57,16 +58,35 @@ export default function App() {
 
   useEffect(() => {
     const initialize = async () => {
-      // Initialize device identity FIRST (before any API calls)
-      await initializeDeviceId();
-      
-      const lang = await loadLanguage();
-      setLanguageContext(lang);
-      const seen = await hasSeenOnboarding();
-      if (!seen) setInitialRoute('LanguageSelection');
-      setTimeout(() => {
-        setIsReady(true);
-      }, 500);
+      try {
+        // Initialize device identity FIRST (before any API calls)
+        await initializeDeviceId();
+        
+        // Initialize offline sync system
+        await initializeSync({
+          autoSyncEnabled: true,
+          syncIntervalMinutes: 5,
+        });
+        console.log('✅ Offline sync initialized');
+        
+        const lang = await loadLanguage();
+        setLanguageContext(lang);
+        const seen = await hasSeenOnboarding();
+        if (!seen) setInitialRoute('LanguageSelection');
+        setTimeout(() => {
+          setIsReady(true);
+        }, 500);
+      } catch (error) {
+        console.error('⚠️ Initialization error:', error);
+        // Continue app startup even if sync fails
+        const lang = await loadLanguage();
+        setLanguageContext(lang);
+        const seen = await hasSeenOnboarding();
+        if (!seen) setInitialRoute('LanguageSelection');
+        setTimeout(() => {
+          setIsReady(true);
+        }, 500);
+      }
     };
     initialize();
   }, []);

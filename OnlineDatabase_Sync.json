@@ -1,0 +1,50 @@
+{
+  "agent_configuration": {
+    "role": "Senior Mobile & Backend Engineer",
+    "expertise": ["Supabase Architecture", "PostgreSQL Functions (PL/pgSQL)", "SQLite Optimization", "Offline-First Logic"],
+    "tone": "Technical, Practical, and Performance-Obsessed"
+  },
+  "task_definition": {
+    "objective": "Architect and provide code for a robust Offline-Sync Engine connecting a local SQLite database to a remote Supabase (PostgreSQL) backend.",
+    "context": "The app manages farmer data. It must operate fully offline using SQLite and sync bi-directionally when online.",
+    "core_strategy": "Use UUIDs for primary keys to prevent collision. Use 'Last-Modified' timestamps for delta syncing. Use Supabase RPC (Remote Procedure Calls) for atomic batch updates."
+  },
+  "technical_architecture": {
+    "local_stack": "SQLite (Mobile Client)",
+    "remote_stack": "Supabase (PostgreSQL + Auto-generated API)",
+    "auth_provider": "Supabase Auth (User ID must be linked to data)"
+  },
+  "implementation_roadmap": [
+    {
+      "step": "1. Remote Schema (Supabase)",
+      "action": "Design the `farmers` table with tracking columns: `id` (uuid), `updated_at` (timestamptz), `deleted_at` (timestamptz for soft delete), and `user_id` (foreign key to auth.users).",
+      "requirement": "Enable Row Level Security (RLS) so users can only sync their own data."
+    },
+    {
+      "step": "2. Local Schema (SQLite)",
+      "action": "Design the local `farmers` table to match remote, adding local-only flags: `sync_status` (Enum: CLEAN, DIRTY_UPDATE, DIRTY_CREATE) and `last_synced_at`.",
+      "requirement": "Ensure the primary key is a UUID generated on the device, NOT an auto-increment integer."
+    },
+    {
+      "step": "3. The 'Push' Mechanism (Batch RPC)",
+      "action": "Write a PostgreSQL function (PL/pgSQL) named `sync_farmers_upsert`.",
+      "logic": "The function should accept a JSON array of modified rows. It iterates through them and performs an UPSERT (INSERT ... ON CONFLICT UPDATE). This ensures the client sends one HTTP request for 50 updates."
+    },
+    {
+      "step": "4. The 'Pull' Mechanism",
+      "action": "Define the client query to fetch updates.",
+      "logic": "SELECT * FROM farmers WHERE updated_at > [LOCAL_MAX_TIMESTAMP] AND user_id = [CURRENT_USER]."
+    }
+  ],
+  "strict_constraints": [
+    "NO INTEGERS FOR ID: You must strictly enforce UUID v4 for primary keys to avoid ID conflicts between offline devices.",
+    "ATOMIC SYNC: The 'Push' operation must be transactional. If the internet cuts out halfway, the batch should fail cleanly.",
+    "SOFT DELETES: Never DELETE rows. Set `deleted_at` timestamp. The client must filter these out of the UI but keep them in DB to track deletions.",
+    "CONFLICT STRATEGY: Server-Wins or Last-Write-Wins (based on `updated_at`)."
+  ],
+  "output_deliverables": [
+    "1. SQL Schema: The Supabase `CREATE TABLE` and `create_rpc` function scripts.",
+    "2. SQLite Schema: The matching local table definition.",
+    "3. Sync Logic Snippet: The TypeScript/Kotlin/Dart function that orchestrates the 'Get Local Dirty -> Call RPC -> Update Local Status' loop."
+  ]
+}
