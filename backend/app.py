@@ -372,7 +372,44 @@ def get_db():
     if 'db' not in g:
         g.db = sqlite3.connect(str(get_database_path()))
         g.db.row_factory = sqlite3.Row
+        # Enable foreign key constraints
+        g.db.execute("PRAGMA foreign_keys = ON")
     return g.db
+
+
+def get_user_id() -> str:
+    """
+    Extract user ID from X-User-ID header.
+    This is the device UUID sent by the frontend.
+    Returns legacy user ID if header is missing (for backward compatibility).
+    """
+    LEGACY_USER_ID = '00000000-0000-0000-0000-000000000000'
+    user_id = request.headers.get('X-User-ID', LEGACY_USER_ID)
+    
+    # Validate UUID format (basic check)
+    if not user_id or len(user_id) != 36:
+        logger.warning(f"Invalid or missing X-User-ID header, using legacy ID")
+        return LEGACY_USER_ID
+    
+    return user_id
+
+
+def ensure_user_exists(user_id: str):
+    """
+    Ensure user exists in database.
+    Creates user record if it doesn't exist.
+    """
+    db = get_db()
+    cursor = db.cursor()
+    
+    cursor.execute('SELECT id FROM users WHERE id = ?', (user_id,))
+    if not cursor.fetchone():
+        cursor.execute(
+            'INSERT INTO users (id, device_fingerprint, last_active) VALUES (?, ?, ?)',
+            (user_id, request.headers.get('User-Agent', 'unknown'), datetime.now())
+        )
+        db.commit()
+        logger.info(f"Created new user: {user_id[:8]}...")
 
 
 @app.teardown_appcontext
@@ -388,6 +425,22 @@ def init_db():
     db_path = get_database_path()
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
+    
+    # Create users table (for multi-tenant support)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            device_fingerprint TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create legacy user for backward compatibility
+    cursor.execute('''
+        INSERT OR IGNORE INTO users (id, device_fingerprint, created_at)
+        VALUES ('00000000-0000-0000-0000-000000000000', 'legacy_migration', CURRENT_TIMESTAMP)
+    ''')
     
     # Create crops table
     cursor.execute('''
@@ -405,20 +458,38 @@ def init_db():
         CREATE TABLE IF NOT EXISTS leaf_scans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             scan_uuid TEXT UNIQUE NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
             crop_id INTEGER DEFAULT 1,
             image_path TEXT NOT NULL,
             image_filename TEXT,
             status TEXT DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (crop_id) REFERENCES crops(id)
         )
     ''')
+    
+    # Handle existing databases: Add user_id column if it doesn't exist
+    cursor.execute("PRAGMA table_info(leaf_scans)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'user_id' not in columns:
+        logger.info("Migrating existing leaf_scans table - adding user_id column")
+        cursor.execute('''
+            ALTER TABLE leaf_scans 
+            ADD COLUMN user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'
+        ''')
+    
+    # Create indexes for performance
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_leaf_scans_user_id ON leaf_scans(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_leaf_scans_created_at ON leaf_scans(created_at DESC)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_leaf_scans_user_crop ON leaf_scans(user_id, crop_id)')
     
     # Create diagnoses table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS diagnoses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             scan_id INTEGER UNIQUE NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
             n_score REAL,
             p_score REAL,
             k_score REAL,
@@ -432,15 +503,30 @@ def init_db():
             detected_class TEXT,
             heatmap_path TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (scan_id) REFERENCES leaf_scans(id)
+            FOREIGN KEY (scan_id) REFERENCES leaf_scans(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
+    
+    # Handle existing databases: Add user_id column if it doesn't exist
+    cursor.execute("PRAGMA table_info(diagnoses)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'user_id' not in columns:
+        logger.info("Migrating existing diagnoses table - adding user_id column")
+        cursor.execute('''
+            ALTER TABLE diagnoses 
+            ADD COLUMN user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'
+        ''')
+    
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_diagnoses_user_id ON diagnoses(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_diagnoses_scan_id ON diagnoses(scan_id)')
     
     # Create recommendations table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS recommendations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             scan_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
             n_recommendation TEXT,
             p_recommendation TEXT,
             k_recommendation TEXT,
@@ -449,9 +535,23 @@ def init_db():
             k_recommendation_hi TEXT,
             priority TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (scan_id) REFERENCES leaf_scans(id)
+            FOREIGN KEY (scan_id) REFERENCES leaf_scans(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
+    
+    # Handle existing databases: Add user_id column if it doesn't exist
+    cursor.execute("PRAGMA table_info(recommendations)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'user_id' not in columns:
+        logger.info("Migrating existing recommendations table - adding user_id column")
+        cursor.execute('''
+            ALTER TABLE recommendations 
+            ADD COLUMN user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'
+        ''')
+    
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_recommendations_user_id ON recommendations(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_recommendations_scan_id ON recommendations(scan_id)')
     
     # Insert or update default crops
     for crop_id, crop_data in CROPS.items():
@@ -765,25 +865,30 @@ def upload_scan():
     # Save to database
     db = get_db()
     cursor = db.cursor()
+    
+    # Get user ID and ensure user exists
+    user_id = get_user_id()
+    ensure_user_exists(user_id)
 
     # Insert scan record
     cursor.execute('''
-        INSERT INTO leaf_scans (scan_uuid, crop_id, image_path, image_filename, status)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (scan_uuid, crop_id, str(filepath), filename, 'completed'))
+        INSERT INTO leaf_scans (scan_uuid, user_id, crop_id, image_path, image_filename, status)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (scan_uuid, user_id, crop_id, str(filepath), filename, 'completed'))
 
     scan_id = cursor.lastrowid
 
-    # Insert diagnosis record (include heatmap_path)
+    # Insert diagnosis record (include heatmap_path and user_id)
     cursor.execute('''
         INSERT INTO diagnoses (
-            scan_id, n_score, p_score, k_score,
+            scan_id, user_id, n_score, p_score, k_score,
             n_confidence, p_confidence, k_confidence,
             n_severity, p_severity, k_severity,
             overall_status, detected_class, heatmap_path
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         scan_id,
+        user_id,
         prediction['n_score'],
         prediction['p_score'],
         prediction['k_score'],
@@ -801,11 +906,12 @@ def upload_scan():
     # Insert recommendations
     cursor.execute('''
         INSERT INTO recommendations (
-            scan_id, n_recommendation, p_recommendation, k_recommendation,
+            scan_id, user_id, n_recommendation, p_recommendation, k_recommendation,
             n_recommendation_hi, p_recommendation_hi, k_recommendation_hi, priority
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         scan_id,
+        user_id,
         recommendations['n'].get('en', ''),
         recommendations['p'].get('en', ''),
         recommendations['k'].get('en', ''),
@@ -898,9 +1004,12 @@ def safe_float_convert(value):
 
 @app.route('/api/scans', methods=['GET'])
 def get_scans():
-    """Get scan history."""
+    """Get scan history for current user."""
     db = get_db()
     cursor = db.cursor()
+    
+    # Get user ID from header
+    user_id = get_user_id()
     
     # Get optional filters
     crop_id = request.args.get('crop_id', type=int)
@@ -917,11 +1026,12 @@ def get_scans():
         FROM leaf_scans s
         LEFT JOIN crops c ON s.crop_id = c.id
         LEFT JOIN diagnoses d ON s.id = d.scan_id
+        WHERE s.user_id = ?
     '''
     
-    params = []
+    params = [user_id]
     if crop_id:
-        query += ' WHERE s.crop_id = ?'
+        query += ' AND s.crop_id = ?'
         params.append(crop_id)
     
     query += ' ORDER BY s.created_at DESC LIMIT ?'
@@ -968,9 +1078,12 @@ def get_scans():
 
 @app.route('/api/scans/<int:scan_id>', methods=['GET'])
 def get_scan(scan_id):
-    """Get single scan details with full recommendations."""
+    """Get single scan details with full recommendations for current user."""
     db = get_db()
     cursor = db.cursor()
+    
+    # Get user ID for authorization
+    user_id = get_user_id()
     
     cursor.execute('''
         SELECT 
@@ -987,13 +1100,13 @@ def get_scan(scan_id):
         LEFT JOIN crops c ON s.crop_id = c.id
         LEFT JOIN diagnoses d ON s.id = d.scan_id
         LEFT JOIN recommendations r ON s.id = r.scan_id
-        WHERE s.id = ?
-    ''', (scan_id,))
+        WHERE s.id = ? AND s.user_id = ?
+    ''', (scan_id, user_id))
     
     row = cursor.fetchone()
     
     if not row:
-        return jsonify({'error': 'Scan not found'}), 404
+        return jsonify({'error': 'Scan not found or access denied'}), 404
     
     # Database stores health scores (0-1 range, where 1 = healthy)
     # Convert to percentage (0-100%) directly, no inversion needed
@@ -1054,42 +1167,43 @@ def get_scan(scan_id):
 
 @app.route('/api/scans', methods=['DELETE'])
 def clear_scans():
-    """Clear all scan history."""
+    """Clear all scan history for current user."""
     db = get_db()
     cursor = db.cursor()
     
-    cursor.execute('DELETE FROM recommendations')
-    cursor.execute('DELETE FROM diagnoses')
-    cursor.execute('DELETE FROM leaf_scans')
+    # Get user ID for isolation
+    user_id = get_user_id()
+    
+    # Delete only this user's data (CASCADE handles related records)
+    cursor.execute('DELETE FROM leaf_scans WHERE user_id = ?', (user_id,))
     
     db.commit()
     
-    # Clear uploaded images
-    for file in UPLOAD_FOLDER.glob('*'):
-        if file.is_file():
-            file.unlink()
+    # Note: We don't clear ALL uploaded images since other users may have scans
+    # Image cleanup should be done via a separate maintenance task
     
-    return jsonify({'message': 'All scans cleared successfully'}), 200
+    return jsonify({'message': 'Your scans cleared successfully'}), 200
 
 
 @app.route('/api/scans/<scan_id>', methods=['DELETE'])
 def delete_scan(scan_id):
-    """Delete a specific scan by ID."""
+    """Delete a specific scan by ID for current user."""
     try:
         db = get_db()
         cursor = db.cursor()
         
-        # First get the scan to find the image file
-        cursor.execute('SELECT image_path FROM leaf_scans WHERE id = ?', (scan_id,))
+        # Get user ID for authorization
+        user_id = get_user_id()
+        
+        # First get the scan to verify ownership and find the image file
+        cursor.execute('SELECT image_path FROM leaf_scans WHERE id = ? AND user_id = ?', (scan_id, user_id))
         row = cursor.fetchone()
         
         if not row:
-            return jsonify({'error': 'Scan not found'}), 404
+            return jsonify({'error': 'Scan not found or access denied'}), 404
         
-        # Delete associated data
-        cursor.execute('DELETE FROM recommendations WHERE diagnosis_id IN (SELECT id FROM diagnoses WHERE scan_id = ?)', (scan_id,))
-        cursor.execute('DELETE FROM diagnoses WHERE scan_id = ?', (scan_id,))
-        cursor.execute('DELETE FROM leaf_scans WHERE id = ?', (scan_id,))
+        # Delete associated data (CASCADE should handle this, but explicit is safer)
+        cursor.execute('DELETE FROM leaf_scans WHERE id = ? AND user_id = ?', (scan_id, user_id))
         db.commit()
         
         # Delete the image file if it exists
@@ -1098,7 +1212,7 @@ def delete_scan(scan_id):
             if image_file.exists():
                 image_file.unlink()
         
-        logger.info(f"Deleted scan: {scan_id}")
+        logger.info(f"Deleted scan: {scan_id} for user: {user_id[:8]}...")
         return jsonify({'message': 'Scan deleted successfully', 'scan_id': scan_id}), 200
         
     except Exception as e:
@@ -1108,7 +1222,7 @@ def delete_scan(scan_id):
 
 @app.route('/api/scans/<scan_id>', methods=['PATCH'])
 def update_scan(scan_id):
-    """Update a scan's metadata (e.g., rename crop)."""
+    """Update a scan's metadata (e.g., rename crop) for current user."""
     try:
         data = request.get_json()
         if not data:
@@ -1117,12 +1231,15 @@ def update_scan(scan_id):
         db = get_db()
         cursor = db.cursor()
         
-        # Check if scan exists
-        cursor.execute('SELECT * FROM leaf_scans WHERE id = ?', (scan_id,))
+        # Get user ID for authorization
+        user_id = get_user_id()
+        
+        # Verify ownership first
+        cursor.execute('SELECT * FROM leaf_scans WHERE id = ? AND user_id = ?', (scan_id, user_id))
         row = cursor.fetchone()
         
         if not row:
-            return jsonify({'error': 'Scan not found'}), 404
+            return jsonify({'error': 'Scan not found or access denied'}), 404
         
         # Build update query dynamically for allowed fields
         allowed_fields = ['crop_id', 'overall_status', 'confidence']

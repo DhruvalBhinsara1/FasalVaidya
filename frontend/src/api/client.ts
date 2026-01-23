@@ -7,6 +7,7 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { getDeviceId } from '../utils/deviceId';
 
 // Auto-detect API base URL from Expo dev server or env
 const getBaseUrl = (): string => {
@@ -98,8 +99,18 @@ const apiClient: AxiosInstance = axios.create({
 
 // Request interceptor
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
     console.log(`📤 ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    
+    // Attach device ID to every request for multi-tenant isolation
+    try {
+      const deviceId = await getDeviceId();
+      config.headers['X-User-ID'] = deviceId;
+      console.log(`🆔 Request with User ID: ${deviceId.substring(0, 8)}...`);
+    } catch (error) {
+      console.error('❌ Failed to attach User ID to request:', error);
+    }
+    
     return config;
   },
   (error) => {

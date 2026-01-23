@@ -24,6 +24,7 @@ import {
 } from './src/screens';
 import LanguageSelectionScreen from './src/screens/LanguageSelectionScreen';
 import { colors } from './src/theme';
+import { initializeDeviceId } from './src/utils/deviceId';
 
 // Navigation types
 export type RootStackParamList = {
@@ -56,6 +57,9 @@ export default function App() {
 
   useEffect(() => {
     const initialize = async () => {
+      // Initialize device identity FIRST (before any API calls)
+      await initializeDeviceId();
+      
       const lang = await loadLanguage();
       setLanguageContext(lang);
       const seen = await hasSeenOnboarding();
