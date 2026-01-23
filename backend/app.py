@@ -939,6 +939,7 @@ def upload_scan():
     response = {
         'scan_id': scan_id,
         'scan_uuid': scan_uuid,
+        'user_id': user_id,  # Include user_id for sync
         'status': 'completed',
 
         # Crop info
@@ -1185,7 +1186,16 @@ def clear_scans():
     # Get user ID for isolation
     user_id = get_user_id()
     
-    # Delete only this user's data (CASCADE handles related records)
+    # Get all scan IDs for this user
+    cursor.execute('SELECT id FROM leaf_scans WHERE user_id = ?', (user_id,))
+    scan_ids = [row['id'] for row in cursor.fetchall()]
+    
+    # Explicitly delete child records first for each scan
+    for scan_id in scan_ids:
+        cursor.execute('DELETE FROM recommendations WHERE scan_id = ?', (scan_id,))
+        cursor.execute('DELETE FROM diagnoses WHERE scan_id = ?', (scan_id,))
+    
+    # Now delete all scans for this user
     cursor.execute('DELETE FROM leaf_scans WHERE user_id = ?', (user_id,))
     
     db.commit()
@@ -1213,7 +1223,11 @@ def delete_scan(scan_id):
         if not row:
             return jsonify({'error': 'Scan not found or access denied'}), 404
         
-        # Delete associated data (CASCADE should handle this, but explicit is safer)
+        # Explicitly delete child records first (CASCADE might not work reliably)
+        cursor.execute('DELETE FROM recommendations WHERE scan_id = ?', (scan_id,))
+        cursor.execute('DELETE FROM diagnoses WHERE scan_id = ?', (scan_id,))
+        
+        # Now delete the scan itself
         cursor.execute('DELETE FROM leaf_scans WHERE id = ? AND user_id = ?', (scan_id, user_id))
         db.commit()
         

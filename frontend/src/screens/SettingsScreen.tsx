@@ -22,6 +22,7 @@ import {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Card } from '../components';
+import { useAuth } from '../contexts/AuthContext';
 import { clearSeenOnboarding, getCurrentLanguage, loadLanguage, SUPPORTED_LANGUAGES, t } from '../i18n';
 import { getSyncStatus, performSync, toggleSync } from '../sync';
 import { borderRadius, colors, shadows, spacing } from '../theme';
@@ -29,9 +30,10 @@ import { getUserProfile, saveUserProfile } from '../utils/userStorage';
 
 const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { profile, updateProfile, syncToServer, userId } = useAuth();
   const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
   
-  // Profile State
+  // Profile State (local edit state)
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -51,11 +53,23 @@ const SettingsScreen: React.FC = () => {
     loadSyncStatus();
   }, []);
 
+  // Load profile from AuthContext when it changes
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || '');
+      setPhone(profile.phone || '');
+      setProfileImage(profile.profilePhoto || null);
+    }
+  }, [profile]);
+
   const loadProfile = async () => {
-    const profile = await getUserProfile();
-    setName(profile.name);
-    setPhone(profile.phone);
-    setProfileImage(profile.profileImage);
+    // Also load from legacy storage for migration
+    const legacyProfile = await getUserProfile();
+    if (legacyProfile.name || legacyProfile.phone) {
+      setName(legacyProfile.name);
+      setPhone(legacyProfile.phone);
+      setProfileImage(legacyProfile.profileImage);
+    }
   };
 
   const loadSyncStatus = async () => {
@@ -118,9 +132,18 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleSaveProfile = async () => {
+    // Save to legacy storage for backwards compatibility
     await saveUserProfile({ name, phone, profileImage });
+    
+    // Save to AuthContext (which syncs to server)
+    await updateProfile({
+      name,
+      phone,
+      profilePhoto: profileImage || undefined,
+    });
+    
     setIsEditing(false);
-    // Optional: Show a toast or feedback
+    Alert.alert('✅ Profile Saved', 'Your profile has been updated and synced.');
   };
 
   const handlePickImage = async () => {
@@ -243,6 +266,16 @@ const SettingsScreen: React.FC = () => {
                   >
                     <Text style={styles.editButtonText}>{t('editProfile')}</Text>
                   </TouchableOpacity>
+
+                  {/* Device ID display for debugging/development */}
+                  {userId && (
+                    <View style={styles.deviceIdContainer}>
+                      <Text style={styles.deviceIdLabel}>🆔 Device ID:</Text>
+                      <Text style={styles.deviceIdValue} numberOfLines={1}>
+                        {userId.slice(0, 8)}...{userId.slice(-4)}
+                      </Text>
+                    </View>
+                  )}
 
                   {/* compact language chip placed on a new line under profile info */}
                   <TouchableOpacity style={styles.languageChip} onPress={() => navigation.navigate('LanguageSelection')}>
@@ -899,6 +932,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 18,
+  },
+  deviceIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  deviceIdLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginRight: spacing.xs,
+  },
+  deviceIdValue: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontFamily: 'monospace',
   },
 });
 

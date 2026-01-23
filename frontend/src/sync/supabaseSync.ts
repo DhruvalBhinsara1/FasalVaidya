@@ -11,6 +11,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { deviceUserService } from '../services/deviceUserService';
+import { getDeviceId } from '../utils/deviceId';
 import { localSyncDB } from './localSync';
 
 // =================================================================
@@ -97,57 +99,54 @@ class SupabaseSyncClient {
     if (!this.client) return false;
 
     try {
-      // Check for existing session
-      const { data: { session } } = await this.client.auth.getSession();
+      // DEVICE-BOUND AUTH MODE
+      // Instead of using Supabase Auth, we use device ID for identity
       
-      if (session) {
-        return true;
-      }
+      const deviceId = await getDeviceId();
+      console.log('🔐 Checking sync with device ID:', deviceId);
       
-      // No session - try anonymous sign-in
-      console.log('🔐 No Supabase session, attempting anonymous sign-in...');
-      const { data: { session: anonSession }, error } = await this.client.auth.signInAnonymously();
+      // Ensure user exists in Supabase with this device_id
+      const result = await deviceUserService.getOrCreateUser();
       
-      if (error) {
-        console.error('❌ Anonymous sign-in failed:', error.message);
+      if (!result.success) {
+        console.error('❌ Failed to get/create device user:', result.error);
         return false;
       }
       
-      if (anonSession) {
-        console.log('✅ Anonymous sign-in successful, user ID:', anonSession.user.id);
+      if (result.user) {
+        console.log('✅ Device user ready:', result.user.id);
         console.log('✅ Sync is now available');
         return true;
       }
       
       return false;
     } catch (error) {
-      console.error('Error checking sync availability:', error);
+      console.error('❌ Error checking sync availability:', error);
       return false;
     }
   }
 
   /**
-   * Ensure user exists in database
+   * Ensure user exists in database (DEVICE-BOUND MODE)
    */
-  private async ensureUserExists(authUserId: string): Promise<void> {
+  private async ensureUserExists(): Promise<string | null> {
     try {
-      const { error } = await this.client
-        .from('users')
-        .upsert({
-          auth_user_id: authUserId,
-          device_fingerprint: 'anonymous',
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'auth_user_id'
-        });
+      const deviceId = await getDeviceId();
+      console.log('👤 Ensuring user exists for device:', deviceId);
       
-      if (error) {
-        console.error('❌ Failed to create user record:', error.message);
-      } else {
-        console.log('✅ User record ensured in Supabase');
+      const result = await deviceUserService.getOrCreateUser();
+      
+      if (!result.success || !result.user) {
+        console.error('❌ Failed to create user record:', result.error);
+        return null;
       }
+      
+      console.log('✅ User record ensured in Supabase, user_id:', result.user.id);
+      return result.user.id; // Return the server-side users.id
+      
     } catch (error) {
       console.error('❌ Error ensuring user exists:', error);
+      return null;
     }
   }
 
@@ -249,7 +248,10 @@ class SupabaseSyncClient {
    * Perform full bidirectional sync
    */
   async performSync(): Promise<SyncResult> {
+    console.log('\n🔄 ========== SYNC START ==========');
+    
     if (!await this.isSyncAvailable()) {
+      console.error('❌ Sync not available');
       return {
         success: false,
         pushedCount: 0,
@@ -274,6 +276,8 @@ class SupabaseSyncClient {
 
     this.isSyncing = true;
     const startTime = Date.now();
+    
+    console.log('⏰ Sync started at:', new Date().toISOString());
 
     try {
       await this.updateSyncMetadata({ syncStatus: 'syncing', errorMessage: null });
@@ -379,8 +383,12 @@ class SupabaseSyncClient {
         
         console.log(`   📞 Calling RPC: ${rpcFunction} with param: ${paramKey}`);
         
+        // Get device_id for device-bound auth
+        const deviceId = await getDeviceId();
+        
         const { data, error } = await this.client.rpc(rpcFunction, {
           [paramKey]: transformedRecords,
+          p_device_id: deviceId,
         });
 
         console.log(`   📥 RPC Response - data:`, data, `error:`, error);
@@ -466,9 +474,13 @@ class SupabaseSyncClient {
         // Call Supabase RPC to get changes since last pull
         console.log(`   📥 Pulling ${tableName} changes...`);
         
+        // Get device_id for device-bound auth
+        const deviceId = await getDeviceId();
+        
         const { data, error } = await this.client.rpc('get_changes_since', {
           table_name: tableName,
           since_timestamp: sinceTimestamp,
+          p_device_id: deviceId,
         });
 
         if (error) {
@@ -519,10 +531,18 @@ class SupabaseSyncClient {
   private async transformRecordForSupabase(tableName: string, record: any): Promise<any> {
     const transformed = { ...record };
     
+    // Get server-side user ID (from device-bound user)
+    const serverUserId = await deviceUserService.getServerUserId();
+    
+    if (!serverUserId) {
+      console.warn('⚠️ No server user ID available, record may fail RLS');
+    }
+    
     // Generate deterministic UUIDs from scan_uuid
     if (tableName === 'leaf_scans') {
       // Use scan_uuid as base for UUID generation
       transformed.id = this.generateUUIDFromString(record.scan_uuid || `scan-${record.id}`);
+      transformed.user_id = serverUserId; // Set server-side user_id
     } else if (tableName === 'diagnoses' || tableName === 'recommendations') {
       // Need to get scan_uuid from leaf_scans table
       const scanRecords = await this.getLocalScanForId(record.scan_id);
@@ -532,16 +552,17 @@ class SupabaseSyncClient {
       if (tableName === 'diagnoses') {
         transformed.id = this.generateUUIDFromString(`diagnosis-${scanUuid}`);
         transformed.scan_id = this.generateUUIDFromString(scanUuid);
+        transformed.user_id = serverUserId; // Set server-side user_id
       } else {
         transformed.id = this.generateUUIDFromString(`recommendation-${scanUuid}`);
         transformed.scan_id = this.generateUUIDFromString(scanUuid);
+        transformed.user_id = serverUserId; // Set server-side user_id
       }
     }
     
-    // Remove local-only fields and let server set user_id
+    // Remove local-only fields
     delete transformed.sync_status;
     delete transformed.last_synced_at;
-    delete transformed.user_id; // Server will set this from auth.uid()
     
     return transformed;
   }

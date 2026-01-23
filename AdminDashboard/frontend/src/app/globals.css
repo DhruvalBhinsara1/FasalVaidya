@@ -1,0 +1,64 @@
+@import 'tailwindcss';
+
+/* =================================================================
+   FasalVaidya Design System - CSS Variables
+   ================================================================= */
+
+@theme {
+  /* Primary Colors */
+  --color-primary: #4C763B;
+  --color-primary-dark: #3d5f2f;
+  --color-primary-light: #5d8a4a;
+  
+  /* Secondary Colors */
+  --color-secondary: #043915;
+  --color-secondary-light: #0a5c24;
+  
+  /* Accent Colors */
+  --color-accent-yellow: #FFFD8F;
+  --color-accent-green: #B0CE88;
+  
+  /* Status Colors */
+  --color-success: #BEE4D0;
+  --color-success-light: #DBFFCB;
+  --color-warning: #FA8112;
+  --color-danger: #FF8282;
+  --color-danger-strong: #FF6363;
+  
+  /* Neutral */
+  --color-neutral: #222222;
+  --color-neutral-light: #6b7280;
+  --color-neutral-lighter: #9ca3af;
+  
+  /* Background */
+  --color-bg-primary: #f8faf7;
+  --color-bg-secondary: #ffffff;
+  --color-bg-sidebar: #1a2e1a;
+}
+
+/* Base styles */
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-neutral);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-dark);
+}

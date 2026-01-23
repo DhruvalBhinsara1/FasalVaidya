@@ -80,7 +80,8 @@ class LocalSyncDatabase {
    */
   private async executeSQLNoResult(
     sql: string,
-    params: any[] = []
+    params: any[] = [],
+    options: { suppressUniqueError?: boolean } = {}
   ): Promise<SQLite.SQLiteRunResult> {
     try {
       const db = await this.getDB();
@@ -92,6 +93,12 @@ class LocalSyncDatabase {
         // Silently ignore - column already exists
         return { changes: 0, lastInsertRowId: 0 };
       }
+      
+      // Suppress UNIQUE constraint errors if requested (will be handled by caller)
+      if (options.suppressUniqueError && error?.message?.includes('UNIQUE constraint failed')) {
+        throw error; // Re-throw without logging
+      }
+      
       console.error('SQL Error:', sql, error);
       throw error;
     }
@@ -103,6 +110,17 @@ class LocalSyncDatabase {
 
   async migrateDatabaseForSync(): Promise<void> {
     console.log('📦 Migrating database for sync support...');
+
+    // Check current schema version
+    const currentVersion = await this.getDatabaseVersion();
+    console.log(`   📊 Current schema version: ${currentVersion}`);
+    
+    const TARGET_VERSION = 2; // Version 2 = UUID-based schema
+    
+    if (currentVersion < TARGET_VERSION) {
+      console.log(`   🔄 Upgrading schema from v${currentVersion} to v${TARGET_VERSION}...`);
+      await this.upgradeSchemaToV2();
+    }
 
     const migrations = [
       // Create tables if they don't exist (mobile-first approach)
@@ -117,51 +135,68 @@ class LocalSyncDatabase {
       },
       {
         sql: `CREATE TABLE IF NOT EXISTS leaf_scans (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id TEXT PRIMARY KEY,
           scan_uuid TEXT UNIQUE NOT NULL,
           user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
           crop_id INTEGER DEFAULT 1,
           image_path TEXT NOT NULL,
           image_filename TEXT,
           status TEXT DEFAULT 'pending',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          deleted_at TIMESTAMP NULL,
+          sync_status TEXT DEFAULT 'DIRTY_CREATE',
+          last_synced_at TIMESTAMP NULL
         )`,
         ignoreError: false,
       },
       {
         sql: `CREATE TABLE IF NOT EXISTS diagnoses (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          scan_id INTEGER UNIQUE NOT NULL,
+          id TEXT PRIMARY KEY,
+          scan_id TEXT UNIQUE NOT NULL,
           user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
           n_score REAL,
           p_score REAL,
           k_score REAL,
+          mg_score REAL,
           n_confidence REAL,
           p_confidence REAL,
           k_confidence REAL,
+          mg_confidence REAL,
           n_severity TEXT,
           p_severity TEXT,
           k_severity TEXT,
+          mg_severity TEXT,
           overall_status TEXT,
           detected_class TEXT,
           heatmap_path TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          deleted_at TIMESTAMP NULL,
+          sync_status TEXT DEFAULT 'DIRTY_CREATE',
+          last_synced_at TIMESTAMP NULL
         )`,
         ignoreError: false,
       },
       {
         sql: `CREATE TABLE IF NOT EXISTS recommendations (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          scan_id INTEGER NOT NULL,
+          id TEXT PRIMARY KEY,
+          scan_id TEXT NOT NULL,
           user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
           n_recommendation TEXT,
           p_recommendation TEXT,
           k_recommendation TEXT,
+          mg_recommendation TEXT,
           n_recommendation_hi TEXT,
           p_recommendation_hi TEXT,
           k_recommendation_hi TEXT,
+          mg_recommendation_hi TEXT,
           priority TEXT,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          deleted_at TIMESTAMP NULL,
+          sync_status TEXT DEFAULT 'DIRTY_CREATE',
+          last_synced_at TIMESTAMP NULL
         )`,
         ignoreError: false,
       },
@@ -219,6 +254,18 @@ class LocalSyncDatabase {
         sql: 'ALTER TABLE diagnoses ADD COLUMN last_synced_at TIMESTAMP NULL',
         ignoreError: true,
       },
+      {
+        sql: 'ALTER TABLE diagnoses ADD COLUMN mg_score REAL',
+        ignoreError: true,
+      },
+      {
+        sql: 'ALTER TABLE diagnoses ADD COLUMN mg_confidence REAL',
+        ignoreError: true,
+      },
+      {
+        sql: 'ALTER TABLE diagnoses ADD COLUMN mg_severity TEXT',
+        ignoreError: true,
+      },
 
       // Add sync columns to recommendations table
       {
@@ -235,6 +282,14 @@ class LocalSyncDatabase {
       },
       {
         sql: 'ALTER TABLE recommendations ADD COLUMN last_synced_at TIMESTAMP NULL',
+        ignoreError: true,
+      },
+      {
+        sql: 'ALTER TABLE recommendations ADD COLUMN mg_recommendation TEXT',
+        ignoreError: true,
+      },
+      {
+        sql: 'ALTER TABLE recommendations ADD COLUMN mg_recommendation_hi TEXT',
         ignoreError: true,
       },
 
@@ -310,6 +365,74 @@ class LocalSyncDatabase {
     );
 
     console.log('✅ Database migration completed');
+  }
+
+  /**
+   * Get current database schema version
+   */
+  private async getDatabaseVersion(): Promise<number> {
+    try {
+      // Create version table if it doesn't exist
+      await this.executeSQLNoResult(`
+        CREATE TABLE IF NOT EXISTS schema_version (
+          version INTEGER PRIMARY KEY,
+          migrated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      const result = await this.executeSQL<{ version: number }>(
+        'SELECT version FROM schema_version ORDER BY version DESC LIMIT 1'
+      );
+      
+      return result.length > 0 ? result[0].version : 0;
+    } catch (error) {
+      console.error('Error getting database version:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Update database schema version
+   */
+  private async setDatabaseVersion(version: number): Promise<void> {
+    await this.executeSQLNoResult(
+      'INSERT OR REPLACE INTO schema_version (version) VALUES (?)',
+      [version]
+    );
+    console.log(`   ✅ Schema upgraded to version ${version}`);
+  }
+
+  /**
+   * Upgrade schema from v1 (INTEGER ids) to v2 (TEXT/UUID ids)
+   */
+  private async upgradeSchemaToV2(): Promise<void> {
+    console.log('   🔧 Upgrading to v2 schema (UUID support)...');
+    
+    try {
+      // Check if tables exist with old schema
+      const tables = await this.executeSQL<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('leaf_scans', 'diagnoses', 'recommendations')"
+      );
+      
+      if (tables.length > 0) {
+        console.log(`   ⚠️  Found ${tables.length} tables with old schema`);
+        console.log('   🗑️  Dropping old tables (v1 schema with INTEGER ids)...');
+        
+        // Drop old tables - we can't migrate data from INTEGER ids to UUIDs
+        await this.executeSQLNoResult('DROP TABLE IF EXISTS recommendations');
+        await this.executeSQLNoResult('DROP TABLE IF EXISTS diagnoses');
+        await this.executeSQLNoResult('DROP TABLE IF EXISTS leaf_scans');
+        
+        console.log('   ✅ Old tables dropped - new schema will be created');
+      }
+      
+      // Mark as upgraded
+      await this.setDatabaseVersion(2);
+      
+    } catch (error) {
+      console.error('   ❌ Schema upgrade failed:', error);
+      throw error;
+    }
   }
 
   // =================================================================
@@ -400,11 +523,28 @@ class LocalSyncDatabase {
       try {
         console.log(`      Processing record:`, remoteRecord.id);
         
-        // Check if local record exists and its sync status
-        const localRecords = await this.executeSQL<SyncableRecord>(
-          `SELECT * FROM ${tableName} WHERE id = ?`,
-          [remoteRecord.id]
-        );
+        // Check if local record exists by id OR by unique constraint (scan_uuid for leaf_scans)
+        let localRecords: SyncableRecord[] = [];
+        
+        if (tableName === 'leaf_scans') {
+          // Check by both id and scan_uuid
+          localRecords = await this.executeSQL<SyncableRecord>(
+            `SELECT * FROM ${tableName} WHERE id = ? OR scan_uuid = ?`,
+            [remoteRecord.id, remoteRecord.scan_uuid]
+          );
+        } else if (tableName === 'diagnoses') {
+          // Check by both id and scan_id (unique)
+          localRecords = await this.executeSQL<SyncableRecord>(
+            `SELECT * FROM ${tableName} WHERE id = ? OR scan_id = ?`,
+            [remoteRecord.id, remoteRecord.scan_id]
+          );
+        } else {
+          // Default: check by id only
+          localRecords = await this.executeSQL<SyncableRecord>(
+            `SELECT * FROM ${tableName} WHERE id = ?`,
+            [remoteRecord.id]
+          );
+        }
 
         const localRecord = localRecords[0];
 
@@ -426,14 +566,21 @@ class LocalSyncDatabase {
         syncedCount++;
         console.log(`      ✅ Applied record ${remoteRecord.id}`);
 
-      } catch (error) {
-        console.error(`      ❌ Error applying remote change for ${tableName}:`, error);
-        console.error(`         Record:`, remoteRecord);
-        console.error(`         Error stack:`, error instanceof Error ? error.stack : String(error));
-        errors.push({
-          record_id: remoteRecord.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
+      } catch (error: any) {
+        // Don't log as error if it's a handled UNIQUE constraint (already logged as warning)
+        if (error?.message?.includes('UNIQUE constraint') && error?.handled) {
+          // This was handled gracefully in upsertRemoteRecord
+          syncedCount++;
+          console.log(`      ✅ Applied record ${remoteRecord.id}`);
+        } else {
+          console.error(`      ❌ Error applying remote change for ${tableName}:`, error);
+          console.error(`         Record:`, remoteRecord);
+          console.error(`         Error stack:`, error instanceof Error ? error.stack : String(error));
+          errors.push({
+            record_id: remoteRecord.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
 
@@ -442,23 +589,100 @@ class LocalSyncDatabase {
   }
 
   private async upsertRemoteRecord(tableName: string, record: any): Promise<void> {
-    // Get column names from record
-    const columns = Object.keys(record);
+    // Sanitize timestamps for SQLite compatibility first
+    const sanitizedRecord = this.sanitizeTimestamps(record);
+    
+    // Filter out sync-only columns that don't come from remote
+    const syncOnlyColumns = ['sync_status', 'last_synced_at'];
+    const columns = Object.keys(sanitizedRecord).filter(col => !syncOnlyColumns.includes(col));
+    
     const placeholders = columns.map(() => '?').join(',');
     const updateSetters = columns.map((col) => `${col} = excluded.${col}`).join(',');
 
+    // Determine conflict resolution strategy based on table
+    let conflictClause = 'ON CONFLICT(id)';
+    
+    if (tableName === 'leaf_scans') {
+      // Handle both id and scan_uuid conflicts
+      conflictClause = 'ON CONFLICT(id) DO UPDATE SET';
+    } else if (tableName === 'diagnoses') {
+      // Handle both id and scan_id conflicts
+      conflictClause = 'ON CONFLICT(id) DO UPDATE SET';
+    } else {
+      conflictClause = 'ON CONFLICT(id) DO UPDATE SET';
+    }
+
     const sql = `
-      INSERT INTO ${tableName} (${columns.join(',')})
-      VALUES (${placeholders})
-      ON CONFLICT(id) DO UPDATE SET ${updateSetters}
+      INSERT INTO ${tableName} (${columns.join(',')}, sync_status, last_synced_at)
+      VALUES (${placeholders}, 'CLEAN', CURRENT_TIMESTAMP)
+      ${conflictClause} ${updateSetters}, sync_status = 'CLEAN', last_synced_at = CURRENT_TIMESTAMP
     `;
 
-    const values = columns.map((col) => record[col]);
+    const values = columns.map((col) => sanitizedRecord[col]);
 
-    await this.executeSQLNoResult(sql, values);
+    try {
+      await this.executeSQLNoResult(sql, values, { suppressUniqueError: true });
+    } catch (error: any) {
+      // Handle UNIQUE constraint violations by updating existing record
+      if (error?.message?.includes('UNIQUE constraint failed')) {
+        console.log(`      ℹ️  Record exists, updating instead...`);
+        await this.updateExistingRecord(tableName, sanitizedRecord, columns);
+        // Mark error as handled so it's not counted as failure
+        error.handled = true;
+        return; // Success - no need to throw
+      } else {
+        console.error(`      ❌ Upsert failed:`, error);
+        console.error(`      📋 Full record:`, sanitizedRecord);
+        throw error;
+      }
+    }
+  }
 
-    // Mark as clean after upsert
-    await this.markRecordsAsClean(tableName, [record.id]);
+  /**
+   * Update existing record when UNIQUE constraint prevents INSERT
+   */
+  private async updateExistingRecord(tableName: string, record: any, columns: string[]): Promise<void> {
+    const updateSetters = columns.filter(col => col !== 'id').map((col) => `${col} = ?`).join(',');
+    const values = columns.filter(col => col !== 'id').map((col) => record[col]);
+    
+    let whereClause = 'WHERE id = ?';
+    let whereValue = record.id;
+    
+    // Use appropriate unique column for WHERE clause
+    if (tableName === 'leaf_scans' && record.scan_uuid) {
+      whereClause = 'WHERE scan_uuid = ?';
+      whereValue = record.scan_uuid;
+    } else if (tableName === 'diagnoses' && record.scan_id) {
+      whereClause = 'WHERE scan_id = ?';
+      whereValue = record.scan_id;
+    }
+    
+    const sql = `
+      UPDATE ${tableName}
+      SET ${updateSetters}, sync_status = 'CLEAN', last_synced_at = CURRENT_TIMESTAMP, id = ?
+      ${whereClause}
+    `;
+    
+    await this.executeSQLNoResult(sql, [...values, record.id, whereValue]);
+    console.log(`      ✅ Updated existing record via ${whereClause.split(' ')[1]}`);
+  }
+
+  /**
+   * Sanitize PostgreSQL timestamps for SQLite
+   * Removes timezone suffixes (+00:00) that SQLite can't handle
+   */
+  private sanitizeTimestamps(record: any): any {
+    const sanitized = { ...record };
+    const timestampFields = ['created_at', 'updated_at', 'deleted_at', 'last_active'];
+    
+    for (const field of timestampFields) {
+      if (sanitized[field] && typeof sanitized[field] === 'string') {
+        // Remove timezone suffix: 2026-01-24T03:18:43.557851+00:00 → 2026-01-24T03:18:43.557851
+        sanitized[field] = sanitized[field].replace(/([+-]\d{2}:\d{2}|Z)$/, '');
+      }
+    }
+    
+    return sanitized;
   }
 
   // =================================================================
@@ -636,6 +860,23 @@ export async function saveScanResultLocally(scanResult: any): Promise<void> {
   try {
     const db = await localSyncDB.getDB();
     
+    // Get device-bound user_id from Supabase (the internal users.id, not device_id)
+    const { deviceUserService } = await import('../services/deviceUserService');
+    const userResult = await deviceUserService.getOrCreateUser();
+    
+    if (!userResult.success || !userResult.user) {
+      console.error('⚠️ Failed to get Supabase user, scan may not sync properly');
+    }
+    
+    // Use Supabase user.id for proper sync
+    // Flask backend uses device_id as user_id, but Supabase needs the actual users.id
+    const supabaseUserId = userResult.user?.id || '00000000-0000-0000-0000-000000000000';
+    
+    console.log('💾 Saving scan locally:');
+    console.log('   - Scan ID:', scanResult.scan_id);
+    console.log('   - Flask user_id (device_id):', scanResult.user_id);
+    console.log('   - Supabase user.id:', supabaseUserId);
+    
     // 1. Insert/Update leaf_scan record
     await db.runAsync(
       `INSERT OR REPLACE INTO leaf_scans 
@@ -644,7 +885,7 @@ export async function saveScanResultLocally(scanResult: any): Promise<void> {
       [
         scanResult.scan_id,
         scanResult.scan_uuid,
-        scanResult.user_id || '00000000-0000-0000-0000-000000000000',
+        supabaseUserId,
         scanResult.crop_id,
         scanResult.image_url || '',
         scanResult.scan_uuid + '.jpg',
@@ -664,7 +905,7 @@ export async function saveScanResultLocally(scanResult: any): Promise<void> {
       [
         scanResult.scan_id, // Use scan_id as diagnosis id
         scanResult.scan_id,
-        scanResult.user_id || '00000000-0000-0000-0000-000000000000',
+        supabaseUserId,
         scanResult.n_score,
         scanResult.p_score,
         scanResult.k_score,
@@ -692,7 +933,7 @@ export async function saveScanResultLocally(scanResult: any): Promise<void> {
       [
         scanResult.scan_id, // Use scan_id as recommendation id
         scanResult.scan_id,
-        scanResult.user_id || '00000000-0000-0000-0000-000000000000',
+        supabaseUserId,
         scanResult.recommendations?.n?.en || '',
         scanResult.recommendations?.p?.en || '',
         scanResult.recommendations?.k?.en || '',

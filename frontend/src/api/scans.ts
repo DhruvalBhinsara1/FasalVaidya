@@ -184,6 +184,24 @@ export const uploadScan = async (
   try {
     await saveScanResultLocally(scanResult);
     console.log('📦 Scan saved locally for sync');
+    
+    // Trigger sync immediately after saving scan
+    try {
+      const { performSync } = await import('../sync');
+      console.log('🔄 Triggering sync after scan...');
+      const syncResult = await performSync();
+      if (syncResult.success) {
+        console.log('✅ Scan synced to Supabase:', {
+          pushed: syncResult.pushedCount,
+          pulled: syncResult.pulledCount,
+          duration: `${syncResult.duration}ms`
+        });
+      } else {
+        console.warn('⚠️ Sync completed with errors:', syncResult.errors);
+      }
+    } catch (syncError) {
+      console.warn('⚠️ Failed to trigger sync (will retry later):', syncError);
+    }
   } catch (error) {
     console.warn('⚠️ Failed to save scan locally (sync may not work):', error);
     // Don't fail the upload if local save fails
