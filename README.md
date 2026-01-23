@@ -721,7 +721,65 @@ See detailed guides in the `guidelines/` directory:
 -   **Training Plan**: [`UNIFIED_V2_TRAINING_PLAN.md`](guidelines/UNIFIED_V2_TRAINING_PLAN.md)
 -   **Deployment**: [`V2_DEPLOYMENT_SUMMARY.md`](guidelines/V2_DEPLOYMENT_SUMMARY.md)
 
-### Quick Training Steps
+### Training Notebooks
+
+The project includes several Jupyter notebooks for model training:
+
+#### **`FasalVaidya_Hierarchical_Router_Specialist.ipynb`** ⭐ (Recommended)
+
+**Production-grade hierarchical architecture optimized for Google Colab**
+
+**Architecture**:
+- **Router Model**: Classifies crops into 3 biological groups (Grasses, Vines, Broad Leaves)
+- **3 Specialist Models**: Group-specific deficiency detectors (one per biological group)
+- **Total**: 4 models working together in hierarchical fashion
+
+**Key Features**:
+- ✅ Industrial ML techniques (Focal Loss, GroupKFold validation, LR scheduling)
+- ✅ SSD optimization for 10-50x I/O speedup on Colab
+- ✅ Handles nested dataset structures (train/val/test folders)
+- ✅ Optimized for Colab free tier (~45-60 min total training time)
+- ✅ EfficientNetB0 base model (5.3M parameters)
+
+**Training Configuration**:
+```python
+IMG_SIZE = 224×224          # EfficientNetB0 native resolution
+BATCH_SIZE = 64            # Optimized for speed
+EPOCHS = 3+3 per model     # Phase 1: frozen base, Phase 2: unfrozen
+BASE_MODEL = EfficientNetB0
+TOTAL_TRAINING_TIME ≈ 45-60 minutes (4 models)
+```
+
+**Usage**:
+1. Open in Google Colab
+2. Mount Google Drive containing 9-crop dataset
+3. **CRITICAL**: Run Cell 1 to copy data to local SSD (10-50x speedup!)
+4. Run remaining cells sequentially
+5. Download trained models to `backend/ml/models/`
+
+**Dataset Structure**: Supports both flat and nested:
+```
+Dataset/
+├── Wheat/
+│   ├── train/
+│   │   ├── class1/*.jpg
+│   │   └── class2/*.jpg
+│   ├── val/...
+│   └── test/...
+├── Rice/...
+└── ...
+```
+
+#### Other Training Notebooks
+
+| Notebook | Purpose | Status |
+|----------|---------|--------|
+| `FasalVaidya_Enhanced_V2.ipynb` | Enhanced model with leaf validation | ✅ Ready |
+| `FasalVaidya_Enhanced_Transfer_Learning.ipynb` | PlantVillage transfer learning | ✅ Ready |
+| `FasalVaidya_EfficientNetB0_Training.ipynb` | EfficientNet-B0 baseline | ✅ Ready |
+| `FasalVaidya_YOLOv8_Training.ipynb` | YOLOv8 classification (experimental) | ⚠️ Experimental |
+
+### Quick Training Steps (Local)
 
 1.  **Prepare dataset**
     
@@ -740,7 +798,18 @@ See detailed guides in the `guidelines/` directory:
     ```bash
     python convert_to_tflite.py
     ```
-    
+
+### VS Code Training Tasks
+
+Pre-configured tasks available (press `Ctrl+Shift+P` → "Tasks: Run Task"):
+
+- **🧠 ML: Train NPK Model** - Train unified NPK deficiency model
+- **🧠 ML: Train NPK Model (No Early Stop)** - Full 80-epoch training
+- **🌾 ML: Train Crop Model (Wheat/Rice/Tomato/Maize)** - Crop-specific models
+- **🌾 ML: Train All Crop Models** - Train all crops sequentially
+- **🌿 Transfer Learning: Full Pipeline** - PlantVillage pre-training + NPK fine-tuning
+
+See [.vscode/README.md](.vscode/README.md) for complete task list and usage.
 
 ---
 

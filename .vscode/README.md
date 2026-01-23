@@ -1,5 +1,484 @@
 # 🛠️ VS Code Configuration
 
+**Development Environment Setup for FasalVaidya**
+
+This directory contains VS Code workspace configuration to streamline development with pre-configured tasks, keybindings, launch configurations, and workspace settings.
+
+---
+
+## 📋 Files Overview
+
+| File | Purpose |
+|------|---------|
+| **tasks.json** | Pre-configured build and run tasks for backend/frontend |
+| **launch.json** | Debug configurations for Python backend |
+| **keybindings.json** | Custom keyboard shortcuts for common workflows |
+| **settings.json** | Workspace-specific settings (Python interpreter, formatters, etc.) |
+
+---
+
+## ⌨️ Quick Start
+
+### 🚀 Start All Services
+
+Press **`Ctrl+Shift+B`** (or **`Cmd+Shift+B`** on Mac) to launch:
+- ✅ Backend Flask API server
+- ✅ Frontend Expo development server (tunnel mode)
+
+Both services run in parallel background tasks.
+
+### 🎯 Run Individual Tasks
+
+1. Press **`Ctrl+Shift+P`** → `Tasks: Run Task`
+2. Select from available tasks:
+
+#### 🌱 Backend Tasks
+- **🌱 Backend: Start Flask Server** - Start API server on port 5000
+- **🧠 ML: Train NPK Model** - Train unified NPK deficiency model
+- **🧠 ML: Train NPK Model (No Early Stop)** - Full 80-epoch training
+- **🌾 ML: List Available Crops** - Show available crops for training
+- **🌾 ML: Train Crop Model (Wheat/Rice/Tomato/Maize)** - Train crop-specific models
+- **🌾 ML: Train All Crop Models** - Train all crop models sequentially
+- **🧠 ML: Test Inference** - Test model loading and prediction
+- **🌿 Transfer Learning: Prepare PlantVillage Dataset** - Download and preprocess PlantVillage data
+- **🌿 Transfer Learning: Stage 1 - PlantVillage Training** - Pre-train on PlantVillage (30 epochs)
+- **🌿 Transfer Learning: Stage 2 - NPK Fine-tuning** - Fine-tune on NPK data (50 epochs)
+- **🌿 Transfer Learning: Full Pipeline (Both Stages)** - Complete transfer learning workflow
+
+#### 📱 Frontend Tasks
+- **📱 Frontend: Start Expo (Tunnel)** - Start mobile app in tunnel mode for remote access
+- **🧪 Tests: Run API Tests** - Execute pytest suite for backend API
+- **🧪 Tests: Batch Test with Dataset** - Test model inference with sample images (3 samples)
+
+#### 📦 Setup Tasks
+- **📦 Setup: Install Backend Dependencies** - Create venv and install Python packages
+- **📦 Setup: Install Frontend Dependencies** - Install Node.js packages with npm
+- **📦 Setup: Install All Dependencies** - Install both backend and frontend dependencies in parallel
+
+#### 🚀 Combined Tasks
+- **🚀 FasalVaidya: Start All** - Start both backend and frontend services (default build task)
+
+---
+
+## 🔧 Configuration Details
+
+### Tasks Configuration (`tasks.json`)
+
+All tasks use the virtual environment `.venv311` in the backend directory. Key features:
+
+- **Automatic venv activation**: Tasks automatically activate Python virtual environment
+- **Background processes**: Server tasks run in background without blocking terminal
+- **Smart defaults**: Pre-configured with optimal settings (epochs, arguments, etc.)
+- **Parallel execution**: Setup tasks run simultaneously for faster installation
+
+### Example Task Structure
+
+```json
+{
+  "label": "🌱 Backend: Start Flask Server",
+  "type": "shell",
+  "command": ".venv311\\Scripts\\Activate.ps1; python app.py",
+  "options": {
+    "cwd": "${workspaceFolder}/backend"
+  },
+  "isBackground": true,
+  "problemMatcher": []
+}
+```
+
+### Python Environment Setup
+
+The workspace uses Python 3.11 in a dedicated virtual environment:
+
+```bash
+# Location: backend/.venv311/
+# Activation:
+#   Windows: .venv311\Scripts\Activate.ps1
+#   Linux/Mac: source .venv311/bin/activate
+```
+
+### Workspace Settings (`settings.json`)
+
+Key configurations:
+- **Python Interpreter**: Automatically set to `.venv311`
+- **Linting**: Pylint enabled for code quality
+- **Formatting**: autopep8 for Python, Prettier for TypeScript/JSON
+- **File Associations**: `.ipynb` → Jupyter, `.env` → Properties
+- **Terminal**: Default shell is PowerShell on Windows
+
+---
+
+## 🧪 Testing & Development Workflow
+
+### 1. Quick Testing Workflow
+
+```bash
+# 1. Start backend
+Ctrl+Shift+P → "Tasks: Run Task" → "🌱 Backend: Start Flask Server"
+
+# 2. Test API
+Ctrl+Shift+P → "Tasks: Run Task" → "🧪 Tests: Run API Tests"
+
+# 3. Start frontend
+Ctrl+Shift+P → "Tasks: Run Task" → "📱 Frontend: Start Expo (Tunnel)"
+```
+
+### 2. ML Model Training Workflow
+
+```bash
+# Step 1: Install TensorFlow dependencies (if not already installed)
+.venv311\Scripts\Activate.ps1
+pip install tensorflow tqdm scikit-learn
+
+# Step 2: Train NPK model
+Ctrl+Shift+P → "Tasks: Run Task" → "🧠 ML: Train NPK Model"
+
+# Step 3: Test inference
+Ctrl+Shift+P → "Tasks: Run Task" → "🧠 ML: Test Inference"
+
+# Step 4: Batch test with real images
+Ctrl+Shift+P → "Tasks: Run Task" → "🧪 Tests: Batch Test with Dataset"
+```
+
+### 3. Transfer Learning Workflow (Advanced)
+
+For production-grade models using PlantVillage pre-training:
+
+```bash
+# Stage 1: Download and prepare PlantVillage dataset
+Task → "🌿 Transfer Learning: Prepare PlantVillage Dataset"
+
+# Stage 2: Pre-train on PlantVillage (30 epochs)
+Task → "🌿 Transfer Learning: Stage 1 - PlantVillage Training"
+
+# Stage 3: Fine-tune on NPK data (50 epochs)
+Task → "🌿 Transfer Learning: Stage 2 - NPK Fine-tuning"
+
+# Or run complete pipeline in one go:
+Task → "🌿 Transfer Learning: Full Pipeline (Both Stages)"
+```
+
+---
+
+## 🎓 Training New Models
+
+### Hierarchical Router-Specialist Architecture (Google Colab)
+
+For advanced multi-crop training, use the Jupyter notebook:
+
+**Notebook**: `FasalVaidya_Hierarchical_Router_Specialist.ipynb`
+
+**Architecture**:
+- **Router Model**: Classifies crops into 3 biological groups (Grasses, Vines, Broad Leaves)
+- **3 Specialist Models**: Group-specific deficiency detectors
+
+**Key Features**:
+- ✅ Handles 9 crops with nested dataset structures (train/val/test folders)
+- ✅ SSD optimization (10-50x I/O speedup on Colab)
+- ✅ Industrial ML techniques (Focal Loss, GroupKFold, LR Scheduling)
+- ✅ Optimized for Colab free tier (~45-60 min total training)
+
+**Training Configuration**:
+```python
+IMG_SIZE = 224x224 (EfficientNetB0 native)
+BATCH_SIZE = 64 (optimized for speed)
+EPOCHS = 3+3 per model (Phase 1: frozen, Phase 2: unfrozen)
+BASE_MODEL = EfficientNetB0 (5.3M parameters)
+TOTAL_MODELS = 4 (1 router + 3 specialists)
+```
+
+**Usage**:
+1. Open in Google Colab
+2. Mount Google Drive with dataset
+3. Run Cell 1 to copy data to local SSD (critical for speed!)
+4. Run remaining cells sequentially
+5. Download trained models to `backend/ml/models/`
+
+### Crop-Specific Model Training (Local)
+
+For training individual crop models locally:
+
+```bash
+# List available crops
+Task → "🌾 ML: List Available Crops"
+
+# Train specific crop (Wheat, Rice, Maize, Tomato)
+Task → "🌾 ML: Train Crop Model (Wheat)"
+
+# Or train all crops
+Task → "🌾 ML: Train All Crop Models"
+```
+
+**Requirements**:
+- GPU recommended (NVIDIA CUDA)
+- ~10-20GB free disk space
+- TensorFlow 2.15+
+- 8GB+ RAM
+
+---
+
+## 🐛 Debugging
+
+### Python Backend Debugging
+
+**Launch Configuration** (`launch.json`):
+- **Python: Flask** - Debug Flask application with breakpoints
+- **Python: Current File** - Debug currently open Python file
+
+**Steps**:
+1. Set breakpoints in Python code (click left of line number)
+2. Press `F5` or click "Run and Debug" → "Python: Flask"
+3. Use Debug Console to inspect variables
+
+### Common Issues
+
+#### Task Not Found
+- **Issue**: "Task 'XYZ' not found"
+- **Fix**: Reload window (`Ctrl+Shift+P` → "Developer: Reload Window")
+
+#### Python Import Errors
+- **Issue**: `ModuleNotFoundError` when running tasks
+- **Fix**: Ensure virtual environment is activated and dependencies installed:
+  ```bash
+  cd backend
+  .venv311\Scripts\Activate.ps1
+  pip install -r requirements.txt
+  ```
+
+#### Port Already in Use
+- **Issue**: `OSError: [WinError 10048] Only one usage of each socket address`
+- **Fix**: Kill existing process on port 5000:
+  ```powershell
+  # Windows PowerShell
+  Get-Process -Id (Get-NetTCPConnection -LocalPort 5000).OwningProcess | Stop-Process
+  ```
+
+#### Expo Tunnel Connection Failed
+- **Issue**: Frontend can't connect to backend over tunnel
+- **Fix**: Update `frontend/src/api/client.ts` with your computer's local IP:
+  ```typescript
+  export const API_BASE_URL = 'http://192.168.1.XXX:5000';
+  ```
+
+---
+
+## 📚 Additional Resources
+
+### Documentation
+
+- **Main README**: [../README.md](../README.md) - Project overview
+- **Frontend README**: [../frontend/README.md](../frontend/README.md) - Mobile app documentation
+- **Quick Start Guide**: [../guidelines/QUICK_START_V2.md](../guidelines/QUICK_START_V2.md)
+- **Training Guide**: [../guidelines/UNIFIED_V2_TRAINING_PLAN.md](../guidelines/UNIFIED_V2_TRAINING_PLAN.md)
+
+### Training Notebooks
+
+| Notebook | Purpose | Status |
+|----------|---------|--------|
+| `FasalVaidya_Hierarchical_Router_Specialist.ipynb` | **🌟 PRODUCTION** - Hierarchical 4-model architecture | ✅ Ready |
+| `FasalVaidya_Enhanced_V2.ipynb` | Enhanced model v2 with leaf validation | ✅ Ready |
+| `FasalVaidya_Enhanced_Transfer_Learning.ipynb` | Transfer learning from PlantVillage | ✅ Ready |
+| `FasalVaidya_EfficientNetB0_Training.ipynb` | EfficientNet-B0 baseline | ✅ Ready |
+| `FasalVaidya_YOLOv8_Training.ipynb` | YOLOv8 classification (experimental) | ⚠️ Experimental |
+
+### VS Code Extensions (Recommended)
+
+Install these extensions for optimal development experience:
+
+- **Python** (`ms-python.python`) - Python language support
+- **Pylance** (`ms-python.vscode-pylance`) - Fast Python language server
+- **Jupyter** (`ms-toolsai.jupyter`) - Notebook support
+- **Expo Tools** (`expo.vscode-expo-tools`) - Expo development tools
+- **React Native Tools** (`msjsdiag.vscode-react-native`) - React Native debugging
+- **ESLint** (`dbaeumer.vscode-eslint`) - JavaScript/TypeScript linting
+- **Prettier** (`esbenp.prettier-vscode`) - Code formatting
+
+---
+
+## 🎯 Keyboard Shortcuts
+
+Custom keybindings configured in `keybindings.json`:
+
+| Shortcut | Action | Context |
+|----------|--------|---------|
+| **Ctrl+Shift+B** | Run default build task (Start All) | Global |
+| **F5** | Start debugging | Python files |
+| **Shift+F5** | Stop debugging | Debug active |
+| **Ctrl+`** | Toggle integrated terminal | Global |
+| **Ctrl+Shift+`** | Create new terminal | Global |
+
+---
+
+## 🚀 Quick Command Reference
+
+### Backend Development
+
+```bash
+# Activate virtual environment
+cd backend
+.venv311\Scripts\Activate.ps1
+
+# Run Flask server
+python app.py
+
+# Run tests
+pytest tests/ -v
+
+# Train model
+python ml/train_npk_model.py
+
+# Test inference
+python -c "from ml.inference import NPKPredictor; p = NPKPredictor(); print(p.predict_npk('test.jpg'))"
+```
+
+### Frontend Development
+
+```bash
+# Install dependencies
+cd frontend
+npm install
+
+# Start development server
+npm start
+
+# Run on Android
+npm run android
+
+# Run on iOS
+npm run ios
+
+# Clear cache
+npx expo start -c
+```
+
+### Database Management
+
+```bash
+# View database
+cd backend
+sqlite3 fasalvaidya.db
+
+# Export scans
+sqlite3 fasalvaidya.db ".mode csv" ".output scans.csv" "SELECT * FROM leaf_scans;"
+
+# Reset database (delete and restart app.py to recreate)
+rm fasalvaidya.db
+python app.py
+```
+
+---
+
+## 💡 Tips & Best Practices
+
+### 1. Use Virtual Environment
+
+Always activate the virtual environment before running Python commands:
+```bash
+.venv311\Scripts\Activate.ps1  # Windows
+source .venv311/bin/activate   # Linux/Mac
+```
+
+### 2. Check Task Output
+
+View task output in the terminal panel:
+- **View** → **Terminal** (or `Ctrl+``)
+- Select task from dropdown in terminal panel
+
+### 3. Stop Background Tasks
+
+To stop background tasks (servers):
+- Click trash icon in terminal panel, or
+- **Terminal: Kill All Tasks** command (`Ctrl+Shift+P`)
+
+### 4. Update Backend URL
+
+When testing on physical device, update the API base URL:
+```typescript
+// frontend/src/api/client.ts
+export const API_BASE_URL = 'http://YOUR_LOCAL_IP:5000';
+```
+
+Find your IP:
+```bash
+# Windows
+ipconfig
+
+# Linux/Mac
+ifconfig
+```
+
+### 5. Faster Model Training
+
+For faster training iterations:
+- Use smaller dataset (reduce images per class)
+- Reduce epochs (e.g., 10 instead of 50)
+- Use smaller batch size if GPU memory limited
+- Use mixed precision training (`tf.keras.mixed_precision`)
+
+### 6. Monitor Training Progress
+
+Watch training logs in real-time:
+```bash
+# Terminal 1 - Run training task
+# Terminal 2 - Tail logs
+Get-Content backend/logs/app.log -Wait  # PowerShell
+tail -f backend/logs/app.log            # Linux/Mac
+```
+
+---
+
+## 🔄 Version Control Integration
+
+### Git Configuration
+
+Workspace includes `.gitignore` for:
+- Python virtual environments (`.venv311/`)
+- Node modules (`node_modules/`)
+- Database files (`*.db`)
+- Uploaded images (`uploads/`)
+- Model files (`*.keras`, `*.h5` - large files)
+- Logs (`logs/`)
+
+### Recommended Git Workflow
+
+```bash
+# 1. Create feature branch
+git checkout -b feature/new-crop-support
+
+# 2. Make changes and commit
+git add .
+git commit -m "feat: add potato crop support"
+
+# 3. Push to remote
+git push origin feature/new-crop-support
+
+# 4. Create Pull Request on GitHub
+```
+
+---
+
+## 📞 Support & Contribution
+
+For issues, questions, or contributions:
+
+1. **Check Documentation**: Review [README.md](../README.md) and [guidelines/](../guidelines/)
+2. **Search Issues**: Check existing GitHub issues
+3. **Create Issue**: Open new issue with detailed description
+4. **Submit PR**: Follow contribution guidelines
+
+---
+
+## 📝 Notes
+
+- All tasks use PowerShell syntax (Windows). For Linux/Mac, modify commands in `tasks.json`
+- Virtual environment must be created before running tasks: `python -m venv backend/.venv311`
+- TensorFlow requires CUDA for GPU training (optional but recommended)
+- Expo tunnel mode may be slow; use LAN mode for better performance during development
+
+---
+
+**Happy Coding! 🚀🌾**
+
 VS Code workspace configuration and development automation for the FasalVaidya project.
 
 ---
