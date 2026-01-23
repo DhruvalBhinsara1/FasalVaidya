@@ -10,103 +10,161 @@ import { ScanActivityChart } from './components/ScanActivityChart';
 async function getDashboardStats() {
   const supabase = await createAdminClient();
 
-  // Get total users
-  const { count: totalUsers } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .is('deleted_at', null);
+  try {
+    // Get total users
+    const { count: totalUsers } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null);
 
-  // Get active users (last 7 days)
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const { count: activeUsers } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .is('deleted_at', null)
-    .gte('last_active', sevenDaysAgo.toISOString());
+    // Get active users (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const { count: activeUsers } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .gte('last_active', sevenDaysAgo.toISOString());
 
-  // Get total scans
-  const { count: totalScans } = await supabase
-    .from('leaf_scans')
-    .select('*', { count: 'exact', head: true })
-    .is('deleted_at', null);
+    // Get total scans
+    const { count: totalScans } = await supabase
+      .from('leaf_scans')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null);
 
-  // Get scans today
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const { count: scansToday } = await supabase
-    .from('leaf_scans')
-    .select('*', { count: 'exact', head: true })
-    .is('deleted_at', null)
-    .gte('created_at', today.toISOString());
+    // Get scans today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const { count: scansToday } = await supabase
+      .from('leaf_scans')
+      .select('*', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .gte('created_at', today.toISOString());
 
-  // Get feedback count (from user_feedback table if exists)
-  const { count: feedbackCount } = await supabase
-    .from('user_feedback')
-    .select('*', { count: 'exact', head: true });
+    // Get feedback count (from user_feedback table if exists)
+    let feedbackCount = 0;
+    try {
+      const { count } = await supabase
+        .from('user_feedback')
+        .select('*', { count: 'exact', head: true });
+      feedbackCount = count || 0;
+    } catch (error) {
+      // Table might not exist yet, use 0
+      console.warn('user_feedback table not found:', error);
+    }
 
-  return {
-    totalUsers: totalUsers || 0,
-    activeUsers: activeUsers || 0,
-    totalScans: totalScans || 0,
-    scansToday: scansToday || 0,
-    averageAccuracy: 87.5, // Mock for MVP - calculate from feedback
-    feedbackCount: feedbackCount || 0,
-    criticalAlerts: 3, // Mock for MVP
-  };
+    return {
+      totalUsers: totalUsers || 0,
+      activeUsers: activeUsers || 0,
+      totalScans: totalScans || 0,
+      scansToday: scansToday || 0,
+      averageAccuracy: 87.5, // Mock for MVP - calculate from feedback
+      feedbackCount,
+      criticalAlerts: 3, // Mock for MVP
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    // Return default values on error
+    return {
+      totalUsers: 0,
+      activeUsers: 0,
+      totalScans: 0,
+      scansToday: 0,
+      averageAccuracy: 0,
+      feedbackCount: 0,
+      criticalAlerts: 0,
+    };
+  }
 }
 
 async function getRecentScans() {
   const supabase = await createAdminClient();
 
-  const { data: scans } = await supabase
-    .from('leaf_scans')
-    .select(`
-      *,
-      crop:crops(*),
-      diagnosis:diagnoses(*),
-      user:users(*)
-    `)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(5);
+  try {
+    const { data: scans, error } = await supabase
+      .from('leaf_scans')
+      .select(`
+        *,
+        crop:crops(*),
+        diagnosis:diagnoses(*),
+        user:users(*)
+      `)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(5);
 
-  return scans || [];
+    if (error) {
+      console.error('Error fetching recent scans:', error);
+      return [];
+    }
+
+    return scans || [];
+  } catch (error) {
+    console.error('Error fetching recent scans:', error);
+    return [];
+  }
 }
 
 async function getScansByDay() {
   const supabase = await createAdminClient();
   
-  // Get last 7 days of scans
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  try {
+    // Get last 7 days of scans
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const { data: scans } = await supabase
-    .from('leaf_scans')
-    .select('created_at')
-    .is('deleted_at', null)
-    .gte('created_at', sevenDaysAgo.toISOString());
+    const { data: scans, error } = await supabase
+      .from('leaf_scans')
+      .select('created_at')
+      .is('deleted_at', null)
+      .gte('created_at', sevenDaysAgo.toISOString());
 
-  // Group by day
-  const scansByDay: Record<string, number> = {};
+    if (error) {
+      console.error('Error fetching scans by day:', error);
+      return getEmptyScansByDay();
+    }
+
+    // Group by day
+    const scansByDay: Record<string, number> = {};
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    // Initialize all days
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dayName = days[date.getDay()];
+      scansByDay[dayName] = 0;
+    }
+
+    // Count scans per day
+    scans?.forEach((scan) => {
+      const date = new Date(scan.created_at);
+      const dayName = days[date.getDay()];
+      scansByDay[dayName] = (scansByDay[dayName] || 0) + 1;
+    });
+
+    return Object.entries(scansByDay).map(([day, count]) => ({
+      day,
+      scans: count,
+    }));
+  } catch (error) {
+    console.error('Error in getScansByDay:', error);
+    return getEmptyScansByDay();
+  }
+}
+
+function getEmptyScansByDay() {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const emptyData: Record<string, number> = {};
   
-  // Initialize all days
   for (let i = 6; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     const dayName = days[date.getDay()];
-    scansByDay[dayName] = 0;
+    emptyData[dayName] = 0;
   }
-
-  // Count scans per day
-  scans?.forEach((scan) => {
-    const date = new Date(scan.created_at);
-    const dayName = days[date.getDay()];
-    scansByDay[dayName] = (scansByDay[dayName] || 0) + 1;
-  });
-
-  return Object.entries(scansByDay).map(([day, count]) => ({
+  
+  return Object.entries(emptyData).map(([day, count]) => ({
     day,
     scans: count,
   }));
@@ -115,25 +173,35 @@ async function getScansByDay() {
 async function getCropDistribution() {
   const supabase = await createAdminClient();
 
-  const { data: scans } = await supabase
-    .from('leaf_scans')
-    .select('crop_id, crop:crops(name)')
-    .is('deleted_at', null);
+  try {
+    const { data: scans, error } = await supabase
+      .from('leaf_scans')
+      .select('crop_id, crop:crops(name)')
+      .is('deleted_at', null);
 
-  // Group by crop
-  const distribution: Record<string, number> = {};
-  scans?.forEach((scan) => {
-    const cropName = (scan.crop as unknown as { name: string })?.name || 'Unknown';
-    distribution[cropName] = (distribution[cropName] || 0) + 1;
-  });
+    if (error) {
+      console.error('Error fetching crop distribution:', error);
+      return [];
+    }
 
-  const total = Object.values(distribution).reduce((a, b) => a + b, 0);
+    // Group by crop
+    const distribution: Record<string, number> = {};
+    scans?.forEach((scan) => {
+      const cropName = (scan.crop as unknown as { name: string })?.name || 'Unknown';
+      distribution[cropName] = (distribution[cropName] || 0) + 1;
+    });
 
-  return Object.entries(distribution).map(([name, count]) => ({
-    name,
-    value: count,
-    percentage: total > 0 ? Math.round((count / total) * 100) : 0,
-  }));
+    const total = Object.values(distribution).reduce((a, b) => a + b, 0);
+
+    return Object.entries(distribution).map(([name, count]) => ({
+      name,
+      value: count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+    }));
+  } catch (error) {
+    console.error('Error in getCropDistribution:', error);
+    return [];
+  }
 }
 
 export default async function DashboardPage() {

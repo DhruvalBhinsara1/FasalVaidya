@@ -6,32 +6,52 @@ import { formatDateTime } from '@/lib/utils';
 async function getReportsData() {
   const supabase = await createAdminClient();
 
-  // Get scan analytics for last 30 days
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  try {
+    // Get scan analytics for last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const { data: scans } = await supabase
-    .from('leaf_scans')
-    .select('created_at, status, crop:crops(name)')
-    .is('deleted_at', null)
-    .gte('created_at', thirtyDaysAgo.toISOString())
-    .order('created_at', { ascending: false });
+    const { data: scans, error: scansError } = await supabase
+      .from('leaf_scans')
+      .select('created_at, status, crop:crops(name)')
+      .is('deleted_at', null)
+      .gte('created_at', thirtyDaysAgo.toISOString())
+      .order('created_at', { ascending: false });
 
-  // Get diagnoses summary
-  const { data: diagnoses } = await supabase
-    .from('diagnoses')
-    .select('overall_status, detected_class, created_at')
-    .is('deleted_at', null)
-    .gte('created_at', thirtyDaysAgo.toISOString());
+    if (scansError) {
+      console.error('Error fetching scans:', scansError);
+    }
 
-  return {
-    scans: scans || [],
-    diagnoses: diagnoses || [],
-    totalScans: scans?.length || 0,
-    completedScans: scans?.filter((s) => s.status === 'completed').length || 0,
-    healthyCount: diagnoses?.filter((d) => d.overall_status === 'healthy').length || 0,
-    issueCount: diagnoses?.filter((d) => d.overall_status !== 'healthy').length || 0,
-  };
+    // Get diagnoses summary
+    const { data: diagnoses, error: diagnosesError } = await supabase
+      .from('diagnoses')
+      .select('overall_status, detected_class, created_at')
+      .is('deleted_at', null)
+      .gte('created_at', thirtyDaysAgo.toISOString());
+
+    if (diagnosesError) {
+      console.error('Error fetching diagnoses:', diagnosesError);
+    }
+
+    return {
+      scans: scans || [],
+      diagnoses: diagnoses || [],
+      totalScans: scans?.length || 0,
+      completedScans: scans?.filter((s) => s.status === 'completed').length || 0,
+      healthyCount: diagnoses?.filter((d) => d.overall_status === 'healthy').length || 0,
+      issueCount: diagnoses?.filter((d) => d.overall_status !== 'healthy').length || 0,
+    };
+  } catch (error) {
+    console.error('Error in getReportsData:', error);
+    return {
+      scans: [],
+      diagnoses: [],
+      totalScans: 0,
+      completedScans: 0,
+      healthyCount: 0,
+      issueCount: 0,
+    };
+  }
 }
 
 export default async function ReportsPage() {

@@ -1,12 +1,12 @@
 'use client';
 
 import {
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
 } from 'recharts';
 
 interface CropDistributionChartProps {
@@ -49,7 +49,13 @@ export function CropDistributionChart({ data }: CropDistributionChartProps) {
             backgroundColor: '#1a2e1a',
             border: 'none',
             borderRadius: '8px',
-            color: '#fff',
+            color: '#ffffff',
+          }}
+          itemStyle={{
+            color: '#ffffff',
+          }}
+          labelStyle={{
+            color: '#ffffff',
           }}
           formatter={(value: number, name: string) => [`${value} scans`, name]}
         />

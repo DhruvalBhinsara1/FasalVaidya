@@ -139,6 +139,7 @@ class LocalSyncDatabase {
           scan_uuid TEXT UNIQUE NOT NULL,
           user_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
           crop_id INTEGER DEFAULT 1,
+          crop_name TEXT,
           image_path TEXT NOT NULL,
           image_filename TEXT,
           status TEXT DEFAULT 'pending',
@@ -220,6 +221,10 @@ class LocalSyncDatabase {
       },
 
       // Add sync columns to leaf_scans table
+      {
+        sql: 'ALTER TABLE leaf_scans ADD COLUMN crop_name TEXT',
+        ignoreError: true,
+      },
       {
         sql: 'ALTER TABLE leaf_scans ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
         ignoreError: true,
@@ -878,15 +883,31 @@ export async function saveScanResultLocally(scanResult: any): Promise<void> {
     console.log('   - Supabase user.id:', supabaseUserId);
     
     // 1. Insert/Update leaf_scan record
+    // Map crop_id to crop_name
+    const cropNames: Record<number, string> = {
+      1: 'wheat',
+      2: 'rice',
+      3: 'tomato',
+      4: 'maize',
+      5: 'banana',
+      6: 'coffee',
+      7: 'ashgourd',
+      8: 'eggplant',
+      9: 'snakegourd',
+      10: 'bittergourd'
+    };
+    const cropName = cropNames[scanResult.crop_id] || 'unknown';
+    
     await db.runAsync(
       `INSERT OR REPLACE INTO leaf_scans 
-        (id, scan_uuid, user_id, crop_id, image_path, image_filename, status, created_at, updated_at, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'DIRTY_CREATE')`,
+        (id, scan_uuid, user_id, crop_id, crop_name, image_path, image_filename, status, created_at, updated_at, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'DIRTY_CREATE')`,
       [
         scanResult.scan_id,
         scanResult.scan_uuid,
         supabaseUserId,
         scanResult.crop_id,
+        cropName,
         scanResult.image_url || '',
         scanResult.scan_uuid + '.jpg',
         scanResult.status,

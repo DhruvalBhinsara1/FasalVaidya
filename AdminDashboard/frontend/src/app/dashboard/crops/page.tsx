@@ -5,26 +5,41 @@ import { createAdminClient } from '@/lib/supabase/server';
 async function getCrops() {
   const supabase = await createAdminClient();
 
-  const { data: crops } = await supabase
-    .from('crops')
-    .select('*')
-    .order('id', { ascending: true });
+  try {
+    const { data: crops, error: cropsError } = await supabase
+      .from('crops')
+      .select('*')
+      .order('id', { ascending: true });
 
-  // Get scan counts per crop
-  const { data: scanCounts } = await supabase
-    .from('leaf_scans')
-    .select('crop_id')
-    .is('deleted_at', null);
+    if (cropsError) {
+      console.error('Error fetching crops:', cropsError);
+      return [];
+    }
 
-  const countMap = scanCounts?.reduce((acc, scan) => {
-    acc[scan.crop_id] = (acc[scan.crop_id] || 0) + 1;
-    return acc;
-  }, {} as Record<number, number>) || {};
+    // Get scan counts per crop
+    const { data: scanCounts, error: scanError } = await supabase
+      .from('leaf_scans')
+      .select('crop_id')
+      .is('deleted_at', null);
 
-  return crops?.map((crop) => ({
-    ...crop,
-    scanCount: countMap[crop.id] || 0,
-  })) || [];
+    if (scanError) {
+      console.error('Error fetching scan counts:', scanError);
+      // Continue with crops but no counts
+    }
+
+    const countMap = scanCounts?.reduce((acc, scan) => {
+      acc[scan.crop_id] = (acc[scan.crop_id] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>) || {};
+
+    return crops?.map((crop) => ({
+      ...crop,
+      scanCount: countMap[crop.id] || 0,
+    })) || [];
+  } catch (error) {
+    console.error('Error in getCrops:', error);
+    return [];
+  }
 }
 
 export default async function CropsPage() {
