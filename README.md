@@ -10,8 +10,6 @@ FasalVaidya is an intelligent mobile application that uses machine learning to d
 
 ## ✨ Features
 
-### 🌱 Core Capabilities
-
 -   **📷 Camera-Based Scanning**: Capture and analyze crop leaf images in real-time
 -   **🤖 AI-Powered Diagnosis**: Deep learning models detect NPK+Mg deficiencies with confidence scores
 -   ```plaintext
