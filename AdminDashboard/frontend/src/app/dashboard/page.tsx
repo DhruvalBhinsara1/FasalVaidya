@@ -11,47 +11,23 @@ async function getDashboardStats() {
   const supabase = await createAdminClient();
 
   try {
-    // Get total users
-    const { count: totalUsers } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null);
-
-    // Get active users (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const { count: activeUsers } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .gte('last_active', sevenDaysAgo.toISOString());
-
-    // Get total scans
-    const { count: totalScans } = await supabase
-      .from('leaf_scans')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null);
-
-    // Get scans today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const { count: scansToday } = await supabase
-      .from('leaf_scans')
-      .select('*', { count: 'exact', head: true })
-      .is('deleted_at', null)
-      .gte('created_at', today.toISOString());
 
-    // Get feedback count (from user_feedback table if exists)
-    let feedbackCount = 0;
-    try {
-      const { count } = await supabase
-        .from('user_feedback')
-        .select('*', { count: 'exact', head: true });
-      feedbackCount = count || 0;
-    } catch (error) {
-      // Table might not exist yet, use 0
-      console.warn('user_feedback table not found:', error);
-    }
+    // Batch ALL queries in parallel for maximum speed
+    const [
+      { count: totalUsers },
+      { count: activeUsers },
+      { count: totalScans },
+      { count: scansToday },
+    ] = await Promise.all([
+      supabase.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+      supabase.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null).gte('last_active', sevenDaysAgo.toISOString()),
+      supabase.from('leaf_scans').select('*', { count: 'exact', head: true }).is('deleted_at', null),
+      supabase.from('leaf_scans').select('*', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', today.toISOString()),
+    ]);
 
     return {
       totalUsers: totalUsers || 0,
@@ -59,7 +35,7 @@ async function getDashboardStats() {
       totalScans: totalScans || 0,
       scansToday: scansToday || 0,
       averageAccuracy: 87.5, // Mock for MVP - calculate from feedback
-      feedbackCount,
+      feedbackCount: 0, // Mock for MVP
       criticalAlerts: 3, // Mock for MVP
     };
   } catch (error) {

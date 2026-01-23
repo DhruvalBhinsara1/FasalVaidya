@@ -2,21 +2,21 @@
 
 import { cn } from '@/lib/utils';
 import {
-  BarChart3,
-  Brain,
-  LayoutDashboard,
-  Leaf,
-  LogOut,
-  Settings
+    BarChart3,
+    LayoutDashboard,
+    Leaf,
+    LogOut,
+    Settings,
+    Users
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Users', href: '/dashboard/users', icon: Users },
   { name: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
   { name: 'Crops', href: '/dashboard/crops', icon: Leaf },
-  { name: 'AI Engine', href: '/dashboard/ai-engine', icon: Brain },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
