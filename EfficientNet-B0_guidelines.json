@@ -1,100 +1,64 @@
 {
-  "task": "Create a deep learning training notebook",
-  "model": {
-    "architecture": "EfficientNet-B0",
-    "pretrained_weights": "ImageNet",
-    "fine_tuning_strategy": {
-      "initial_state": "freeze_base_model",
-      "optional": "unfreeze_top_layers_if_needed"
+  "meta": {
+    "role": "Senior Machine Learning Engineer",
+    "task_type": "Code Refactoring & Data Pipeline Optimization",
+    "priority": "Critical",
+    "target_file": "FasalVaidya_EfficientNetB0_Training.ipynb",
+    "section_focus": "2. Dataset Loading and Balancing"
+  },
+  "context": {
+    "issue_summary": "The current notebook discards valid training data because it enforces a hard floor of 150 images and a hard ceiling of 500 images. Our dataset is highly imbalanced, with some minority classes having as few as 60 images.",
+    "business_impact": "Classes with <150 images are completely dropped, leading to model blindness for those specific nutrient deficiencies.",
+    "required_change": "Switch from 'Fixed Threshold' balancing to 'Dynamic Target' balancing based on the dataset's median distribution."
+  },
+  "technical_specifications": {
+    "algorithm_strategy": "Dynamic Median Balancing",
+    "input_data": "A Pandas DataFrame (e.g., `df`) containing at least columns: ['filepath', 'label']",
+    "random_seed": 42
+  },
+  "implementation_steps": [
+    {
+      "step": 1,
+      "action": "Analyze Distribution",
+      "details": "Compute the value counts of the 'label' column. Store the counts in a variable (e.g., `class_counts`)."
+    },
+    {
+      "step": 2,
+      "action": "Calculate Dynamic Target",
+      "details": "Compute the median of `class_counts` to serve as the 'TARGET_SIZE'. This ensures the target is representative of the actual data, not an arbitrary number. \nFormula: `TARGET_SIZE = int(class_counts.median())`."
+    },
+    {
+      "step": 3,
+      "action": "Refactor Balancing Loop",
+      "instruction": "Iterate through each unique class label and apply the following logic:",
+      "logic_block": {
+        "case_minority": "IF class_count < TARGET_SIZE: Sample `TARGET_SIZE` samples from this class with replacement (`replace=True`). This duplicates images to fill the gap.",
+        "case_majority": "IF class_count > TARGET_SIZE: Sample `TARGET_SIZE` samples from this class without replacement (`replace=False`). This trims the excess.",
+        "case_exact": "IF class_count == TARGET_SIZE: Keep as is."
+      }
+    },
+    {
+      "step": 4,
+      "action": "DataFrame Reconstruction",
+      "details": "Concatenate all balanced class subsets into a new DataFrame `balanced_df`. Shuffle this final DataFrame to prevent ordering bias during training."
     }
-  },
-  "dataset": {
-    "type": "image_classification",
-    "domain": "crop_disease_and_health",
-    "class_balance": {
-      "requirement": "approximately_balanced",
-      "notes": "Some classes have many images while others have fewer than ~200. Exact equality is not required, but large imbalance must be avoided.",
-      "strategy": [
-        "downsample_classes_with_excess_images",
-        "avoid_aggressive_oversampling",
-        "keep_similar_image_counts_per_class"
-      ]
+  ],
+  "verification_requirements": [
+    {
+      "check": "No Data Loss",
+      "expectation": "Verify that `balanced_df['label'].nunique()` matches the original number of classes (43 expected)."
     },
-    "images_per_class": {
-      "min_preferred": 150,
-      "max_preferred": 400,
-      "flexible": true
+    {
+      "check": "Uniform Distribution",
+      "expectation": "Print `balanced_df['label'].value_counts()`. All classes must show the exact same count (equal to TARGET_SIZE)."
     },
-    "image_preprocessing": {
-      "resize": "EfficientNet-B0 default input size",
-      "normalization": "model_specific"
-    },
-    "augmentation": {
-      "enabled": true,
-      "intensity": "light_to_moderate",
-      "techniques": [
-        "horizontal_flip",
-        "random_rotation",
-        "brightness_adjustment",
-        "zoom"
-      ]
+    {
+      "check": "Visual Confirmation",
+      "expectation": "Plot a bar chart of the new distribution to confirm a perfectly flat line across all classes."
     }
-  },
-  "training": {
-    "time_constraint": {
-      "max_duration_hours": 2
-    },
-    "batch_size": {
-      "strategy": "memory_aware",
-      "adjustable": true
-    },
-    "epochs": {
-      "max": 30,
-      "early_stopping": true
-    },
-    "optimization": {
-      "optimizer": "Adam",
-      "learning_rate_schedule": "reduce_on_plateau"
-    }
-  },
-  "performance_constraints": {
-    "memory_usage": {
-      "requirement": "RAM_safe",
-      "guidelines": [
-        "use_data_generators",
-        "do_not_load_entire_dataset_into_memory",
-        "avoid_duplicate_tensors"
-      ]
-    }
-  },
-  "evaluation": {
-    "metrics": [
-      "accuracy",
-      "precision",
-      "recall",
-      "f1_score"
-    ],
-    "validation_strategy": "train_validation_split"
-  },
-  "reproducibility": {
-    "set_random_seed": true,
-    "log_training_time": true,
-    "log_metrics": true
-  },
-  "deliverables": {
-    "notebook": {
-      "format": "Jupyter Notebook",
-      "requirements": [
-        "clear_dataset_balancing_logic",
-        "training_and_validation_plots",
-        "model_saving_and_loading"
-      ]
-    }
-  },
-  "success_criteria": [
-    "balanced_class_distribution",
-    "training_completes_within_2_hours",
-    "no_memory_overflow",
-    "stable_training_convergence"
-  ]
+  ],
+  "code_snippets_reference": {
+    "upsampling_syntax": "df_class.sample(n=TARGET_SIZE, replace=True, random_state=42)",
+    "downsampling_syntax": "df_class.sample(n=TARGET_SIZE, replace=False, random_state=42)"
+  }
 }

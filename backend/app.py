@@ -865,6 +865,37 @@ def upload_scan():
     return jsonify(response), 201
 
 
+def safe_float_convert(value):
+    """Safely convert a score value to float, handling binary data.
+    
+    SQLite sometimes stores float values as BLOB (binary data).
+    This function handles both regular float/int values and binary-encoded floats.
+    """
+    if value is None:
+        return None
+    
+    # If it's already a number, return it
+    if isinstance(value, (int, float)):
+        return float(value)
+    
+    # If it's binary data (bytes), unpack as float
+    if isinstance(value, bytes):
+        import struct
+        if len(value) == 4:
+            # 4-byte float (IEEE 754 single precision)
+            return struct.unpack('<f', value)[0]
+        elif len(value) == 8:
+            # 8-byte double
+            return struct.unpack('<d', value)[0]
+    
+    # If it's a string, try to convert
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        app.logger.warning(f"Could not convert value to float: {value}")
+        return None
+
+
 @app.route('/api/scans', methods=['GET'])
 def get_scans():
     """Get scan history."""
@@ -903,9 +934,13 @@ def get_scans():
     for row in rows:
         # Database stores health scores (0-1 range, where 1 = healthy)
         # Convert to percentage (0-100%) directly, no inversion needed
-        n_health = round(row['n_score'] * 100, 1) if row['n_score'] is not None else None
-        p_health = round(row['p_score'] * 100, 1) if row['p_score'] is not None else None
-        k_health = round(row['k_score'] * 100, 1) if row['k_score'] is not None else None
+        n_score_raw = safe_float_convert(row['n_score'])
+        p_score_raw = safe_float_convert(row['p_score'])
+        k_score_raw = safe_float_convert(row['k_score'])
+        
+        n_health = round(n_score_raw * 100, 1) if n_score_raw is not None else None
+        p_health = round(p_score_raw * 100, 1) if p_score_raw is not None else None
+        k_health = round(k_score_raw * 100, 1) if k_score_raw is not None else None
         
         scan = {
             'scan_id': row['id'],
@@ -962,9 +997,17 @@ def get_scan(scan_id):
     
     # Database stores health scores (0-1 range, where 1 = healthy)
     # Convert to percentage (0-100%) directly, no inversion needed
-    n_health = round(row['n_score'] * 100, 1) if row['n_score'] is not None else None
-    p_health = round(row['p_score'] * 100, 1) if row['p_score'] is not None else None
-    k_health = round(row['k_score'] * 100, 1) if row['k_score'] is not None else None
+    # Use safe_float_convert to handle potential binary data
+    n_score_raw = safe_float_convert(row['n_score'])
+    p_score_raw = safe_float_convert(row['p_score'])
+    k_score_raw = safe_float_convert(row['k_score'])
+    n_conf_raw = safe_float_convert(row['n_confidence'])
+    p_conf_raw = safe_float_convert(row['p_confidence'])
+    k_conf_raw = safe_float_convert(row['k_confidence'])
+    
+    n_health = round(n_score_raw * 100, 1) if n_score_raw is not None else None
+    p_health = round(p_score_raw * 100, 1) if p_score_raw is not None else None
+    k_health = round(k_score_raw * 100, 1) if k_score_raw is not None else None
     
     scan = {
         'scan_id': row['id'],
@@ -978,9 +1021,9 @@ def get_scan(scan_id):
         'n_score': n_health,
         'p_score': p_health,
         'k_score': k_health,
-        'n_confidence': round(row['n_confidence'] * 100, 1) if row['n_confidence'] else None,
-        'p_confidence': round(row['p_confidence'] * 100, 1) if row['p_confidence'] else None,
-        'k_confidence': round(row['k_confidence'] * 100, 1) if row['k_confidence'] else None,
+        'n_confidence': round(n_conf_raw * 100, 1) if n_conf_raw is not None else None,
+        'p_confidence': round(p_conf_raw * 100, 1) if p_conf_raw is not None else None,
+        'k_confidence': round(k_conf_raw * 100, 1) if k_conf_raw is not None else None,
         'n_severity': row['n_severity'],
         'p_severity': row['p_severity'],
         'k_severity': row['k_severity'],
