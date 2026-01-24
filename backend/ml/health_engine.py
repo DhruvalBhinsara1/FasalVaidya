@@ -562,34 +562,38 @@ def generate_graph_data(scans: List[Dict], graph_type: str = "line") -> Dict[str
     """
     Generate data formatted for chart rendering.
     
+    IMPORTANT: Scores are displayed as HEALTH SCORES (0-100, higher is healthier)
+    Raw n_score/p_score/k_score from DB are DEFICIENCY scores (0-100, higher is worse)
+    We convert: health_score = 100 - deficiency_score
+    
     Args:
         scans: List of scan data sorted by date
         graph_type: 'line', 'bar', or 'radar'
         
     Returns:
-        Chart-ready data structure
+        Chart-ready data structure with health scores (0-100, higher = healthier)
     """
     config = get_config()
     colors = config.get("graph_colors", {})
     
     if graph_type == "line":
-        # Line chart: Nutrient trend over time
+        # Line chart: Nutrient health trend over time
         return {
             "type": "line",
             "labels": [s.get("created_at", "")[:10] for s in scans],
             "datasets": [
                 {
-                    "label": "Nitrogen (N)",
+                    "label": "Nitrogen Health",
                     "data": [100 - s.get("n_score", 0) for s in scans],
                     "color": colors.get("nitrogen", "#E53935")
                 },
                 {
-                    "label": "Phosphorus (P)",
+                    "label": "Phosphorus Health",
                     "data": [100 - s.get("p_score", 0) for s in scans],
                     "color": colors.get("phosphorus", "#FB8C00")
                 },
                 {
-                    "label": "Potassium (K)",
+                    "label": "Potassium Health",
                     "data": [100 - s.get("k_score", 0) for s in scans],
                     "color": colors.get("potassium", "#43A047")
                 }
@@ -597,12 +601,21 @@ def generate_graph_data(scans: List[Dict], graph_type: str = "line") -> Dict[str
         }
     
     elif graph_type == "bar":
-        # Bar chart: Current vs Previous
+        # Bar chart: Current vs Previous health comparison
         if len(scans) < 2:
             return {"type": "bar", "error": "Need at least 2 scans for comparison"}
         
         current = scans[-1]
         previous = scans[-2]
+        
+        # Convert deficiency scores to health scores for clear visualization
+        prev_n_health = 100 - previous.get("n_score", 0)
+        prev_p_health = 100 - previous.get("p_score", 0)
+        prev_k_health = 100 - previous.get("k_score", 0)
+        
+        curr_n_health = 100 - current.get("n_score", 0)
+        curr_p_health = 100 - current.get("p_score", 0)
+        curr_k_health = 100 - current.get("k_score", 0)
         
         return {
             "type": "bar",
@@ -611,30 +624,43 @@ def generate_graph_data(scans: List[Dict], graph_type: str = "line") -> Dict[str
                 {
                     "label": "Previous",
                     "data": [
-                        100 - previous.get("n_score", 0),
-                        100 - previous.get("p_score", 0),
-                        100 - previous.get("k_score", 0)
+                        round(prev_n_health, 1),
+                        round(prev_p_health, 1),
+                        round(prev_k_health, 1)
                     ],
                     "color": "#9CA3AF"
                 },
                 {
                     "label": "Current",
                     "data": [
-                        100 - current.get("n_score", 0),
-                        100 - current.get("p_score", 0),
-                        100 - current.get("k_score", 0)
+                        round(curr_n_health, 1),
+                        round(curr_p_health, 1),
+                        round(curr_k_health, 1)
                     ],
                     "color": colors.get("healthy_zone", "#4C763B")
                 }
-            ]
+            ],
+            "metadata": {
+                "score_type": "health",
+                "scale": "0-100 (higher is healthier)",
+                "changes": {
+                    "nitrogen": round(curr_n_health - prev_n_health, 1),
+                    "phosphorus": round(curr_p_health - prev_p_health, 1),
+                    "potassium": round(curr_k_health - prev_k_health, 1)
+                }
+            }
         }
     
     elif graph_type == "radar":
-        # Radar chart: Overall soil health
+        # Radar chart: Overall soil nutrient health profile
         if not scans:
             return {"type": "radar", "error": "No scan data available"}
         
         latest = scans[-1]
+        
+        n_health = 100 - latest.get("n_score", 0)
+        p_health = 100 - latest.get("p_score", 0)
+        k_health = 100 - latest.get("k_score", 0)
         
         return {
             "type": "radar",
@@ -643,9 +669,9 @@ def generate_graph_data(scans: List[Dict], graph_type: str = "line") -> Dict[str
                 {
                     "label": "Nutrient Health",
                     "data": [
-                        100 - latest.get("n_score", 0),
-                        100 - latest.get("p_score", 0),
-                        100 - latest.get("k_score", 0)
+                        round(n_health, 1),
+                        round(p_health, 1),
+                        round(k_health, 1)
                     ],
                     "color": colors.get("healthy_zone", "#4C763B")
                 }

@@ -1,8 +1,10 @@
 'use client';
 
 import { Card } from '@/components/ui';
+import { getImageUrl } from '@/lib/utils';
 import { createClient } from '@supabase/supabase-js';
 import { Activity, Calendar, FileText, X } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';

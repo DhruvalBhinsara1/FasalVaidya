@@ -64,6 +64,8 @@ export function ScanActivityChart({ data }: ScanActivityChartProps) {
               borderRadius: '8px',
               color: '#fff',
             }}
+            formatter={(value: number) => [Math.round(value * 10) / 10, '']}
+            labelFormatter={(label) => label}
           />
           <Bar 
             dataKey="scans" 

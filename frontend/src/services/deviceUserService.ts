@@ -129,14 +129,19 @@ class DeviceUserService {
 
       if (error) {
         console.error('❌ [DeviceUser] Upsert failed:', error.message);
-        console.error('   Error details:', JSON.stringify(error, null, 2));
         
         // If it's a network error, it's non-critical - app can work offline
-        if (error.message?.includes('Network') || error.message?.includes('timeout')) {
-          console.warn('⚠️ [DeviceUser] Network issue - will retry later');
-          return { success: false, error: error.message, canRetry: true };
+        if (error.message?.includes('Network') || error.message?.includes('timeout') || error.message?.includes('Failed to fetch')) {
+          console.warn('⚠️ [DeviceUser] Network issue - will retry later (non-critical)');
+          // Return success with partial data - app will retry sync later
+          return { 
+            success: false, 
+            error: 'Network temporary issue',
+            canRetry: true 
+          };
         }
         
+        console.error('   Error details:', JSON.stringify(error, null, 2));
         return { success: false, error: error.message };
       }
 

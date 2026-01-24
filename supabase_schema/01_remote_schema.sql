@@ -71,18 +71,17 @@ CREATE TABLE IF NOT EXISTS public.crops (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert default crops
+-- Insert default crops (MUST MATCH backend/app.py CROPS dictionary IDs)
 INSERT INTO public.crops (id, name, name_hi, season, icon) VALUES
-    (1, 'Rice', 'चावल', 'Kharif', '🌾'),
-    (2, 'Wheat', 'गेहूं', 'Rabi', '🌾'),
-    (3, 'Tomato', 'टमाटर', 'All Season', '🍅'),
-    (4, 'Maize', 'मक्का', 'Kharif', '🌽'),
-    (5, 'Banana', 'केला', 'All Season', '🍌'),
-    (6, 'Coffee', 'कॉफ़ी', 'Perennial', '☕'),
-    (7, 'Ashgourd', 'पेठा', 'Summer', '🥒'),
-    (8, 'Eggplant', 'बैंगन', 'All Season', '🍆'),
-    (9, 'Snakegourd', 'चिचिंडा', 'Summer', '🥒'),
-    (10, 'Bittergourd', 'करेला', 'Summer', '🥒')
+    (1, 'Wheat', 'गेहूँ', 'Rabi (Oct-Mar)', '🌾'),
+    (2, 'Rice', 'चावल', 'Kharif (Jun-Sep)', '🌾'),
+    (5, 'Maize', 'मक्का', 'Kharif/Rabi', '🌽'),
+    (6, 'Banana', 'केला', 'Year-round', '🍌'),
+    (7, 'Coffee', 'कॉफी', 'Year-round', '☕'),
+    (9, 'Eggplant', 'बैंगन', 'Year-round', '🍆'),
+    (10, 'Ash Gourd', 'पेठा', 'Kharif', '🎃'),
+    (11, 'Bitter Gourd', 'करेला', 'Summer', '🥬'),
+    (13, 'Snake Gourd', 'चिचिंडा', 'Summer', '🥬')
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     name_hi = EXCLUDED.name_hi,

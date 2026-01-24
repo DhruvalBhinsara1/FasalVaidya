@@ -35,7 +35,7 @@ async function getScansData() {
   const supabase = await createAdminClient();
 
   try {
-    // Get all scans with user and crop info
+    // Get all scans with user and crop info - limit for performance
     const { data: scans, error: scansError } = await supabase
       .from('leaf_scans')
       .select(`
@@ -56,7 +56,7 @@ async function getScansData() {
       `)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(50); // Reduced to 50 for faster loading
 
     if (scansError) {
       console.error('Error fetching scans:', scansError);

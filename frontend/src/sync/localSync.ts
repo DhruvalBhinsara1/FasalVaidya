@@ -869,13 +869,19 @@ export async function saveScanResultLocally(scanResult: any): Promise<void> {
     const { deviceUserService } = await import('../services/deviceUserService');
     const userResult = await deviceUserService.getOrCreateUser();
     
-    if (!userResult.success || !userResult.user) {
-      console.error('⚠️ Failed to get Supabase user, scan may not sync properly');
-    }
-    
     // Use Supabase user.id for proper sync
     // Flask backend uses device_id as user_id, but Supabase needs the actual users.id
-    const supabaseUserId = userResult.user?.id || '00000000-0000-0000-0000-000000000000';
+    let supabaseUserId = '00000000-0000-0000-0000-000000000000';
+    
+    if (!userResult.success || !userResult.user) {
+      // Only log error if it's not a network issue (network issues will retry automatically)
+      if (!userResult.error?.includes('Network') && !userResult.error?.includes('temporary')) {
+        console.error('⚠️ Failed to get Supabase user, scan may not sync properly');
+      }
+      // If network issue, silently continue - sync will retry later
+    } else {
+      supabaseUserId = userResult.user.id;
+    }
     
     console.log('💾 Saving scan locally:');
     console.log('   - Scan ID:', scanResult.scan_id);

@@ -414,7 +414,19 @@ class SupabaseSyncClient {
           totalFailed += result.failed_count || 0;
 
           if (result.errors && result.errors.length > 0) {
-            console.error(`   ⚠️ Sync errors:`, result.errors);
+            // Check for foreign key constraint errors (helpful diagnostics)
+            const hasFKError = result.errors.some((err: any) => 
+              err.error?.includes('foreign key constraint') || 
+              err.error?.includes('violates foreign key')
+            );
+            
+            if (hasFKError) {
+              console.error(`   ⚠️ Sync errors - FOREIGN KEY CONSTRAINT VIOLATION:`, result.errors);
+              console.error(`   💡 This usually means crop_id mismatch between app and server.`);
+              console.error(`   💡 Check SYNC_FK_ERROR_FIX.md for solution.`);
+            } else {
+              console.error(`   ⚠️ Sync errors:`, result.errors);
+            }
             allErrors.push(...result.errors);
           }
 

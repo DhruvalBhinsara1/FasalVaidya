@@ -4,7 +4,7 @@
    FasalVaidya Design System - CSS Variables
    ================================================================= */
 
-@theme {
+:root {
   /* Primary Colors */
   --color-primary: #4C763B;
   --color-primary-dark: #3d5f2f;
