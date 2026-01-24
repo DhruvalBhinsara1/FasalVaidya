@@ -11,38 +11,38 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native';
 
 import {
-    ChatMessage,
-    checkChatStatus,
-    getScan,
-    getScans,
-    ScanHistoryItem,
-    ScanResult,
-    sendChatMessage
+  ChatMessage,
+  checkChatStatus,
+  getScan,
+  getScans,
+  ScanHistoryItem,
+  ScanResult,
+  sendChatMessage
 } from '../api';
 import { Card, StatusChip } from '../components';
 import { getCurrentLanguage } from '../i18n';
 import { borderRadius, colors, shadows, spacing } from '../theme';
 import {
-    ChatSession,
-    generateSessionId,
-    getChatSession,
-    saveChatSession
+  ChatSession,
+  generateSessionId,
+  getChatSession,
+  saveChatSession
 } from '../utils/chatStorage';
 import { getCropIcon } from '../utils/cropIcons';
 
@@ -484,7 +484,7 @@ const ChatScreen: React.FC = () => {
         <Ionicons name="chatbubbles" size={responsiveValues.welcomeIconSize} color={colors.primary} />
       </View>
       <Text style={[styles.welcomeTitle, { fontSize: rsFont(24) }]}>
-        {isHindi ? 'FasalVaidya AI' : 'FasalVaidya AI'}
+        {isHindi ? 'FasalMitra' : 'FasalMitra'}
       </Text>
       <Text style={[styles.welcomeText, { fontSize: rsFont(14), paddingHorizontal: rs(24) }]}>
         {isHindi
@@ -521,7 +521,7 @@ const ChatScreen: React.FC = () => {
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={[styles.headerTitle, { fontSize: rsFont(18) }]}>
-            {isHindi ? 'AI विश्लेषण' : 'AI Analysis'}
+            {isHindi ? 'FasalMitra' : 'FasalMitra'}
           </Text>
           {isAvailable && (
             <View style={styles.onlineIndicator}>

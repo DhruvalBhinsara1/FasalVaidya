@@ -959,14 +959,129 @@ For issues, questions:
 
 ---
 
-## 🔮 Roadmap
+## 🔮 Future Roadmap
 
--    Implement real-time camera preview with ML overlay
--    Offline mode with local model inference
--    Add fertilizer product marketplace integration
--    Implement user accounts and cloud sync
--    Add expert consultation chat feature
--    Support for more nutrient deficiencies
+FasalVaidya is committed to revolutionizing agricultural diagnostics through continuous innovation and expansion. Our roadmap is divided into three strategic pillars:
+
+### 🧠 Technical Development
+
+#### **AI/ML Enhancements**
+- **🎯 Adaptive Learning System**: Implement dynamic ML models that continuously learn and improve from real-world farmer inputs and feedback over time, creating a self-improving diagnostic system
+- **🌍 Environmental Intelligence**: Integrate environmental factors (soil type, climate, humidity, temperature) and regional crop growth patterns for context-aware diagnosis
+- **📊 Nutrient Balance Detection**: Extend beyond deficiency detection to identify nutrient excess conditions (over-fertilization), enabling complete nutrient management
+- **🔬 Disease-Nutrient Correlation**: Develop models that identify relationships between nutrient deficiencies and disease susceptibility
+
+#### **Crop & Feature Expansion**
+- **🌾 Expanded Crop Coverage**: Add support for 20+ new crops including pulses (lentils, chickpeas), oilseeds (soybean, sunflower), vegetables, and fruit trees
+- **🎥 Real-Time Camera Overlay**: Implement live ML inference with on-screen guidance for optimal leaf capture
+- **🗺️ Spatial Analysis**: Introduce field-level mapping for large-scale farm diagnosis
+- **🧪 Lab Integration**: Connect with soil testing labs for combined soil-plant health analysis
+
+#### **Performance & Accessibility**
+- **⚡ Edge Computing Optimization**: Further optimize models for instant diagnosis on low-end devices (sub-300ms inference)
+- **🔊 Voice Interface**: Add voice-based navigation and commands for enhanced accessibility
+- **🌐 Extended Language Support**: Expand to 20+ regional languages across Asia, Africa, and South America
+- **📶 Better Offline Experience**: Enhance offline sync and marketplace caching for seamless offline-to-online transitions
+
+---
+
+### 💼 Business Features & Market Expansion (B2C Focus)
+
+#### **Direct-to-Consumer Marketplace**
+- **🛒 Integrated E-Commerce Platform**: 
+  - **100% Free Diagnosis**: Unlimited crop health scans for all users at no cost
+  - **Smart Product Recommendations**: AI-powered suggestions based on diagnosis results
+  - **One-Tap Purchase**: Buy recommended fertilizers, pesticides, and gardening products instantly
+  - **Target Audience**: 
+    - Local farmers (small to medium holdings)
+    - Home gardeners and urban plant enthusiasts
+    - Kitchen garden owners
+  - **Product Categories**:
+    - Organic & chemical fertilizers (NPK formulations)
+    - Micronutrient supplements
+    - Pest control products
+    - Gardening tools and equipment
+    - Seeds and saplings
+
+- **📦 Fulfillment & Delivery**:
+  - Regional warehouses for fast delivery (same-day in metro cities)
+  - Partner with local agricultural stores for last-mile delivery in rural areas
+  - Doorstep delivery with order tracking
+  - Cash on Delivery (COD) option for farmers
+  - Easy returns and quality guarantees
+
+#### **Value-Added Services (Free for All Users)**
+- **📚 Knowledge Center**: Free access to video tutorials, crop calendars, seasonal advisories, and best practices
+- **🤝 Community Forums**: Connect with fellow farmers and gardeners, share experiences and success stories
+- **📞 Customer Support**: Helpline for product queries and order support
+- **💬 AI Assistant (FasalMitra)**: Free AI-powered chat for crop health questions
+
+---
+
+### 💰 Revenue Model & Monetization Strategy (B2C)
+
+#### **Core Business Model: Marketplace Sales**
+
+FasalVaidya operates on a **simple, transparent model** - we provide **100% free unlimited crop diagnosis** and earn revenue through product sales.
+
+#### **Primary Revenue Stream: Product Sales**
+- **Marketplace Commissions**:
+  - 10-15% commission on every fertilizer and agricultural product sale
+  - 8-12% commission on gardening supplies and tools
+  - Average order value (AOV):
+    - Farmers: ₹1,500-5,000 per order
+    - Home gardeners: ₹300-1,500 per order
+  - Target conversion: 35-40% of diagnoses lead to purchases
+  
+- **Product Categories & Margins**:
+  - Fertilizers & Nutrients: 12-15% margin
+  - Pesticides & Pest Control: 10-12% margin
+  - Seeds & Saplings: 15-20% margin
+  - Gardening Tools: 20-25% margin
+  - Organic Products (Premium): 18-22% margin
+
+#### **Secondary Revenue Streams**
+- **Featured Products & Sponsorships**:
+  - Agricultural brands pay for featured placement in recommendations
+  - Sponsored product listings (clearly marked)
+  - Target: 10-15% of total revenue
+  
+- **Bulk Orders & Direct Sales**:
+  - Purchase inventory for high-demand products
+  - Direct sales with higher margins (25-30%)
+  - Focus on private label products over time
+  
+- **Optional Expert Consultations** (Value-Added Service):
+  - Pay-per-session agronomist consultations: ₹299-599 per 30-minute session
+  - Target: 5-8% of users opt for paid consultations
+  - Generates goodwill and drives marketplace trust
+
+#### **Customer Acquisition & Retention**
+- **Acquisition Strategy**:
+  - Free unlimited diagnosis attracts users
+  - High-quality recommendations build trust
+  - Seamless purchase experience drives conversion
+  
+- **Retention Mechanisms**:
+  - Seasonal reminders for fertilizer application
+  - Crop calendar notifications
+  - Loyalty discounts for repeat purchases (5-10% off)
+  - Order history and quick reorder functionality
+
+---
+
+### 📈 Impact Goals (2026-2028)
+
+- **🌍 User Reach**: Serve 10 million users across India (farmers + home gardeners)
+- **🌾 Crop Coverage**: Support 50+ crops with 95%+ diagnostic accuracy
+- **💚 Sustainability**: Reduce fertilizer waste by 30% and save ₹5,000+ per farmer annually through precise nutrient management
+- **📱 Active Users**: Achieve 2 million+ monthly active users by end of 2027
+- **🛒 Marketplace GMV**: ₹300 crore Gross Merchandise Value by 2028
+- **💰 Revenue Target**: ₹35-40 crore ARR (Annual Recurring Revenue) by 2028 from marketplace commissions
+- **📊 Conversion Metrics**: 
+  - 40% diagnosis-to-purchase conversion rate
+  - 3.5 orders per user per year average
+  - ₹2,500 average order value
 
 ---
 
