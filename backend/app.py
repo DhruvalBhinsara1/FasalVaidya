@@ -22,6 +22,15 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 
+# Import storage utilities
+from utils.storage import (
+    upload_leaf_image, 
+    upload_heatmap, 
+    delete_leaf_image, 
+    delete_heatmap,
+    ensure_buckets_exist
+)
+
 # Add ML module to path
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -394,6 +403,21 @@ def get_user_id() -> str:
     return user_id
 
 
+def validate_device_id(f):
+    """
+    Decorator to validate device ID and set up user context.
+    Extracts user_id from X-User-ID header and stores in g.user_id.
+    Ensures user exists in database.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = get_user_id()
+        ensure_user_exists(user_id)
+        g.user_id = user_id
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def ensure_user_exists(user_id: str):
     """
     Ensure user exists in database.
@@ -553,6 +577,28 @@ def init_db():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_recommendations_user_id ON recommendations(user_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_recommendations_scan_id ON recommendations(scan_id)')
     
+    # Create user_feedback table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            scan_id INTEGER NOT NULL,
+            rating TEXT NOT NULL CHECK (rating IN ('thumbs_up', 'thumbs_down')),
+            ai_confidence REAL,
+            detected_class TEXT,
+            feedback_text TEXT,
+            is_flagged BOOLEAN DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (scan_id) REFERENCES leaf_scans(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_feedback_scan_id ON user_feedback(scan_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_feedback_user_id ON user_feedback(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_feedback_rating ON user_feedback(rating)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_feedback_created_at ON user_feedback(created_at)')
+    
     # Insert or update default crops
     for crop_id, crop_data in CROPS.items():
         cursor.execute('''
@@ -710,6 +756,10 @@ def upload_scan():
 
     # Get ML crop_id for model selection
     ml_crop_id = CROPS.get(crop_id, {}).get('ml_crop_id')
+    
+    # Get user ID early for storage upload
+    user_id = get_user_id()
+    ensure_user_exists(user_id)
 
     # Generate unique filename
     scan_uuid = str(uuid.uuid4())
@@ -717,12 +767,23 @@ def upload_scan():
     filename = f"{scan_uuid}.{ext}"
     filepath = UPLOAD_FOLDER / filename
 
-    # Save file
+    # Save file temporarily for processing
     file.save(str(filepath))
+    
+    # Upload to Supabase Storage
+    upload_success, image_public_url, upload_error = upload_leaf_image(
+        filepath, scan_uuid, user_id
+    )
+    
+    if not upload_success:
+        logger.warning(f"Failed to upload to Supabase Storage: {upload_error}. Using local path.")
+        image_public_url = f"/api/images/{filename}"  # Fallback to local serving
+    else:
+        logger.info(f"Image uploaded to Supabase Storage: {image_public_url}")
 
     fp = file_fingerprint(filepath)
     logger.info(
-        "scan_upload_saved scan_uuid=%s crop_id=%s ml_crop_id=%s model_id=%s filename=%s size=%s sha256_1mb=%s",
+        "scan_upload_saved scan_uuid=%s crop_id=%s ml_crop_id=%s model_id=%s filename=%s size=%s sha256_1mb=%s storage_url=%s",
         scan_uuid,
         crop_id,
         ml_crop_id,
@@ -730,6 +791,7 @@ def upload_scan():
         filename,
         fp.get('size'),
         fp.get('sha256_1mb'),
+        image_public_url if upload_success else 'local',
     )
 
     # Initialize variables
@@ -762,7 +824,18 @@ def upload_scan():
                         with open(heatmap_path, 'wb') as f:
                             f.write(heatmap_bytes)
                         
-                        heatmap_url = f"/api/images/{heatmap_filename}"
+                        # Upload heatmap to Supabase Storage
+                        heatmap_upload_success, heatmap_public_url, heatmap_error = upload_heatmap(
+                            heatmap_path, scan_uuid, user_id
+                        )
+                        
+                        if heatmap_upload_success:
+                            heatmap_url = heatmap_public_url
+                            logger.info("heatmap_uploaded_to_storage url=%s", heatmap_url)
+                        else:
+                            heatmap_url = f"/api/images/{heatmap_filename}"
+                            logger.warning("heatmap_storage_upload_failed using_local=%s", heatmap_url)
+                            
                         logger.info("heatmap_saved filename=%s", heatmap_filename)
                     except Exception as e:
                         logger.warning("heatmap_save_failed error=%s", str(e))
@@ -793,7 +866,17 @@ def upload_scan():
                         with open(heatmap_path_file, 'wb') as f:
                             f.write(heatmap_bytes)
                         
-                        heatmap_url = f"/api/images/{heatmap_filename}"
+                        # Upload heatmap to Supabase Storage
+                        heatmap_upload_success, heatmap_public_url, heatmap_error = upload_heatmap(
+                            heatmap_path_file, scan_uuid, user_id
+                        )
+                        
+                        if heatmap_upload_success:
+                            heatmap_url = heatmap_public_url
+                            logger.info("heatmap_uploaded_to_storage url=%s", heatmap_url)
+                        else:
+                            heatmap_url = f"/api/images/{heatmap_filename}"
+                            logger.warning("heatmap_storage_upload_failed using_local=%s", heatmap_url)
                     except Exception as e:
                         logger.warning("heatmap_save_failed error=%s", str(e))
                         heatmap_url = heatmap_base64
@@ -822,7 +905,17 @@ def upload_scan():
                     with open(heatmap_path_file, 'wb') as f:
                         f.write(heatmap_bytes)
                     
-                    heatmap_url = f"/api/images/{heatmap_filename}"
+                    # Upload heatmap to Supabase Storage
+                    heatmap_upload_success, heatmap_public_url, heatmap_error = upload_heatmap(
+                        heatmap_path_file, scan_uuid, user_id
+                    )
+                    
+                    if heatmap_upload_success:
+                        heatmap_url = heatmap_public_url
+                        logger.info("heatmap_uploaded_to_storage url=%s", heatmap_url)
+                    else:
+                        heatmap_url = f"/api/images/{heatmap_filename}"
+                        logger.warning("heatmap_storage_upload_failed using_local=%s", heatmap_url)
                 except Exception as e:
                     logger.warning("heatmap_save_failed error=%s", str(e))
             
@@ -876,16 +969,12 @@ def upload_scan():
     # Save to database
     db = get_db()
     cursor = db.cursor()
-    
-    # Get user ID and ensure user exists
-    user_id = get_user_id()
-    ensure_user_exists(user_id)
 
-    # Insert scan record
+    # Insert scan record (use public URL from storage) (use public URL from storage)
     cursor.execute('''
         INSERT INTO leaf_scans (scan_uuid, user_id, crop_id, image_path, image_filename, status)
         VALUES (?, ?, ?, ?, ?, ?)
-    ''', (scan_uuid, user_id, crop_id, str(filepath), filename, 'completed'))
+    ''', (scan_uuid, user_id, crop_id, image_public_url, filename, 'completed'))
 
     scan_id = cursor.lastrowid
 
@@ -971,9 +1060,9 @@ def upload_scan():
         'recommendations': recommendations,
         'priority': priority,
 
-        # Image URLs
-        'image_url': f"/api/images/{filename}",
-        'original_image_url': f"/api/images/{filename}",
+        # Image URLs (use Supabase Storage URLs)
+        'image_url': image_public_url,
+        'original_image_url': image_public_url,
         'heatmap': heatmap_url,
 
         # Timestamp
@@ -1217,7 +1306,12 @@ def delete_scan(scan_id):
         user_id = get_user_id()
         
         # First get the scan to verify ownership and find the image file
-        cursor.execute('SELECT image_path FROM leaf_scans WHERE id = ? AND user_id = ?', (scan_id, user_id))
+        cursor.execute('''
+            SELECT ls.image_path, d.heatmap_path 
+            FROM leaf_scans ls
+            LEFT JOIN diagnoses d ON ls.id = d.scan_id
+            WHERE ls.id = ? AND ls.user_id = ?
+        ''', (scan_id, user_id))
         row = cursor.fetchone()
         
         if not row:
@@ -1231,11 +1325,30 @@ def delete_scan(scan_id):
         cursor.execute('DELETE FROM leaf_scans WHERE id = ? AND user_id = ?', (scan_id, user_id))
         db.commit()
         
-        # Delete the image file if it exists
+        # Delete the image from Supabase Storage or local filesystem
         if row['image_path']:
-            image_file = UPLOAD_FOLDER / Path(row['image_path']).name
-            if image_file.exists():
-                image_file.unlink()
+            # Try to delete from Supabase Storage first
+            if row['image_path'].startswith('http'):
+                success, error = delete_leaf_image(row['image_path'], user_id)
+                if not success:
+                    logger.warning(f"Failed to delete image from storage: {error}")
+            else:
+                # Fallback: delete local file
+                image_file = UPLOAD_FOLDER / Path(row['image_path']).name
+                if image_file.exists():
+                    image_file.unlink()
+        
+        # Delete heatmap if exists
+        if row.get('heatmap_path'):
+            if isinstance(row['heatmap_path'], str) and row['heatmap_path'].startswith('http'):
+                success, error = delete_heatmap(row['heatmap_path'], user_id)
+                if not success:
+                    logger.warning(f"Failed to delete heatmap from storage: {error}")
+            else:
+                # Fallback: delete local file
+                heatmap_file = UPLOAD_FOLDER / Path(row['heatmap_path']).name
+                if heatmap_file.exists():
+                    heatmap_file.unlink()
         
         logger.info(f"Deleted scan: {scan_id} for user: {user_id[:8]}...")
         return jsonify({'message': 'Scan deleted successfully', 'scan_id': scan_id}), 200
@@ -2185,6 +2298,207 @@ def get_health_thresholds():
 
 
 # ============================================
+# FEEDBACK API
+# ============================================
+
+@app.route('/api/feedback', methods=['POST'])
+@validate_device_id
+def submit_feedback():
+    """Submit user feedback for a scan result"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or 'scan_id' not in data or 'rating' not in data:
+            return jsonify({
+                'error': 'Missing required fields',
+                'required': ['scan_id', 'rating']
+            }), 400
+        
+        scan_id = data['scan_id']
+        rating = data['rating']
+        feedback_text = data.get('feedback_text', '')
+        user_id = g.user_id
+        
+        # Validate rating
+        if rating not in ['thumbs_up', 'thumbs_down']:
+            return jsonify({
+                'error': 'Invalid rating',
+                'valid_values': ['thumbs_up', 'thumbs_down']
+            }), 400
+        
+        # Get scan details for AI snapshot
+        cursor = get_db().cursor()
+        cursor.execute('''
+            SELECT 
+                (COALESCE(d.n_confidence, 0) + COALESCE(d.p_confidence, 0) + COALESCE(d.k_confidence, 0)) / 3.0 as avg_confidence,
+                d.detected_class
+            FROM diagnoses d
+            JOIN leaf_scans ls ON d.scan_id = ls.id
+            WHERE ls.id = ? AND ls.user_id = ?
+        ''', (scan_id, user_id))
+        
+        scan_data = cursor.fetchone()
+        if not scan_data:
+            return jsonify({'error': 'Scan not found'}), 404
+        
+        ai_confidence = scan_data['avg_confidence']
+        detected_class = scan_data['detected_class']
+        
+        # Flag for review if high confidence but negative feedback
+        is_flagged = (ai_confidence and ai_confidence > 0.8 and rating == 'thumbs_down')
+        
+        # Insert feedback
+        cursor.execute('''
+            INSERT INTO user_feedback (
+                user_id, scan_id, rating, ai_confidence, 
+                detected_class, feedback_text, is_flagged
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            user_id, scan_id, rating, ai_confidence,
+            detected_class, feedback_text, is_flagged
+        ))
+        
+        get_db().commit()
+        feedback_id = cursor.lastrowid
+        
+        logger.info(f"Feedback submitted: {feedback_id} - {rating} for scan {scan_id}")
+        
+        return jsonify({
+            'success': True,
+            'feedback_id': feedback_id,
+            'message': 'Feedback submitted successfully',
+            'is_flagged': is_flagged
+        }), 201
+        
+    except Exception as e:
+        logger.error(f"Error submitting feedback: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/feedback/<int:scan_id>', methods=['GET'])
+@validate_device_id
+def get_scan_feedback(scan_id):
+    """Get feedback for a specific scan"""
+    try:
+        user_id = g.user_id
+        cursor = get_db().cursor()
+        
+        cursor.execute('''
+            SELECT id, rating, feedback_text, created_at
+            FROM user_feedback
+            WHERE scan_id = ? AND user_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        ''', (scan_id, user_id))
+        
+        feedback = cursor.fetchone()
+        
+        if feedback:
+            return jsonify({
+                'success': True,
+                'feedback': {
+                    'id': feedback['id'],
+                    'rating': feedback['rating'],
+                    'feedback_text': feedback['feedback_text'],
+                    'created_at': feedback['created_at']
+                }
+            }), 200
+        else:
+            return jsonify({
+                'success': True,
+                'feedback': None
+            }), 200
+            
+    except Exception as e:
+        logger.error(f"Error getting feedback: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/feedback/all', methods=['GET'])
+def get_all_feedback():
+    """Get all feedback (for admin dashboard) - grouped by scan_id, most recent per scan"""
+    try:
+        cursor = get_db().cursor()
+        
+        # Get most recent feedback for each scan
+        cursor.execute('''
+            SELECT 
+                uf.id,
+                uf.user_id,
+                uf.scan_id,
+                uf.rating,
+                uf.ai_confidence,
+                uf.detected_class,
+                uf.is_flagged,
+                uf.created_at
+            FROM user_feedback uf
+            INNER JOIN (
+                SELECT scan_id, MAX(created_at) as max_created
+                FROM user_feedback
+                GROUP BY scan_id
+            ) latest ON uf.scan_id = latest.scan_id AND uf.created_at = latest.max_created
+            ORDER BY uf.created_at DESC
+        ''')
+        
+        feedback_list = []
+        for row in cursor.fetchall():
+            feedback_list.append({
+                'id': row['id'],
+                'user_id': row['user_id'],
+                'scan_id': row['scan_id'],
+                'rating': row['rating'],
+                'ai_confidence': row['ai_confidence'],
+                'detected_class': row['detected_class'],
+                'is_flagged': bool(row['is_flagged']),
+                'created_at': row['created_at']
+            })
+        
+        return jsonify({
+            'success': True,
+            'feedback': feedback_list,
+            'count': len(feedback_list)
+        }), 200
+            
+    except Exception as e:
+        logger.error(f"Error getting all feedback: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/feedback/stats', methods=['GET'])
+def get_feedback_stats():
+    """Get feedback statistics (for admin dashboard)"""
+    try:
+        cursor = get_db().cursor()
+        
+        # Count thumbs up
+        cursor.execute("SELECT COUNT(*) as count FROM user_feedback WHERE rating = 'thumbs_up'")
+        thumbs_up = cursor.fetchone()['count']
+        
+        # Count thumbs down
+        cursor.execute("SELECT COUNT(*) as count FROM user_feedback WHERE rating = 'thumbs_down'")
+        thumbs_down = cursor.fetchone()['count']
+        
+        # Count flagged
+        cursor.execute("SELECT COUNT(*) as count FROM user_feedback WHERE is_flagged = 1")
+        flagged = cursor.fetchone()['count']
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'thumbs_up': thumbs_up,
+                'thumbs_down': thumbs_down,
+                'flagged': flagged,
+                'total': thumbs_up + thumbs_down
+            }
+        }), 200
+            
+    except Exception as e:
+        logger.error(f"Error getting feedback stats: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================
 # MAIN ENTRY POINT
 # ============================================
 
@@ -2195,6 +2509,15 @@ if __name__ == '__main__':
     
     # Initialize database
     init_db()
+    
+    # Initialize Supabase Storage buckets
+    print("\n📦 Initializing Supabase Storage...")
+    try:
+        ensure_buckets_exist()
+        print("✓ Storage buckets ready")
+    except Exception as e:
+        print(f"⚠️  Storage initialization failed: {e}")
+        print("   Falling back to local file storage")
     
     # Print available routes
     print("\n📡 Available Endpoints:")
@@ -2220,6 +2543,12 @@ if __name__ == '__main__':
     print("  GET  /api/scans/history     - Detailed history with trends")
     print("  GET  /api/recommendations   - Get recommendations for scan")
     print("  GET  /api/config/thresholds - Get health thresholds config")
+    print("")
+    print("👍 Feedback Endpoints:")
+    print("  POST /api/feedback          - Submit user feedback")
+    print("  GET  /api/feedback/<id>     - Get feedback for scan")
+    print("  GET  /api/feedback/all      - Get all feedback (admin)")
+    print("  GET  /api/feedback/stats    - Get feedback statistics")
     print("")
     
     # Start server

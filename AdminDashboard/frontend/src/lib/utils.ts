@@ -62,3 +62,21 @@ export function truncate(str: string, length: number): string {
   if (str.length <= length) return str;
   return str.slice(0, length) + '...';
 }
+
+/**
+ * Get the full URL for an image from its path
+ * Handles both Supabase Storage URLs (https://...) and local paths (/uploads/...)
+ */
+export function getImageUrl(imagePath: string | null | undefined): string | null {
+  if (!imagePath) return null;
+  
+  // If it's already a full URL (Supabase Storage), return as-is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // If it's a local path, construct backend URL
+  // Backend serves images at /api/images/<filename>
+  const filename = imagePath.split('/').pop() || imagePath;
+  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/images/${filename}`;
+}

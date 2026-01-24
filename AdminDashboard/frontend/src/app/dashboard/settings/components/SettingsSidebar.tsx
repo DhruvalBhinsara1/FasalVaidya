@@ -1,12 +1,11 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Bell, Settings, Shield, User } from 'lucide-react';
+import { Bell, Settings, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const sections = [
-  { id: 'profile', label: 'Profile', icon: User },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: Shield },
 ];
@@ -28,7 +27,7 @@ export function SettingsSidebar() {
         <nav className="mt-3 space-y-1">
           {sections.map((section) => {
             const isActive = pathname.includes(section.id) || 
-              (section.id === 'profile' && pathname === '/dashboard/settings');
+              (section.id === 'notifications' && pathname === '/dashboard/settings');
 
             return (
               <Link

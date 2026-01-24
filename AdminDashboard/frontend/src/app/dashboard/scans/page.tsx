@@ -1,7 +1,9 @@
 import { Header } from '@/components/layout/Header';
 import { Badge, Card } from '@/components/ui';
 import { createAdminClient } from '@/lib/supabase/server';
-import { Activity, AlertTriangle, User } from 'lucide-react';
+import { getImageUrl } from '@/lib/utils';
+import { Activity, AlertTriangle, ArrowRight, Calendar, Leaf, MapPin, Plus, Search } from 'lucide-react';
+import Image from 'next/image';
 
 interface Scan {
   id: string;
@@ -21,6 +23,11 @@ interface Scan {
     k_score: number;
     overall_status: string;
     detected_class: string;
+    heatmap_path?: string;
+  };
+  feedback?: {
+    rating: 'thumbs_up' | 'thumbs_down';
+    is_flagged: boolean;
   };
 }
 
@@ -68,6 +75,36 @@ async function getScansData() {
       .in('scan_id', scanIds)
       .is('deleted_at', null);
 
+    // Get feedback from Flask backend (SQLite) instead of Supabase
+    let feedbackMap: Record<string, { rating: 'thumbs_up' | 'thumbs_down'; is_flagged: boolean }> = {};
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${backendUrl}/api/feedback/all`, {
+        headers: {
+          'X-User-ID': '00000000-0000-0000-0000-000000000000', // Admin view sees all feedback
+        },
+      });
+      
+      if (response.ok) {
+        const feedbackData = await response.json();
+        if (feedbackData.success && Array.isArray(feedbackData.feedback)) {
+          // Map feedback by scan_id (most recent per scan)
+          feedbackMap = feedbackData.feedback.reduce((acc: any, f: any) => {
+            if (!acc[f.scan_id]) {
+              acc[f.scan_id] = {
+                rating: f.rating,
+                is_flagged: f.is_flagged === 1 || f.is_flagged === true,
+              };
+            }
+            return acc;
+          }, {});
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching feedback from backend:', error);
+      // Continue without feedback data
+    }
+
     // Map diagnoses to scans
     const diagnosesMap = (diagnoses || []).reduce((acc: any, d: any) => {
       acc[d.scan_id] = d;
@@ -87,6 +124,7 @@ async function getScansData() {
       user_phone: (scan as any).users?.phone || '',
       crop_name: (scan as any).crops?.name || 'Unknown',
       diagnosis: diagnosesMap[scan.id] || null,
+      feedback: feedbackMap[scan.id] || null,
     })) as Scan[];
   } catch (error) {
     console.error('Error in getScansData:', error);
@@ -126,11 +164,36 @@ async function getScansStats() {
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null);
 
+    // Feedback stats from Flask backend (SQLite)
+    let feedbackStats = { thumbsUp: 0, thumbsDown: 0, flagged: 0 };
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${backendUrl}/api/feedback/stats`, {
+        headers: {
+          'X-User-ID': '00000000-0000-0000-0000-000000000000',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          feedbackStats = {
+            thumbsUp: data.stats.thumbs_up || 0,
+            thumbsDown: data.stats.thumbs_down || 0,
+            flagged: data.stats.flagged || 0,
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching feedback stats from backend:', error);
+    }
+
     return {
       total: totalScans || 0,
       completed: completedScans || 0,
       today: scansToday || 0,
       diagnosed: totalDiagnoses || 0,
+      feedback: feedbackStats,
     };
   } catch (error) {
     console.error('Error fetching scans stats:', error);
@@ -139,6 +202,11 @@ async function getScansStats() {
       completed: 0,
       today: 0,
       diagnosed: 0,
+      feedback: {
+        thumbsUp: 0,
+        thumbsDown: 0,
+        flagged: 0,
+      },
     };
   }
 }
@@ -264,6 +332,25 @@ export default async function ScansPage() {
           </Card>
         </div>
 
+        {/* Feedback Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card>
+            <p className="text-sm text-neutral-light">Positive Feedback</p>
+            <p className="mt-2 text-3xl font-bold text-green-600">{stats.feedback.thumbsUp}</p>
+            <p className="mt-1 text-xs text-neutral-light">👍 Thumbs up</p>
+          </Card>
+          <Card>
+            <p className="text-sm text-neutral-light">Negative Feedback</p>
+            <p className="mt-2 text-3xl font-bold text-red-600">{stats.feedback.thumbsDown}</p>
+            <p className="mt-1 text-xs text-neutral-light">👎 Thumbs down</p>
+          </Card>
+          <Card>
+            <p className="text-sm text-neutral-light">Flagged for Review</p>
+            <p className="mt-2 text-3xl font-bold text-yellow-600">{stats.feedback.flagged}</p>
+            <p className="mt-1 text-xs text-neutral-light">⚠ Needs attention</p>
+          </Card>
+        </div>
+
         {/* Scans List */}
         <div>
           <div className="mb-4">
@@ -278,7 +365,7 @@ export default async function ScansPage() {
           ) : (
             <div className="space-y-4">
               {scans.map((scan) => {
-                const cropIcon = getCropIcon(scan.crop_name);
+                const cropIcon = getCropIcon(scan.crop_name || '');
                 const severity = scan.diagnosis 
                   ? getOverallSeverity(
                       scan.diagnosis.n_score || 0,
@@ -298,91 +385,167 @@ export default async function ScansPage() {
                 return (
                   <div 
                     key={scan.id} 
-                    className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md hover:border-gray-300 transition-all"
+                    className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg hover:border-gray-300 transition-all"
                   >
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl">{cropIcon}</span>
-                        <div>
-                          <h3 className="text-xl font-bold text-neutral">{scan.crop_name}</h3>
-                          <div className="flex items-center gap-3 mt-1">
-                            <p className="text-xs text-neutral-light">
-                              #{scan.scan_uuid.substring(0, 8).toUpperCase()}
-                            </p>
-                            <span className="text-xs text-gray-300">•</span>
-                            <p className="text-xs text-neutral-light">
-                              {formatDate(scan.created_at)}
-                            </p>
-                            <span className="text-xs text-gray-300">•</span>
-                            <span className="flex items-center gap-1.5 text-xs text-neutral-light">
-                              <User className="h-3 w-3" />
-                              {scan.user_name}
-                            </span>
+                    {/* Header with Health Score Circle */}
+                    <div className="flex items-start justify-between mb-4">
+                      {/* Health Score Badge */}
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                            worstScore >= 70 ? 'bg-green-600' :
+                            worstScore >= 40 ? 'bg-yellow-500' :
+                            'bg-red-600'
+                          }`}>
+                            <div className="text-center">
+                              <div className="text-2xl font-bold text-white">{worstScore.toFixed(0)}%</div>
+                              <div className="text-[10px] text-white/90 -mt-1">{severity?.label || 'N/A'}</div>
+                            </div>
                           </div>
                         </div>
+                        <div className="text-xl font-bold text-neutral">Health Score</div>
                       </div>
-                      <Badge variant={scan.status === 'completed' ? 'success' : 'warning'}>
-                        {scan.status === 'completed' ? '✓ Analyzed' : 'Processing'}
-                      </Badge>
+                      
+                      {/* Metadata */}
+                      <div className="text-right">
+                        <div className="flex items-center justify-end gap-1.5 text-xs text-gray-500 mb-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          <span>{formatDate(scan.created_at)}</span>
+                        </div>
+                        <div className="flex items-center justify-end gap-1.5 text-xs text-gray-500 mb-2">
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span>{scan.crop_name}</span>
+                        </div>
+                        <Badge variant={scan.status === 'completed' ? 'success' : 'warning'}>
+                          {scan.status === 'completed' ? '✓ Analyzed' : 'Processing'}
+                        </Badge>
+                        
+                        {/* Feedback Badge */}
+                        {scan.feedback && (
+                          <div className={`mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold ${
+                            scan.feedback.rating === 'thumbs_up' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-red-100 text-red-700'
+                          } ${scan.feedback.is_flagged ? 'ring-2 ring-yellow-400' : ''}`}>
+                            <span>{scan.feedback.rating === 'thumbs_up' ? '👍' : '👎'}</span>
+                            <span>User Feedback</span>
+                            {scan.feedback.is_flagged && (
+                              <span className="text-yellow-600" title="Flagged for review">⚠</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Diagnosis Section */}
                     {scan.diagnosis ? (
                       <div className="space-y-4">
-                        {/* AI Diagnosis */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-start gap-2">
-                            <AlertTriangle className={`h-5 w-5 mt-0.5 ${
-                              severity?.color === 'error' ? 'text-red-500' :
-                              severity?.color === 'warning' ? 'text-yellow-500' :
-                              'text-green-500'
-                            }`} />
-                            <div>
-                              <h4 className="font-semibold text-neutral text-sm">AI Diagnosis</h4>
-                              <p className="text-sm font-medium text-red-600 mt-0.5">
-                                {scan.diagnosis.detected_class || 'Unknown Deficiency'}
-                              </p>
+                        {/* Diagnosis + Images Row */}
+                        <div className="flex items-start justify-between gap-4">
+                          {/* Left: Diagnosis */}
+                          <div className="flex-1">
+                            <div className="flex items-start gap-2 mb-3">
+                              <AlertTriangle className="h-5 w-5 mt-0.5 text-red-500 flex-shrink-0" />
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-900">Diagnosis: {scan.diagnosis.detected_class || 'Unknown'}</h4>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <Leaf className="h-5 w-5 mt-0.5 text-green-600 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs text-gray-600">
+                                  <span className="font-medium">Recommendation:</span> {worstScore < 40 
+                                    ? 'Apply balanced N-P-K fertilizer and monitor moisture levels.'
+                                    : 'Continue regular monitoring and maintain current care practices.'}
+                                </p>
+                              </div>
                             </div>
                           </div>
                           
-                          {/* Severity & Risk Inline */}
-                          <div className="flex items-center gap-2">
-                            {severity && (
-                              <Badge variant={severity.color as any}>
-                                {severity.label}
-                              </Badge>
+                          {/* Right: Images + Badges */}
+                          <div className="flex items-start gap-2">
+                            {/* Images */}
+                            {getImageUrl(scan.image_path) && (
+                              <div className="flex gap-2">
+                                <div className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-gray-200">
+                                  <Image
+                                    src={getImageUrl(scan.image_path)!}
+                                    alt="Leaf"
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                  />
+                                </div>
+                                {scan.diagnosis?.heatmap_path && getImageUrl(scan.diagnosis.heatmap_path) && (
+                                  <div className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-gray-200">
+                                    <Image
+                                      src={getImageUrl(scan.diagnosis.heatmap_path)!}
+                                      alt="Heatmap"
+                                      fill
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                    <div className="absolute bottom-1 right-1 bg-black/50 rounded-full p-1">
+                                      <Search className="h-3 w-3 text-white" />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             )}
-                            {risk && (
-                              <Badge variant={risk.color as any}>
-                                {risk.label}
-                              </Badge>
-                            )}
+                            {/* Stacked Badges */}
+                            <div className="flex flex-col gap-2">
+                              {severity && (
+                                <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                                  severity.color === 'error' ? 'bg-red-100 text-red-700' :
+                                  severity.color === 'warning' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-green-100 text-green-700'
+                                }`}>
+                                  {severity.label}
+                                </div>
+                              )}
+                              {risk && (
+                                <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                                  risk.color === 'error' ? 'bg-red-100 text-red-700' :
+                                  risk.color === 'warning' ? 'bg-orange-100 text-orange-700' :
+                                  'bg-green-100 text-green-700'
+                                }`}>
+                                  {risk.label}
+                                </div>
+                              )}
+                              <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                                worstScore < 40 ? 'bg-red-100 text-red-700' :
+                                worstScore < 70 ? 'bg-orange-100 text-orange-700' :
+                                'bg-green-100 text-green-700'
+                              }`}>
+                                {worstScore < 40 ? 'Severe Damage' : worstScore < 70 ? 'Moderate Damage' : 'Minor Damage'}
+                              </div>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Nutrient Status */}
+                        {/* Nutrient Status - Show all 3 */}
                         <div className="grid grid-cols-3 gap-3">
                           {[
                             { name: 'Nitrogen', value: scan.diagnosis.n_score, short: 'N' },
                             { name: 'Phosphorus', value: scan.diagnosis.p_score, short: 'P' },
                             { name: 'Potassium', value: scan.diagnosis.k_score, short: 'K' },
-                          ].map((nutrient) => {
+                          ]
+                          .map((nutrient) => {
                             const score = nutrient.value || 0;
                             const gradient = getScoreGradient(score);
                             const status = getNutrientStatus(score);
                             return (
                               <div 
                                 key={nutrient.name} 
-                                className={`rounded-lg p-3 border ${gradient.bg} ${gradient.border} transition-all`}
+                                className={`rounded-lg p-3 border-0 ${gradient.bg}`}
                               >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs font-medium text-gray-600">{nutrient.name}</span>
+                                <div className="mb-2">
+                                  <span className="text-sm font-semibold text-gray-700">{nutrient.name} {nutrient.short}</span>
                                 </div>
-                                <p className={`text-2xl font-bold ${gradient.text}`}>
+                                <p className={`text-3xl font-bold ${gradient.text} mb-1`}>
                                   {score.toFixed(0)}%
                                 </p>
-                                <p className="text-xs font-medium text-gray-500 mt-0.5">
+                                <p className="text-sm font-medium text-gray-600">
                                   {status.label}
                                 </p>
                               </div>
@@ -390,16 +553,12 @@ export default async function ScansPage() {
                           })}
                         </div>
 
-                        {/* Description */}
-                        <p className="text-sm text-neutral-light leading-relaxed pt-2 border-t border-gray-100">
-                          {worstScore < 20 
-                            ? 'Critical deficiency detected. Immediate intervention required to prevent severe crop damage and yield loss.'
-                            : worstScore < 40
-                            ? 'Significant nutrient deficiency may reduce grain quality and increase disease susceptibility.'
-                            : worstScore < 70
-                            ? 'Moderate deficiency detected. Consider appropriate nutrient supplementation.'
-                            : 'Nutrient levels are within acceptable range. Continue regular monitoring.'}
-                        </p>
+                        {/* View Detailed Report Button */}
+                        <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                          <Plus className="h-4 w-4" />
+                          <span>View Detailed Report</span>
+                          <ArrowRight className="h-4 w-4 ml-auto" />
+                        </button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-neutral-light py-4">

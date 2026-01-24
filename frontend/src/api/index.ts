@@ -3,5 +3,7 @@
  * =======================
  */
 
-export { default as apiClient, API_BASE_URL } from './client';
+export { API_BASE_URL, default as apiClient } from './client';
+export * from './feedback';
 export * from './scans';
+

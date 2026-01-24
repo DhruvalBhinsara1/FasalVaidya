@@ -9,18 +9,18 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Speech from 'expo-speech';
 import React, { useMemo, useState } from 'react';
 import {
-    Image,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
-import { getImageUrl, ScanResult } from '../api';
+import { getImageUrl, getScanFeedback, ScanResult, submitFeedback } from '../api';
 import { Button, Card, HeatmapOverlay, ProductCard, ScoreBar, StatusChip } from '../components';
 import { getProductsForDeficiencies } from '../data/productData';
 import { getCropName, getCurrentLanguage, getRecommendation, t } from '../i18n';
@@ -37,6 +37,11 @@ const ResultsScreen: React.FC = () => {
   const [showScores, setShowScores] = useState(true);
   const [showAction, setShowAction] = useState(true);
   const [showWhy, setShowWhy] = useState(false);
+  
+  // Feedback state
+  const [feedbackRating, setFeedbackRating] = useState<'thumbs_up' | 'thumbs_down' | null>(null);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   // Calculate recommended products based on deficiencies
   const recommendedProducts = useMemo(() => {
@@ -98,6 +103,47 @@ const ResultsScreen: React.FC = () => {
 
   const handleGoHome = () => {
     navigation.navigate('Home');
+  };
+
+  // Load existing feedback on mount
+  React.useEffect(() => {
+    const loadFeedback = async () => {
+      try {
+        const response = await getScanFeedback(scanResult.scan_id);
+        if (response.success && response.feedback) {
+          setFeedbackRating(response.feedback.rating as 'thumbs_up' | 'thumbs_down');
+        }
+      } catch (error) {
+        console.error('Error loading feedback:', error);
+      }
+    };
+    loadFeedback();
+  }, [scanResult.scan_id]);
+
+  // Handle feedback submission
+  const handleFeedback = async (rating: 'thumbs_up' | 'thumbs_down') => {
+    if (feedbackSubmitting) return;
+    
+    setFeedbackSubmitting(true);
+    setFeedbackError(null);
+    
+    try {
+      const response = await submitFeedback({
+        scan_id: scanResult.scan_id,
+        rating,
+      });
+      
+      if (response.success) {
+        setFeedbackRating(rating);
+      } else {
+        setFeedbackError(response.message || 'Failed to submit feedback');
+      }
+    } catch (error) {
+      setFeedbackError('Error submitting feedback');
+      console.error('Feedback error:', error);
+    } finally {
+      setFeedbackSubmitting(false);
+    }
   };
 
   const handleShare = async () => {
@@ -615,6 +661,74 @@ const ResultsScreen: React.FC = () => {
             />
           </View>
         </View>
+
+        {/* Feedback Section */}
+        <Card style={styles.feedbackCard}>
+          <View style={styles.feedbackContent}>
+            <Text style={styles.feedbackTitle}>
+              {isHindi ? 'क्या यह निदान सटीक था?' : 'Was this diagnosis accurate?'}
+            </Text>
+            <View style={styles.feedbackButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.feedbackButton,
+                  feedbackRating === 'thumbs_up' && styles.feedbackButtonActive,
+                ]}
+                onPress={() => handleFeedback('thumbs_up')}
+                disabled={feedbackSubmitting || feedbackRating !== null}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="thumbs-up"
+                  size={24}
+                  color={feedbackRating === 'thumbs_up' ? colors.healthy : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.feedbackButtonText,
+                    feedbackRating === 'thumbs_up' && styles.feedbackButtonTextActive,
+                  ]}
+                >
+                  {isHindi ? 'हाँ' : 'Yes'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.feedbackButton,
+                  feedbackRating === 'thumbs_down' && styles.feedbackButtonActive,
+                ]}
+                onPress={() => handleFeedback('thumbs_down')}
+                disabled={feedbackSubmitting || feedbackRating !== null}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="thumbs-down"
+                  size={24}
+                  color={feedbackRating === 'thumbs_down' ? colors.critical : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    styles.feedbackButtonText,
+                    feedbackRating === 'thumbs_down' && styles.feedbackButtonTextActive,
+                  ]}
+                >
+                  {isHindi ? 'नहीं' : 'No'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            {feedbackRating && (
+              <Text style={styles.feedbackThankYou}>
+                {isHindi ? 'आपकी प्रतिक्रिया के लिए धन्यवाद!' : 'Thank you for your feedback!'}
+              </Text>
+            )}
+            
+            {feedbackError && (
+              <Text style={styles.feedbackError}>{feedbackError}</Text>
+            )}
+          </View>
+        </Card>
       </ScrollView>
       {/* Floating AI chat - icon-first, unobtrusive */}
       <TouchableOpacity
@@ -1116,6 +1230,64 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     backgroundColor: `${colors.secondary}25`,
     zIndex: -1,
+  },
+  feedbackCard: {
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  feedbackContent: {
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  feedbackTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  feedbackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    minWidth: 100,
+    justifyContent: 'center',
+  },
+  feedbackButtonActive: {
+    backgroundColor: `${colors.primary}10`,
+    borderColor: colors.primary,
+  },
+  feedbackButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  feedbackButtonTextActive: {
+    color: colors.textPrimary,
+  },
+  feedbackThankYou: {
+    fontSize: 14,
+    color: colors.healthy,
+    fontWeight: '500',
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  feedbackError: {
+    fontSize: 13,
+    color: colors.critical,
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
 });
 

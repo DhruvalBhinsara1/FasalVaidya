@@ -109,6 +109,12 @@ class SupabaseSyncClient {
       const result = await deviceUserService.getOrCreateUser();
       
       if (!result.success) {
+        // If it's a network error, we can still use the app - just no sync for now
+        if (result.error?.includes('Network') || result.error?.includes('timeout')) {
+          console.warn('⚠️ Supabase unreachable (network issue) - app will work offline');
+          return false;
+        }
+        
         console.error('❌ Failed to get/create device user:', result.error);
         return false;
       }

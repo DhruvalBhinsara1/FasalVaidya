@@ -1,7 +1,8 @@
 import { Badge } from '@/components/ui';
 import type { LeafScan } from '@/lib/types';
-import { formatDateTime, getSeverityColor } from '@/lib/utils';
+import { formatDateTime, getImageUrl, getSeverityColor } from '@/lib/utils';
 import { ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 
 interface RecentScansTableProps {
   scans: LeafScan[];
@@ -42,9 +43,21 @@ export function RecentScansTable({ scans }: RecentScansTableProps) {
           {scans.map((scan) => (
             <tr key={scan.id} className="hover:bg-gray-50/50 transition-colors">
               <td className="px-6 py-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <ImageIcon className="h-5 w-5 text-primary" />
-                </div>
+                {getImageUrl(scan.image_path) ? (
+                  <div className="relative h-10 w-10 rounded-lg overflow-hidden border border-gray-200">
+                    <Image
+                      src={getImageUrl(scan.image_path)!}
+                      alt="Leaf scan"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <ImageIcon className="h-5 w-5 text-primary" />
+                  </div>
+                )}
               </td>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-2">

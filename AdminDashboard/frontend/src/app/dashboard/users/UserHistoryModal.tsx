@@ -164,7 +164,18 @@ export function UserHistoryModal({ user, type, onClose }: UserHistoryModalProps)
             <div className="space-y-4">
               {(data as Scan[]).map((scan) => (
                 <Card key={scan.id} className="p-4">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    {getImageUrl(scan.image_path) && (
+                      <div className="relative h-20 w-20 rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
+                        <Image
+                          src={getImageUrl(scan.image_path)!}
+                          alt="Leaf scan"
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <FileText className="h-5 w-5 text-primary" />
@@ -185,12 +196,12 @@ export function UserHistoryModal({ user, type, onClose }: UserHistoryModalProps)
                           {scan.status}
                         </span>
                       </div>
+                      {scan.status === 'completed' && (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full inline-block">
+                          Completed
+                        </span>
+                      )}
                     </div>
-                    {scan.status === 'completed' && (
-                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                        Completed
-                      </span>
-                    )}
                   </div>
                 </Card>
               ))}

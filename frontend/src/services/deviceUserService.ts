@@ -62,6 +62,17 @@ class DeviceUserService {
           persistSession: false, // No auth needed for device-bound mode
           autoRefreshToken: false,
         },
+        global: {
+          fetch: (url, options = {}) => {
+            // Add timeout to prevent hanging on network issues
+            return Promise.race([
+              fetch(url, options),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timeout (10s)')), 10000)
+              ),
+            ]);
+          },
+        },
       });
     }
   }
@@ -119,6 +130,13 @@ class DeviceUserService {
       if (error) {
         console.error('❌ [DeviceUser] Upsert failed:', error.message);
         console.error('   Error details:', JSON.stringify(error, null, 2));
+        
+        // If it's a network error, it's non-critical - app can work offline
+        if (error.message?.includes('Network') || error.message?.includes('timeout')) {
+          console.warn('⚠️ [DeviceUser] Network issue - will retry later');
+          return { success: false, error: error.message, canRetry: true };
+        }
+        
         return { success: false, error: error.message };
       }
 
