@@ -1,7 +1,7 @@
 import { Header } from '@/components/layout/Header';
-import { Badge, Card, CardHeader } from '@/components/ui';
+import { Card, CardHeader } from '@/components/ui';
 import { createAdminClient } from '@/lib/supabase/server';
-import { Mail, MapPin, Phone, Smartphone } from 'lucide-react';
+import { UserTable } from './UserTable';
 
 interface User {
   id: string;
@@ -21,10 +21,22 @@ async function getUsersData() {
   const supabase = await createAdminClient();
 
   try {
-    // Get all users (fast, single query)
+    // Try direct query with column names from device_auth migration
     const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('*')
+      .select(`
+        id,
+        auth_user_id,
+        device_id,
+        device_fingerprint,
+        name,
+        phone,
+        profile_photo,
+        created_at,
+        updated_at,
+        last_active,
+        deleted_at
+      `)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
@@ -36,6 +48,22 @@ async function getUsersData() {
     if (!users || users.length === 0) {
       return [];
     }
+
+    // Transform to expected format
+    const transformedUsers = users.map(user => ({
+      id: user.id,
+      auth_user_id: user.auth_user_id,
+      full_name: user.name || null,
+      email: user.phone || 'No contact',  // Use phone as identifier for now
+      phone_number: user.phone || null,
+      location: null,
+      device_id: user.device_id || user.device_fingerprint,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      last_active: user.last_active,
+      deleted_at: user.deleted_at,
+      is_active: user.last_active ? new Date(user.last_active) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) : false,
+    }));
 
     // Get all scan data in ONE query with aggregation
     const { data: scanStats } = await supabase
@@ -58,7 +86,7 @@ async function getUsersData() {
     }, {});
 
     // Merge data
-    return users.map(user => ({
+    return transformedUsers.map(user => ({
       ...user,
       total_scans: scansByUser[user.id]?.count || 0,
       last_scan: scansByUser[user.id]?.lastScan || null,
@@ -141,18 +169,6 @@ function formatDate(dateString: string | null) {
   });
 }
 
-function getActivityStatus(lastActive: string | null): { label: string; color: string } {
-  if (!lastActive) return { label: 'Inactive', color: 'gray' };
-  
-  const now = new Date();
-  const lastActiveDate = new Date(lastActive);
-  const diffInDays = Math.floor((now.getTime() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffInDays <= 1) return { label: 'Active', color: 'success' };
-  if (diffInDays <= 7) return { label: 'Recent', color: 'warning' };
-  return { label: 'Inactive', color: 'gray' };
-}
-
 export default async function UsersPage() {
   const [users, stats] = await Promise.all([getUsersData(), getUserStats()]);
 
@@ -196,117 +212,7 @@ export default async function UsersPage() {
               subtitle={`${users.length} registered users`}
             />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-light uppercase">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-light uppercase">
-                    Contact
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-light uppercase">
-                    Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-light uppercase">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-light uppercase">
-                    Total Scans
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-light uppercase">
-                    Last Active
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-light uppercase">
-                    Joined
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {users.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-neutral-light">
-                      No users found
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((user) => {
-                    const activityStatus = getActivityStatus(user.last_active);
-                    return (
-                      <tr key={user.id} className="hover:bg-gray-50/50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white font-medium">
-                              {user.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || '?'}
-                            </div>
-                            <div>
-                              <p className="font-medium text-neutral">
-                                {user.full_name || 'Unnamed User'}
-                              </p>
-                              {user.device_id && (
-                                <p className="text-xs text-neutral-light flex items-center gap-1 mt-0.5">
-                                  <Smartphone className="h-3 w-3" />
-                                  {user.device_id.substring(0, 8)}...
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-1">
-                            <p className="text-sm text-neutral flex items-center gap-1.5">
-                              <Mail className="h-3.5 w-3.5 text-neutral-light" />
-                              {user.email}
-                            </p>
-                            {user.phone_number && (
-                              <p className="text-sm text-neutral-light flex items-center gap-1.5">
-                                <Phone className="h-3.5 w-3.5 text-neutral-light" />
-                                {user.phone_number}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {user.location ? (
-                            <p className="text-sm text-neutral flex items-center gap-1.5">
-                              <MapPin className="h-3.5 w-3.5 text-neutral-light" />
-                              {user.location}
-                            </p>
-                          ) : (
-                            <span className="text-xs text-neutral-light">Not set</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant={activityStatus.color as any}>
-                            {activityStatus.label}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <p className="font-semibold text-neutral">{user.total_scans}</p>
-                            {user.last_scan && (
-                              <p className="text-xs text-neutral-light">
-                                Last: {formatDate(user.last_scan)}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-sm text-neutral">{formatDate(user.last_active)}</p>
-                        </td>
-                        <td className="px-6 py-4">
-                          <p className="text-sm text-neutral-light">
-                            {formatDate(user.created_at)}
-                          </p>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+          <UserTable users={users} />
         </Card>
       </div>
     </>

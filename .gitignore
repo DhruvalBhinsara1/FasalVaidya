@@ -53,6 +53,11 @@ Thumbs.db
 # IDE
 .idea/
 
+.vscode/
+
+.vscode/settings.json
+.vscode/tasks.json
+
 # Kaggle.json
 
 Kaggle.json
@@ -77,3 +82,5 @@ logs/
 .ipynb_checkpoints/
 
 Leaf Nutrient Data Sets.rar
+.vscode/tasks.json
+.vscode/settings.json

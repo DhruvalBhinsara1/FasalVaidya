@@ -4,7 +4,7 @@
     {
       "label": "🌱 Backend: Start Flask Server",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; python app.py",
+      "command": ".venv311\\Scripts\\python.exe app.py",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -19,7 +19,7 @@
     {
       "label": "📱 Frontend: Start Expo (Tunnel)",
       "type": "shell",
-      "command": "npx expo start --lan",
+      "command": "set PATH=C:\\Program Files\\nodejs;%PATH% && npx expo start --lan",
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       },
@@ -34,7 +34,7 @@
     {
       "label": "🧪 Tests: Run API Tests",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; python -m pytest tests/test_api.py -v",
+      "command": ".venv311\\Scripts\\python.exe -m pytest tests/test_api.py -v",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -47,7 +47,7 @@
     {
       "label": "🧪 Tests: Batch Test with Dataset",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; python tests/batch_test_scans.py --samples 3",
+      "command": ".venv311\\Scripts\\python.exe tests/batch_test_scans.py --samples 3",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -73,7 +73,7 @@
     {
       "label": "📦 Setup: Install Backend Dependencies",
       "type": "shell",
-      "command": "python -m venv .venv311; .venv311\\Scripts\\Activate.ps1; pip install -r requirements.txt pytest pillow",
+      "command": "python -m venv .venv311 && .venv311\\Scripts\\pip.exe install -r requirements.txt pytest pillow",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -86,7 +86,7 @@
     {
       "label": "📦 Setup: Install Frontend Dependencies",
       "type": "shell",
-      "command": "npm install",
+      "command": "set PATH=C:\\Program Files\\nodejs;%PATH% && npm install",
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       },
@@ -108,7 +108,7 @@
     {
       "label": "🧠 ML: Train NPK Model",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_npk_model.py",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn && .venv311\\Scripts\\python.exe ml/train_npk_model.py",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -121,7 +121,7 @@
     {
       "label": "🧠 ML: Train NPK Model (No Early Stop)",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_npk_model.py --epochs 80 --unfreeze-last 80 --disable-early-stopping",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn && .venv311\\Scripts\\python.exe ml/train_npk_model.py --epochs 80 --unfreeze-last 80 --disable-early-stopping",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -134,7 +134,7 @@
     {
       "label": "🌾 ML: List Available Crops",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; python ml/train_crop_model.py --list",
+      "command": ".venv311\\Scripts\\python.exe ml/train_crop_model.py --list",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -147,7 +147,7 @@
     {
       "label": "🌾 ML: Train Crop Model (Wheat)",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop wheat --epochs 50",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn && .venv311\\Scripts\\python.exe ml/train_crop_model.py --crop wheat --epochs 50",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -160,7 +160,7 @@
     {
       "label": "🌾 ML: Train Crop Model (Rice)",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop rice --epochs 50",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn && .venv311\\Scripts\\python.exe ml/train_crop_model.py --crop rice --epochs 50",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -173,7 +173,7 @@
     {
       "label": "🌾 ML: Train Crop Model (Tomato)",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop tomato --epochs 50",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn && .venv311\\Scripts\\python.exe ml/train_crop_model.py --crop tomato --epochs 50",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -186,7 +186,7 @@
     {
       "label": "🌾 ML: Train Crop Model (Maize)",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop maize --epochs 50",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn && .venv311\\Scripts\\python.exe ml/train_crop_model.py --crop maize --epochs 50",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -199,7 +199,7 @@
     {
       "label": "🌾 ML: Train All Crop Models",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn; python ml/train_crop_model.py --crop all --epochs 50",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn && .venv311\\Scripts\\python.exe ml/train_crop_model.py --crop all --epochs 50",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -212,7 +212,7 @@
     {
       "label": "🧠 ML: Test Inference",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; python -c \"from ml.inference import NPKPredictor; p = NPKPredictor(); print('✅ Model loaded!' if p.model else '⚠️ Using mock mode'); print(p.predict_npk('test.jpg'))\"",
+      "command": ".venv311\\Scripts\\python.exe -c \"from ml.inference import NPKPredictor; p = NPKPredictor(); print('✅ Model loaded!' if p.model else '⚠️ Using mock mode'); print(p.predict_npk('test.jpg'))\"",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -225,7 +225,7 @@
     {
       "label": "🌿 Transfer Learning: Prepare PlantVillage Dataset",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install kaggle pillow; python ml/prepare_plantvillage_data.py --all",
+      "command": ".venv311\\Scripts\\pip.exe install kaggle pillow && .venv311\\Scripts\\python.exe ml/prepare_plantvillage_data.py --all",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -238,7 +238,7 @@
     {
       "label": "🌿 Transfer Learning: Stage 1 - PlantVillage Training",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn pillow; python ml/train_npk_model_transfer.py --stage plantvillage --plantvillage-epochs 30",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn pillow && .venv311\\Scripts\\python.exe ml/train_npk_model_transfer.py --stage plantvillage --plantvillage-epochs 30",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -251,7 +251,7 @@
     {
       "label": "🌿 Transfer Learning: Stage 2 - NPK Fine-tuning",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; python ml/train_npk_model_transfer.py --stage npk --npk-epochs 50",
+      "command": ".venv311\\Scripts\\python.exe ml/train_npk_model_transfer.py --stage npk --npk-epochs 50",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -264,7 +264,7 @@
     {
       "label": "🌿 Transfer Learning: Full Pipeline (Both Stages)",
       "type": "shell",
-      "command": ".venv311\\Scripts\\Activate.ps1; pip install tensorflow tqdm scikit-learn pillow; python ml/train_npk_model_transfer.py --stage both",
+      "command": ".venv311\\Scripts\\pip.exe install tensorflow tqdm scikit-learn pillow && .venv311\\Scripts\\python.exe ml/train_npk_model_transfer.py --stage both",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },

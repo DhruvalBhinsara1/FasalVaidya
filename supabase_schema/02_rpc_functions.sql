@@ -569,3 +569,49 @@ GRANT EXECUTE ON FUNCTION public.sync_diagnoses_batch(JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.sync_recommendations_batch(JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_changes_since(TEXT, TIMESTAMPTZ) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_sync_status() TO authenticated;
+-- =================================================================
+-- FUNCTION: Get Users with Auth Data (for Admin Dashboard)
+-- =================================================================
+CREATE OR REPLACE FUNCTION public.get_users_with_auth_data()
+RETURNS TABLE (
+    id UUID,
+    auth_user_id UUID,
+    full_name TEXT,
+    email TEXT,
+    phone_number TEXT,
+    location TEXT,
+    device_id TEXT,
+    device_fingerprint TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ,
+    last_active TIMESTAMPTZ,
+    deleted_at TIMESTAMPTZ,
+    is_active BOOLEAN
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        u.id,
+        u.auth_user_id,
+        u.name as full_name,                    -- From users.name
+        au.email,                               -- From auth.users
+        u.phone as phone_number,                -- From users.phone
+        (au.raw_user_meta_data->>'location')::TEXT as location,
+        u.device_id::TEXT,                      -- From users.device_id
+        u.device_fingerprint,
+        u.created_at,
+        u.updated_at,
+        u.last_active,
+        u.deleted_at,
+        (u.last_active > NOW() - INTERVAL '7 days') as is_active
+    FROM public.users u
+    LEFT JOIN auth.users au ON u.auth_user_id = au.id
+    WHERE u.deleted_at IS NULL;
+END;
+$$;
+
+-- Grant execute permission to service_role (for admin dashboard)
+GRANT EXECUTE ON FUNCTION public.get_users_with_auth_data() TO service_role;

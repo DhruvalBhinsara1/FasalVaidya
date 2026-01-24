@@ -10,7 +10,8 @@
     "${workspaceFolder}/backend"
   ],
   "terminal.integrated.env.windows": {
-    "PYTHONPATH": "${workspaceFolder}/backend"
+    "PYTHONPATH": "${workspaceFolder}/backend",
+    "PATH": "C:\\Program Files\\nodejs;${env:PATH}"
   },
   "files.exclude": {
     "**/__pycache__": true,
