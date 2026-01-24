@@ -553,10 +553,10 @@ export const sendChatMessage = async (
     // Optimization: Limit history to last 6 messages to reduce token usage and latency
     const recentHistory = history.slice(-6);
 
-    // Enforce language and conciseness
+    // Enforce language and extreme brevity
     const systemInstruction = language === 'hi' 
-      ? "\n\n(निर्देश: कृपया हिंदी में उत्तर दें और उत्तर संक्षिप्त रखें।)" 
-      : "\n\n(Instruction: Please respond in English and keep the answer concise.)";
+      ? "\n\n(20-30 शब्दों में जवाब दें)" 
+      : "\n\n(Answer in 20-30 words only)";
     
     const payload = {
       message: message + systemInstruction,
@@ -586,7 +586,10 @@ export const sendChatMessage = async (
       imageSize: imageBase64 ? `${(imageBase64.length / 1024).toFixed(2)} KB` : 'N/A'
     });
     
-    const response = await apiClient.post('/api/chat', payload);
+    // Use explicit timeout to override any platform defaults (mobile often has 12s default)
+    const response = await apiClient.post('/api/chat', payload, {
+      timeout: 45000  // 45s timeout (backend has 30s, add buffer for network)
+    });
     
     console.log('✅ AI Chat Response:', {
       success: response.data.success,

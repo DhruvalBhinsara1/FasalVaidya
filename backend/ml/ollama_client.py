@@ -17,46 +17,12 @@ logger = logging.getLogger('fasalvaidya.ollama')
 # Configuration
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llava:7b')  # Vision-capable model
-OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '120'))  # Longer timeout for vision
+OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '30'))  # Aggressive 30s timeout for speed
 
-# System prompt for agricultural expert
-SYSTEM_PROMPT = """You are FasalVaidya AI, an expert agricultural assistant specializing in crop nutrient deficiency analysis for Indian farmers. You communicate in a friendly, helpful manner in simple language.
+# System prompt for agricultural expert (ultra-optimized for speed)
+SYSTEM_PROMPT = """FasalVaidya AI: Give ONE SHORT answer (20-30 words). State problem → solution. Be direct."""
 
-Your expertise includes:
-- NPK (Nitrogen, Phosphorus, Potassium) deficiency identification in crops
-- Magnesium and micronutrient deficiency detection
-- Organic and chemical fertilizer recommendations
-- Sustainable farming practices suitable for Indian agriculture
-- Regional crop-specific advice (wheat, rice, maize, tomato, banana, etc.)
-
-When analyzing images:
-- Describe visible symptoms (yellowing, browning, spots, wilting)
-- Identify likely nutrient deficiencies based on visual patterns
-- Provide confidence level in your assessment
-- Suggest immediate remedial actions
-
-When providing recommendations:
-- Consider local availability of fertilizers in India
-- Include both organic (compost, vermicompost, neem) and chemical options
-- Mention application timing and dosage
-- Warn about over-fertilization risks
-
-Keep responses concise but informative. Use simple terms farmers can understand.
-If asked in Hindi, respond in Hindi. Default to English."""
-
-CONTEXT_TEMPLATE = """
-=== Current Crop Context ===
-Crop: {crop_name}
-Recent Scan Results:
-- Nitrogen (N): {n_score}% health ({n_severity})
-- Phosphorus (P): {p_score}% health ({p_severity})
-- Potassium (K): {k_score}% health ({k_severity})
-- Overall Status: {overall_status}
-- Detected Condition: {detected_class}
-
-{history_summary}
-===========================
-"""
+CONTEXT_TEMPLATE = """Crop: {crop_name} | N:{n_score}% P:{p_score}% K:{k_score}% | Status: {overall_status}"""
 
 
 def check_ollama_available() -> Dict[str, Any]:
@@ -108,35 +74,16 @@ def check_ollama_available() -> Dict[str, Any]:
 
 
 def build_context_message(scan_data: Optional[Dict] = None, history: Optional[List[Dict]] = None) -> str:
-    """
-    Build context string from scan data and history.
-    
-    Args:
-        scan_data: Current/latest scan result
-        history: List of recent scan history items
-        
-    Returns:
-        Formatted context string
-    """
+    """Build compact context from scan data."""
     if not scan_data:
         return ""
-    
-    # Build history summary
-    history_summary = ""
-    if history and len(history) > 1:
-        history_summary = f"Previous {len(history)-1} scans show similar patterns."
     
     return CONTEXT_TEMPLATE.format(
         crop_name=scan_data.get('crop_name', 'Unknown'),
         n_score=scan_data.get('n_score', 'N/A'),
         p_score=scan_data.get('p_score', 'N/A'),
         k_score=scan_data.get('k_score', 'N/A'),
-        n_severity=scan_data.get('n_severity', 'unknown'),
-        p_severity=scan_data.get('p_severity', 'unknown'),
-        k_severity=scan_data.get('k_severity', 'unknown'),
-        overall_status=scan_data.get('overall_status', 'unknown'),
-        detected_class=scan_data.get('detected_class', 'Not analyzed'),
-        history_summary=history_summary
+        overall_status=scan_data.get('overall_status', 'unknown')
     )
 
 
@@ -199,26 +146,18 @@ def chat_with_ollama(
         # Build messages array
         messages = [{'role': 'system', 'content': SYSTEM_PROMPT}]
 
-        # For now, force English-only replies regardless of frontend language selection.
-        # This keeps the AI behavior predictable while multilingual UI is rolled out.
-        lang_instr = (
-            "STRICT INSTRUCTION: Always respond ONLY in English. Do not include any other language, transliteration, or bilingual content. "
-            "If you cannot answer in English, reply with a short failure message in English stating you cannot comply."
-        )
-        messages.append({'role': 'system', 'content': lang_instr})
+        # Enforce English and extreme brevity
+        messages.append({'role': 'system', 'content': '20-30 words ONLY.'})
         
-        # Add context if available
+        # Add context if available (compact format)
         if context:
             context_msg = build_context_message(context)
             if context_msg:
-                messages.append({
-                    'role': 'system',
-                    'content': f"Current analysis context:\n{context_msg}"
-                })
+                messages.append({'role': 'system', 'content': context_msg})
         
-        # Add chat history
+        # Add recent chat history only (last 4 messages for speed)
         if chat_history:
-            for msg in chat_history[-10:]:  # Keep last 10 messages for context
+            for msg in chat_history[-4:]:
                 messages.append({
                     'role': msg.get('role', 'user'),
                     'content': msg.get('content', '')
@@ -241,8 +180,11 @@ def chat_with_ollama(
                 'messages': messages,
                 'stream': False,
                 'options': {
-                    'temperature': 0.7,
-                    'num_predict': 1024,
+                    'temperature': 0.1,        # Very low = fastest, most focused
+                    'num_predict': 100,        # Very short responses (2-3 sentences max)
+                    'top_k': 10,               # Faster sampling
+                    'top_p': 0.9,              # High = faster decisions
+                    'num_ctx': 1024,           # Smaller context window = faster
                 }
             },
             timeout=OLLAMA_TIMEOUT
