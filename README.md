@@ -120,10 +120,33 @@ FasalVaidya/
 │   │   └── utils/                   # Utility functions
 │   └── assets/                      # Images & icons
 │
-├── supabase_schema/                 # 🆕 Database Schemas for Sync
+├── notebooks/                       # 🆕 Jupyter Notebooks (ML Training)
+│   ├── FasalVaidya_EfficientNetB0_Training.ipynb
+│   ├── FasalVaidya_Enhanced_Transfer_Learning.ipynb
+│   ├── FasalVaidya_Enhanced_V2.ipynb
+│   ├── FasalVaidya_Hierarchical_Router_Specialist.ipynb
+│   └── FasalVaidya_YOLOv8_Training.ipynb
+│
+├── supabase_schema/                 # 🆕 Database Schemas & Queries
 │   ├── 01_remote_schema.sql         # PostgreSQL + Row Level Security
 │   ├── 02_rpc_functions.sql         # Batch sync RPC functions
-│   └── 03_local_sqlite_schema.sql   # Local SQLite migration
+│   ├── 03_local_sqlite_schema.sql   # Local SQLite migration
+│   ├── QUICK_FIX_CROPS.sql          # Quick fix for crop ID mismatch
+│   ├── FIX_CROP_IDS.sql             # Detailed crop ID migration
+│   ├── DEPLOY_DEVICE_AUTH_FIX.sql   # Device auth deployment
+│   └── DIAGNOSE_DEVICE_AUTH.sql     # Device auth diagnostics
+│
+├── config/                          # 🆕 Configuration Files
+│   ├── kaggle.json                  # Kaggle API credentials
+│   ├── Database_mitgration.json     # Database migration config
+│   └── OnlineDatabase_Sync.json     # Sync configuration
+│
+├── data/                            # 🆕 Data Files
+│   └── recommended products.csv     # Fertilizer product recommendations
+│
+├── scripts/                         # 🆕 Utility Scripts
+│   ├── test-device-auth.ps1         # Device auth testing
+│   └── test-profile-sync-fix.ps1    # Profile sync testing
 │
 ├── EnhancedModel3/                  # Enhanced Model v3 files
 │   ├── disease_final.keras
@@ -131,18 +154,21 @@ FasalVaidya/
 │   ├── leaf_validator.keras
 │   └── metadata.json
 │
+├── fasalvaidya_efficientnet_model/ # EfficientNet-B0 model files
+│   ├── efficientnet_best.keras
+│   ├── fasalvaidya_efficientnet.tflite
+│   ├── EfficientNet-B0_guidelines.json
+│   └── model_metadata.json
+│
 ├── fasalvaidya_unified_v2_model/   # Unified v2 model files
 │   ├── unified_nutrient_best.keras
 │   ├── stage2_plantvillage_best.keras
 │   └── unified_classification_report.json
 │
-├── guidelines/                      # Documentation & guides
-│   ├── QUICK_START_V2.md
-│   ├── UNIFIED_V2_TRAINING_PLAN.md
-│   ├── V2_DEPLOYMENT_SUMMARY.md
-│   ├── CLEANUP_SUMMARY.md
-│   ├── FRONTEND_V2_UPDATE_SUMMARY.md
-│   └── DATASET_ANALYSIS.md
+├── guidelines/                      # ML Training Documentation
+│   ├── CROP_DATASET_VIABILITY_ANALYSIS.md
+│   ├── DATASET_ANALYSIS.md
+│   └── UNIFIED_V2_TRAINING_PLAN.md
 │
 ├── .vscode/                         # VS Code configuration
 │   ├── tasks.json                   # Build & run tasks
